@@ -78,7 +78,7 @@ const Toast = ({ result, onClose }: { result: { type: 'success' | 'error', messa
 
 // ── Main Component ─────────────────────────────────────────────────────────────
 const AdminDashboard = () => {
-  const [tab, setTab] = useState<'stats' | 'users' | 'chat' | 'notif' | 'videos'>('stats');
+  const [tab, setTab] = useState<'stats' | 'users' | 'chat' | 'notif'>('stats');
   const [stats, setStats] = useState<Stats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
 
@@ -97,27 +97,6 @@ const AdminDashboard = () => {
   const [broadcastMsg, setBroadcastMsg] = useState('');
   const [broadcastLoading, setBroadcastLoading] = useState(false);
 
-  // Videos tab
-  const [blacklist, setBlacklist] = useState<{id: string; video_id: string; title: string; channel: string}[]>([]);
-  const [blacklistLoading, setBlacklistLoading] = useState(false);
-  const [channelVideosAdmin, setChannelVideosAdmin] = useState<Record<string, any[]>>({});
-  const [channelVideosLoading, setChannelVideosLoading] = useState(false);
-  const [selectedChannel, setSelectedChannel] = useState<string>('all');
-  const [filterLoading, setFilterLoading] = useState(false);
-  const [filterResult, setFilterResult] = useState<string | null>(null);
-
-  const ADMIN_CHANNELS = [
-    { id: "UCZeAfPeaRc_es11c0YSOhGg", name: "Boulistenaute" },
-    { id: "UCHVNyFEDNOq6q4OkG2YzIQQ", name: "Sportmag" },
-    { id: "UCvSPMtEs1EtxC_Ik0KgoClQ", name: "Sportmediamat" },
-    { id: "UCQX6vA1lYtP6nv8XROK56pQ", name: "Petanque Academy" },
-    { id: "UCpq3CYTOqiW-t2kqrtWZDug", name: "Groupe Pétanque" },
-    { id: "UCLNGJZ85f3W1ZZxUBeNdqDg", name: "Pétanque TV Europe" },
-    { id: "UCyQAL0ZOE9YLXfkndhlgJMQ", name: "PPF" },
-    { id: "UCAcERCZ6CKxXEnwQTiaooBw", name: "FFPJP" },
-    { id: "UCs5dyTykvpzwSyL5EsjcXNg", name: "FFSB" },
-  ];
-
   const [toast, setToast] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
   const showToast = (type: 'success' | 'error', message: string) => {
@@ -128,12 +107,6 @@ const AdminDashboard = () => {
   useEffect(() => { fetchStats(); }, []);
   useEffect(() => { if (tab === 'users') fetchUsers(); }, [tab]);
   useEffect(() => { if (tab === 'chat') fetchMessages(); }, [tab]);
-  useEffect(() => {
-    if (tab === 'videos') {
-      fetchBlacklist();
-      fetchChannelVideosAdmin();
-    }
-  }, [tab]);
 
   // ── Stats ──────────────────────────────────────────────────────────────────
   const fetchStats = async () => {
@@ -264,57 +237,6 @@ const AdminDashboard = () => {
   };
 
   // ── Broadcast ──────────────────────────────────────────────────────────────
-  // ── Blacklist vidéos ──────────────────────────────────────────
-  const fetchBlacklist = async () => {
-    setBlacklistLoading(true);
-    try {
-      const { data } = await supabase.from('video_blacklist').select('*').order('created_at', { ascending: false });
-      setBlacklist(data || []);
-    } catch (err) { console.error(err); }
-    finally { setBlacklistLoading(false); }
-  };
-
-  const fetchChannelVideosAdmin = async () => {
-    setChannelVideosLoading(true);
-    try {
-      const res = await fetch('/api/youtube');
-      const data = await res.json();
-      setChannelVideosAdmin(data.channelVideos || {});
-    } catch (err) { showToast('error', 'Impossible de charger les vidéos'); }
-    finally { setChannelVideosLoading(false); }
-  };
-
-  const handleBlacklistVideo = async (videoId: string, title: string, channel: string) => {
-    try {
-      await supabase.from('video_blacklist').upsert(
-        { video_id: videoId, title, channel },
-        { onConflict: 'video_id' }
-      );
-      showToast('success', `Vidéo masquée du carrousel.`);
-      fetchBlacklist();
-    } catch (err: any) { showToast('error', err.message); }
-  };
-
-  const handleUnblacklist = async (videoId: string, title: string) => {
-    try {
-      await supabase.from('video_blacklist').delete().eq('video_id', videoId);
-      showToast('success', `Vidéo réactivée dans le carrousel.`);
-      fetchBlacklist();
-    } catch (err: any) { showToast('error', err.message); }
-  };
-
-  const handleAutoFilter = async () => {
-    setFilterLoading(true);
-    setFilterResult(null);
-    try {
-      const res = await fetch('/api/filter', { headers: { 'x-filter-token': 'ahrena-filter-2026' } });
-      const data = await res.json();
-      setFilterResult(data.filtered === 0 ? `✅ ${data.message}` : `🚫 ${data.filtered} vidéo(s) masquée(s)`);
-      if (data.filtered > 0) fetchBlacklist();
-    } catch (err: any) { setFilterResult(`❌ Erreur : ${err.message}`); }
-    finally { setFilterLoading(false); }
-  };
-
   const handleBroadcast = async () => {
     if (!broadcastMsg.trim()) return;
     setBroadcastLoading(true);
@@ -363,7 +285,6 @@ const AdminDashboard = () => {
         <TabButton active={tab === 'users'} onClick={() => setTab('users')}>👥 Users</TabButton>
         <TabButton active={tab === 'chat'} onClick={() => setTab('chat')}>💬 Chat</TabButton>
         <TabButton active={tab === 'notif'} onClick={() => setTab('notif')}>📢 Notif</TabButton>
-        <TabButton active={tab === 'videos'} onClick={() => setTab('videos')}>🎬 Vidéos</TabButton>
       </div>
 
       {/* ── STATS TAB ── */}
@@ -606,119 +527,6 @@ const AdminDashboard = () => {
         </div>
       )}
 
-      {/* ── VIDEOS TAB ── */}
-      {tab === 'videos' && (
-        <div className="px-5 space-y-4">
-
-          {/* Filtre automatique */}
-          <div className="bg-zinc-900/60 border border-emerald-500/20 rounded-xl p-4">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-lg">🔍</span>
-              <p className="text-white font-black text-sm uppercase">Filtre automatique</p>
-              <span className="bg-emerald-600/20 text-emerald-400 text-[8px] font-black px-1.5 py-0.5 rounded uppercase">Gratuit</span>
-            </div>
-            <p className="text-white/30 text-[9px] mb-3">Analyse Sportmag & Sportmediamat — masque les vidéos sans mot pétanque dans le titre</p>
-            <button onClick={handleAutoFilter} disabled={filterLoading}
-              className="w-full bg-emerald-600 text-white font-black py-2.5 rounded-xl uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-40 hover:bg-emerald-700 transition-colors text-xs">
-              {filterLoading ? <Loader2 size={14} className="animate-spin" /> : '🔍'}
-              {filterLoading ? 'Analyse...' : 'Lancer le filtre'}
-            </button>
-            {filterResult && <p className="mt-2 text-xs text-white/60 text-center">{filterResult}</p>}
-            <p className="text-white/20 text-[9px] mt-2 text-center">🕐 Aussi automatique chaque nuit à 3h00</p>
-          </div>
-
-          {/* Navigateur de vidéos par chaîne */}
-          <div className="bg-zinc-900/60 border border-white/5 rounded-xl p-4">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-white/40 text-[9px] uppercase tracking-widest">Navigateur de vidéos</p>
-              <button onClick={fetchChannelVideosAdmin} className="text-white/30 hover:text-white/60 transition-colors">
-                <RefreshCw size={12} />
-              </button>
-            </div>
-
-            {/* Sélecteur de chaîne */}
-            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 mb-3">
-              <button onClick={() => setSelectedChannel('all')}
-                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[10px] font-black uppercase transition-all border ${selectedChannel === 'all' ? 'bg-red-600 text-white border-red-500' : 'bg-zinc-800 text-white/50 border-white/10'}`}>
-                Toutes
-              </button>
-              {ADMIN_CHANNELS.map(ch => (
-                <button key={ch.id} onClick={() => setSelectedChannel(ch.id)}
-                  className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[10px] font-black uppercase transition-all border ${selectedChannel === ch.id ? 'bg-red-600 text-white border-red-500' : 'bg-zinc-800 text-white/50 border-white/10'}`}>
-                  {ch.name}
-                </button>
-              ))}
-            </div>
-
-            {/* Liste des vidéos */}
-            {channelVideosLoading ? (
-              <div className="space-y-2">
-                {[1,2,3,4].map(i => <div key={i} className="h-14 bg-zinc-800 rounded-lg animate-pulse" />)}
-              </div>
-            ) : (
-              <div className="space-y-2 max-h-96 overflow-y-auto">
-                {(() => {
-                  const blacklistedSet = new Set(blacklist.map(b => b.video_id));
-                  const channels = selectedChannel === 'all' ? ADMIN_CHANNELS : ADMIN_CHANNELS.filter(ch => ch.id === selectedChannel);
-                  const videos = channels.flatMap(ch => (channelVideosAdmin[ch.id] || []).slice(0, 25));
-                  if (videos.length === 0) return <p className="text-white/20 text-xs text-center py-4">Aucune vidéo chargée</p>;
-                  return videos.map((v: any) => {
-                    const isBlacklisted = blacklistedSet.has(v.id);
-                    return (
-                      <div key={v.id} className={`flex items-center gap-2 rounded-lg p-2 border transition-all ${isBlacklisted ? 'bg-red-950/30 border-red-600/20 opacity-60' : 'bg-zinc-800/50 border-white/5'}`}>
-                        <img src={v.thumbnail} alt="" className="w-14 aspect-video object-cover rounded flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-white text-[10px] font-medium leading-snug line-clamp-2">{v.title}</p>
-                          <p className="text-white/30 text-[9px]">{v.channelName}</p>
-                        </div>
-                        {isBlacklisted ? (
-                          <button onClick={() => handleUnblacklist(v.id, v.title)}
-                            className="flex-shrink-0 bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600 hover:text-white px-2 py-1 rounded text-[9px] font-black uppercase transition-colors">
-                            ✅ Remettre
-                          </button>
-                        ) : (
-                          <button onClick={() => handleBlacklistVideo(v.id, v.title, v.channelName)}
-                            className="flex-shrink-0 bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white px-2 py-1 rounded text-[9px] font-black uppercase transition-colors">
-                            🚫 Masquer
-                          </button>
-                        )}
-                      </div>
-                    );
-                  });
-                })()}
-              </div>
-            )}
-          </div>
-
-          {/* Vidéos masquées */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-white/40 text-[9px] uppercase tracking-widest">Vidéos masquées ({blacklist.length})</p>
-              <button onClick={fetchBlacklist} className="text-white/30 hover:text-white/60 transition-colors"><RefreshCw size={12} /></button>
-            </div>
-            {blacklistLoading ? (
-              <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-12 bg-zinc-900 rounded-xl animate-pulse" />)}</div>
-            ) : blacklist.length === 0 ? (
-              <p className="text-white/20 text-xs text-center py-4">Aucune vidéo masquée</p>
-            ) : (
-              <div className="space-y-2">
-                {blacklist.map(item => (
-                  <div key={item.id} className="flex items-center gap-3 bg-zinc-900/60 border border-white/5 rounded-xl p-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-white text-[10px] font-medium truncate">{item.title}</p>
-                      <p className="text-white/40 text-[9px]">{item.channel}</p>
-                    </div>
-                    <button onClick={() => handleUnblacklist(item.video_id, item.title)}
-                      className="flex-shrink-0 bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600 hover:text-white px-2 py-1 rounded text-[9px] font-black uppercase transition-colors">
-                      Remettre
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
       <Toast result={toast} onClose={() => setToast(null)} />
     </div>
   );

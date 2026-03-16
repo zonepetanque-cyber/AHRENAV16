@@ -297,7 +297,7 @@ const VideoCarousel = ({ title, videos, onVideoSelect, large = false, channelUrl
         <h2 className={`px-6 font-bold text-white mb-3 flex items-center justify-between ${large ? 'text-2xl' : 'text-xl'}`}>
           <TitleContent />
         </h2>
-      ) : null}
+      )}
       <div 
         ref={scrollRef}
         className="flex gap-4 overflow-x-auto px-6 no-scrollbar snap-x snap-mandatory scroll-smooth"
@@ -531,7 +531,7 @@ const VideoModal = ({ video, onClose, isPremium, onMinimize, onAddToMultiplex, o
                       {/* Étapes */}
                       <div className="space-y-3 mb-6">
                         {[
-                          { num: '1', icon: '⛶', text: "Appuyez sur l'icône plein écran dans le lecteur YouTube" },
+                          { num: '1', icon: '⛶', text: 'Appuyez sur l'icône plein écran dans le lecteur YouTube' },
                           { num: '2', icon: '📱', text: 'La vidéo passe en plein écran sur votre téléphone' },
                           { num: '3', icon: '⬇️', text: 'Faites glisser vers le bas ou appuyez sur le bouton PiP de votre téléphone' },
                           { num: '4', icon: '✅', text: 'La vidéo flotte en mini-écran pendant que vous naviguez' },
@@ -614,19 +614,6 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('live');
   const [liveVideos, setLiveVideos] = useState<Video[]>([]);
   const [channelVideos, setChannelVideos] = useState<{ [key: string]: Video[] }>({});
-  const [blacklistedIds, setBlacklistedIds] = useState<Set<string>>(new Set());
-
-  // Charger la blacklist depuis Supabase au démarrage
-  useEffect(() => {
-    const loadBlacklist = async () => {
-      try {
-        const { supabase } = await import('./lib/supabase');
-        const { data } = await supabase.from('video_blacklist').select('video_id');
-        if (data) setBlacklistedIds(new Set(data.map((d: any) => d.video_id)));
-      } catch {}
-    };
-    loadBlacklist();
-  }, []);
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
   const [infoVideo, setInfoVideo] = useState<Video | null>(null);
   const [loading, setLoading] = useState(true);
@@ -797,7 +784,7 @@ export default function App() {
                   <VideoCarousel 
                     key={channel.id}
                     title={`Les dernières vidéos de ${channel.name}`}
-                    videos={(channelVideos[channel.id] || []).filter(v => !blacklistedIds.has(v.id)).slice(0, 10)}
+                    videos={channelVideos[channel.id] || []}
                     onVideoSelect={setSelectedVideo}
                     channelUrl={channel.url}
                   />

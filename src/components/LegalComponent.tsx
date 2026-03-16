@@ -126,7 +126,7 @@ const LegalComponent = ({ onTabChange }: { onTabChange?: (tab: string) => void }
       <div className="mb-6 space-y-2">
         <p className="text-white/20 text-[9px] uppercase tracking-[0.2em] mb-3">Documents juridiques</p>
         {[
-          { label: "Conditions Générales d'Utilisation (CGU)", tab: 'cgu' },
+          { label: 'Conditions Générales d'Utilisation (CGU)', tab: 'cgu' },
           { label: 'Politique de confidentialité & RGPD', tab: 'privacy' },
           { label: 'Politique de retrait de contenu', tab: 'takedown' },
         ].map((doc, i) => (
