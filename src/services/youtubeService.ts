@@ -18,8 +18,8 @@ export interface Video {
 
 let upcomingCache: { data: any; ts: number } | null = null;
 let liveCache: { data: Video[]; ts: number } | null = null;
-const UPCOMING_CACHE_MS = 60 * 60 * 1000;  // 1h côté client
-const LIVE_CACHE_MS = 2 * 60 * 1000;        // 2 min côté client
+const UPCOMING_CACHE_MS = 15 * 60 * 1000;  // 15 min côté client (à venir)
+const LIVE_CACHE_MS = 2 * 60 * 1000;        // 2 min côté client (en cours)
 
 export async function fetchAllVideos(): Promise<{
   lives: Video[];
@@ -31,14 +31,19 @@ export async function fetchAllVideos(): Promise<{
       fetchCurrentLives(),
     ]);
 
-    // Fusionner : lives EN COURS en premier (dédoublonnés)
+    // Fusionner : lives EN COURS en premier, puis À VENIR (dédoublonnés)
     const liveIds = new Set(currentLives.map(v => v.id));
+
+    // S'assurer que les lives en cours ont bien isLive: true
+    const livesWithFlag = currentLives.map(v => ({ ...v, isLive: true, isUpcoming: false }));
+
+    // Garder uniquement les vrais à venir (isUpcoming: true) non déjà en direct
     const upcomingOnly = (upcomingData.lives || []).filter(
-      (v: Video) => !liveIds.has(v.id) && v.isUpcoming
+      (v: Video) => !liveIds.has(v.id) && v.isUpcoming === true
     );
 
     return {
-      lives: [...currentLives, ...upcomingOnly],
+      lives: [...livesWithFlag, ...upcomingOnly],
       channelVideos: upcomingData.channelVideos || {},
     };
   } catch {
