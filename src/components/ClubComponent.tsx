@@ -1,12 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Lock, ChevronDown, CheckCircle2, Mail, LogOut, Settings, ShieldAlert, Bell, BellOff } from 'lucide-react';
+import { Users, Lock, ChevronDown, CheckCircle2, Mail, LogOut, Settings, ShieldAlert } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { User } from '@supabase/supabase-js';
 import AuthComponent from './AuthComponent';
-import { 
-  subscribeToPush, unsubscribeFromPush, isPushEnabled,
-  toggleChannelSubscription, getChannelSubscriptions
-} from '../services/notificationService';
 
 const FAQ_ITEMS = [
   // ... same items
@@ -17,12 +13,9 @@ const ClubComponent = ({ onTabChange }: { onTabChange: (tab: string) => void }) 
   const [isPremium, setIsPremium] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
-  const [pushEnabled, setPushEnabled] = useState(false);
-  const [channelSubs, setChannelSubs] = useState<string[]>([]);
-  const [notifLoading, setNotifLoading] = useState(false);
 
   // Admin : vérifié via l'email du compte connecté
-  const isAdmin = user?.email === 'romaricandco@gmail.com';
+  const isAdmin = user?.email === 'romaricandco@gmail.com' || user?.email === 'legranddebatpetanque@gmail.com';
 
   useEffect(() => {
     try {
@@ -61,41 +54,8 @@ const ClubComponent = ({ onTabChange }: { onTabChange: (tab: string) => void }) 
       .eq('id', userId)
       .single();
     
-    if (data) {
-      setIsPremium(data.is_premium);
-      if (data.is_premium) {
-        // Charger état push et abonnements chaînes
-        const [pushState, subs] = await Promise.all([
-          isPushEnabled(),
-          getChannelSubscriptions(),
-        ]);
-        setPushEnabled(pushState);
-        setChannelSubs(subs);
-      }
-    }
+    if (data) setIsPremium(data.is_premium);
     setLoading(false);
-  };
-
-  const handleTogglePush = async () => {
-    if (!isPremium) return;
-    setNotifLoading(true);
-    if (pushEnabled) {
-      await unsubscribeFromPush();
-      setPushEnabled(false);
-    } else {
-      const ok = await subscribeToPush();
-      setPushEnabled(ok);
-    }
-    setNotifLoading(false);
-  };
-
-  const handleToggleChannel = async (channel: string) => {
-    if (!isPremium) return;
-    const isSubbed = channelSubs.includes(channel);
-    await toggleChannelSubscription(channel, !isSubbed);
-    setChannelSubs(prev =>
-      isSubbed ? prev.filter(c => c !== channel) : [...prev, channel]
-    );
   };
 
   const handleLogout = async () => {
@@ -233,36 +193,18 @@ const ClubComponent = ({ onTabChange }: { onTabChange: (tab: string) => void }) 
         </h2>
         
         <div className="space-y-6">
-
-          {/* Switch global push — VIP uniquement */}
-          <div className={`flex items-center justify-between ${!isPremium ? 'opacity-40 pointer-events-none' : ''}`}>
-            <div className="flex items-center gap-2">
-              {pushEnabled ? <Bell size={16} className="text-red-500" /> : <BellOff size={16} className="text-white/30" />}
-              <div>
-                <p className="text-sm font-bold text-white">Notifications Push</p>
-                <p className="text-[10px] text-white/40 uppercase tracking-widest">Lives & nouvelles vidéos</p>
-              </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-bold text-white">Alertes Générales</p>
+              <p className="text-[10px] text-white/40 uppercase tracking-widest">Nouveaux Lives & VOD</p>
             </div>
-            <button
-              onClick={handleTogglePush}
-              disabled={notifLoading}
-              className={`w-12 h-6 rounded-full relative transition-colors duration-200 ${pushEnabled ? 'bg-red-600' : 'bg-zinc-700'}`}
-            >
-              <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-md transition-all duration-200 ${pushEnabled ? 'right-1' : 'left-1'}`} />
-            </button>
+            <div className="w-12 h-6 bg-red-600 rounded-full relative cursor-pointer">
+              <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full shadow-md" />
+            </div>
           </div>
 
-          {!isPremium && (
-            <div className="p-3 bg-red-600/10 rounded-lg border border-red-600/20 text-center">
-              <p className="text-[9px] text-red-600 font-black uppercase tracking-widest flex items-center justify-center gap-2">
-                <Lock size={10} /> Notifications réservées aux membres VIP
-              </p>
-            </div>
-          )}
-
-          {/* Switches par chaîne — VIP uniquement */}
           <div className={`space-y-4 pt-4 border-t border-white/5 ${!isPremium ? 'opacity-30 grayscale pointer-events-none' : ''}`}>
-            <p className="text-[10px] font-black text-white/60 uppercase tracking-widest mb-4">Notifications par chaîne</p>
+            <p className="text-[10px] font-black text-white/60 uppercase tracking-widest mb-4">Abonnements par chaîne (VIP)</p>
             {[
               "Boulistenaute",
               "Sportmag",
@@ -273,20 +215,21 @@ const ClubComponent = ({ onTabChange }: { onTabChange: (tab: string) => void }) 
               "PPF",
               "FFPJP",
               "FFSB"
-            ].map((channel) => {
-              const isSubbed = channelSubs.includes(channel);
-              return (
-                <div key={channel} className="flex items-center justify-between">
-                  <span className="text-xs text-white/80">{channel}</span>
-                  <button
-                    onClick={() => handleToggleChannel(channel)}
-                    className={`w-10 h-5 rounded-full relative transition-colors duration-200 ${isSubbed ? 'bg-red-600' : 'bg-zinc-800'}`}
-                  >
-                    <div className={`absolute top-1 w-3 h-3 bg-white rounded-full shadow transition-all duration-200 ${isSubbed ? 'right-1' : 'left-1'} ${!isSubbed ? 'opacity-30' : ''}`} />
-                  </button>
+            ].map((channel, i) => (
+              <div key={i} className="flex items-center justify-between">
+                <span className="text-xs text-white/80">{channel}</span>
+                <div className="w-10 h-5 bg-zinc-800 rounded-full relative cursor-pointer">
+                  <div className="absolute left-1 top-1 w-3 h-3 bg-white/20 rounded-full" />
                 </div>
-              );
-            })}
+              </div>
+            ))}
+            {!isPremium && (
+              <div className="mt-4 p-3 bg-red-600/10 rounded-lg border border-red-600/20 text-center">
+                <p className="text-[9px] text-red-600 font-black uppercase tracking-widest flex items-center justify-center gap-2">
+                  <Lock size={10} /> Réservé aux membres VIP
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -340,14 +283,6 @@ const ClubComponent = ({ onTabChange }: { onTabChange: (tab: string) => void }) 
           <Mail size={14} />
           support@ahrena.com
         </a>
-        <div className="mt-6 pt-4 border-t border-white/5">
-          <button
-            onClick={() => onTabChange('legal')}
-            className="text-white/20 hover:text-white/50 transition-colors text-[10px] uppercase tracking-widest"
-          >
-            Mentions légales & RGPD
-          </button>
-        </div>
       </div>
     </div>
   );
