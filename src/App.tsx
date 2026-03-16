@@ -14,7 +14,8 @@ import {
   User,
   Maximize2,
   ChevronDown,
-  Home
+  Home,
+  PictureInPicture2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { CHANNELS } from './constants';
@@ -30,6 +31,11 @@ import ChatComponent from './components/ChatComponent';
 import MultiplexView from './components/MultiplexView';
 import SplashScreen from './components/SplashScreen';
 import InstallPWA from './components/InstallPWA';
+import LegalComponent from './components/LegalComponent';
+import CGUComponent from './components/CGUComponent';
+import PrivacyComponent from './components/PrivacyComponent';
+import TakedownComponent from './components/TakedownComponent';
+import AdminDashboard from './components/AdminDashboard';
 
 // --- Components ---
 
@@ -245,6 +251,7 @@ interface VideoCarouselProps {
   onVideoSelect: (v: Video) => void;
   large?: boolean;
   channelUrl?: string;
+  hideTitleBar?: boolean;
 }
 
 const formatLiveDate = (dateStr?: string) => {
@@ -263,7 +270,7 @@ const formatLiveDate = (dateStr?: string) => {
   return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).replace(',', ' à');
 };
 
-const VideoCarousel = ({ title, videos, onVideoSelect, large = false, channelUrl }: VideoCarouselProps) => {
+const VideoCarousel = ({ title, videos, onVideoSelect, large = false, channelUrl, hideTitleBar = false }: VideoCarouselProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   if (videos.length === 0) return null;
@@ -277,7 +284,7 @@ const VideoCarousel = ({ title, videos, onVideoSelect, large = false, channelUrl
 
   return (
     <div className={large ? "py-6" : "py-4"}>
-      {channelUrl ? (
+      {!hideTitleBar && channelUrl ? (
         <a
           href={channelUrl}
           target="_blank"
@@ -286,7 +293,7 @@ const VideoCarousel = ({ title, videos, onVideoSelect, large = false, channelUrl
         >
           <TitleContent />
         </a>
-      ) : (
+      ) : !hideTitleBar ? (
         <h2 className={`px-6 font-bold text-white mb-3 flex items-center justify-between ${large ? 'text-2xl' : 'text-xl'}`}>
           <TitleContent />
         </h2>
@@ -374,6 +381,18 @@ const VideoModal = ({ video, onClose, isPremium, onMinimize, onAddToMultiplex, o
   onBecomeVIP: () => void
 }) => {
   const [isFavorite, setIsFavorite] = useState(false);
+  const [showPipGuide, setShowPipGuide] = useState(false);
+  const [pipDismissed, setPipDismissed] = useState(() => localStorage.getItem('ahrena_pip_dismissed') === '1');
+
+  const handlePipClick = () => {
+    setShowPipGuide(true);
+  };
+
+  const dismissPipGuide = () => {
+    setShowPipGuide(false);
+    setPipDismissed(true);
+    localStorage.setItem('ahrena_pip_dismissed', '1');
+  };
 
   // Bloquer le scroll de la page en arrière-plan quand la modal est ouverte
   useEffect(() => {
@@ -463,7 +482,7 @@ const VideoModal = ({ video, onClose, isPremium, onMinimize, onAddToMultiplex, o
               </div>
               
               {/* Vidéo — ratio 16:9 fixe, toujours visible en haut */}
-              <div className="aspect-video w-full bg-black">
+              <div className="aspect-video w-full bg-black relative">
                 <iframe
                   src={`https://www.youtube.com/embed/${video.id}?autoplay=1`}
                   title={video.title}
@@ -471,7 +490,81 @@ const VideoModal = ({ video, onClose, isPremium, onMinimize, onAddToMultiplex, o
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
                 />
+
+                {/* Bouton PiP — affiché en bas à gauche du player */}
+                {!pipDismissed && (
+                  <button
+                    onClick={handlePipClick}
+                    className="absolute bottom-3 left-3 flex items-center gap-1.5 bg-black/70 backdrop-blur-sm border border-white/20 px-2.5 py-1.5 rounded-full text-[10px] font-bold text-white/80 hover:text-white hover:border-white/40 transition-all z-10"
+                  >
+                    <PictureInPicture2 size={12} />
+                    Mini-écran
+                  </button>
+                )}
               </div>
+
+              {/* Guide PiP — overlay d'instructions */}
+              <AnimatePresence>
+                {showPipGuide && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="absolute inset-0 z-20 bg-black/85 backdrop-blur-sm flex flex-col items-center justify-center px-6"
+                    onClick={dismissPipGuide}
+                  >
+                    <motion.div
+                      initial={{ scale: 0.9, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0.9, opacity: 0 }}
+                      className="bg-zinc-900 border border-white/10 rounded-2xl p-6 max-w-sm w-full"
+                      onClick={e => e.stopPropagation()}
+                    >
+                      {/* Icône */}
+                      <div className="w-14 h-14 bg-red-600/20 rounded-2xl flex items-center justify-center mb-4 mx-auto">
+                        <PictureInPicture2 size={28} className="text-red-500" />
+                      </div>
+
+                      <h3 className="text-white font-black text-lg text-center mb-1">Mini-écran (PiP)</h3>
+                      <p className="text-white/40 text-xs text-center mb-5">Continuez à regarder en naviguant</p>
+
+                      {/* Étapes */}
+                      <div className="space-y-3 mb-6">
+                        {[
+                          { num: '1', icon: '⛶', text: 'Appuyez sur l'icône plein écran dans le lecteur YouTube' },
+                          { num: '2', icon: '📱', text: 'La vidéo passe en plein écran sur votre téléphone' },
+                          { num: '3', icon: '⬇️', text: 'Faites glisser vers le bas ou appuyez sur le bouton PiP de votre téléphone' },
+                          { num: '4', icon: '✅', text: 'La vidéo flotte en mini-écran pendant que vous naviguez' },
+                        ].map((step, i) => (
+                          <div key={i} className="flex items-start gap-3">
+                            <div className="w-6 h-6 rounded-full bg-red-600 flex items-center justify-center flex-shrink-0 text-[10px] font-black text-white">
+                              {step.num}
+                            </div>
+                            <div className="flex items-center gap-2 flex-1">
+                              <span className="text-lg">{step.icon}</span>
+                              <p className="text-white/70 text-xs leading-snug">{step.text}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Boutons */}
+                      <button
+                        onClick={dismissPipGuide}
+                        className="w-full bg-red-600 text-white font-black py-3 rounded-xl text-sm uppercase tracking-wider hover:bg-red-700 transition-colors"
+                      >
+                        J'ai compris
+                      </button>
+                      <button
+                        onClick={() => setShowPipGuide(false)}
+                        className="w-full mt-2 text-white/30 text-xs py-2 hover:text-white/60 transition-colors"
+                      >
+                        Me rappeler plus tard
+                      </button>
+                    </motion.div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
               
               {/* Infos + Chat — scrollable en dessous de la vidéo */}
               <div className="p-4">
@@ -521,6 +614,19 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('live');
   const [liveVideos, setLiveVideos] = useState<Video[]>([]);
   const [channelVideos, setChannelVideos] = useState<{ [key: string]: Video[] }>({});
+  const [blacklistedIds, setBlacklistedIds] = useState<Set<string>>(new Set());
+
+  // Charger la blacklist depuis Supabase au démarrage
+  useEffect(() => {
+    const loadBlacklist = async () => {
+      try {
+        const { supabase } = await import('./lib/supabase');
+        const { data } = await supabase.from('video_blacklist').select('video_id');
+        if (data) setBlacklistedIds(new Set(data.map((d: any) => d.video_id)));
+      } catch {}
+    };
+    loadBlacklist();
+  }, []);
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
   const [infoVideo, setInfoVideo] = useState<Video | null>(null);
   const [loading, setLoading] = useState(true);
@@ -637,25 +743,48 @@ export default function App() {
             />
 
             <main className="relative z-10 -mt-12">
-              {/* Carrousel Lives — toujours affiché en premier */}
+              {/* ── Carrousel LIVES EN COURS ── */}
               {loading ? (
                 <Skeleton />
-              ) : sortedLiveVideos.length > 0 ? (
-                <VideoCarousel 
-                  title="Directs & Prochains Lives" 
-                  videos={sortedLiveVideos} 
-                  onVideoSelect={setSelectedVideo} 
-                  large={true}
-                />
-              ) : (
-                <div className="py-6 px-6">
-                  <h2 className="text-2xl font-bold text-white mb-3">Directs & Prochains Lives</h2>
-                  <div className="flex items-center gap-3 bg-zinc-900/60 border border-white/5 rounded-lg px-5 py-4">
-                    <Radio size={18} className="text-white/30 flex-shrink-0" />
-                    <p className="text-white/40 text-sm">Aucun live en cours ni programmé pour le moment.</p>
-                  </div>
-                </div>
-              )}
+              ) : (() => {
+                const enCours = sortedLiveVideos.filter((v: any) => v.isLive);
+                const aVenir = sortedLiveVideos.filter((v: any) => !v.isLive);
+                return (
+                  <>
+                    {/* Section En Direct */}
+                    <div className="px-6 pt-6 pb-2">
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="w-2 h-2 rounded-full bg-red-600 animate-pulse" />
+                        <h2 className="text-xs font-black text-white uppercase tracking-[0.2em]">En Direct</h2>
+                      </div>
+                      {enCours.length > 0 ? (
+                        <VideoCarousel
+                          title=""
+                          videos={enCours}
+                          onVideoSelect={setSelectedVideo}
+                          large={true}
+                          hideTitleBar={true}
+                        />
+                      ) : (
+                        <div className="flex items-center gap-3 bg-zinc-900/40 border border-white/5 rounded-xl px-5 py-4 mb-4">
+                          <div className="w-2 h-2 rounded-full bg-white/20 flex-shrink-0" />
+                          <p className="text-white/30 text-sm italic">Pas de lives en cours en ce moment</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Section Prochains Lives */}
+                    {aVenir.length > 0 && (
+                      <VideoCarousel
+                        title="Prochains Lives"
+                        videos={aVenir}
+                        onVideoSelect={setSelectedVideo}
+                        large={true}
+                      />
+                    )}
+                  </>
+                );
+              })()}
 
               {loading ? (
                 <>
@@ -668,7 +797,7 @@ export default function App() {
                   <VideoCarousel 
                     key={channel.id}
                     title={`Les dernières vidéos de ${channel.name}`}
-                    videos={channelVideos[channel.id] || []}
+                    videos={(channelVideos[channel.id] || []).filter(v => !blacklistedIds.has(v.id)).slice(0, 10)}
                     onVideoSelect={setSelectedVideo}
                     channelUrl={channel.url}
                   />
@@ -687,6 +816,16 @@ export default function App() {
         return <FavoritesComponent onVideoSelect={setSelectedVideo} />;
       case 'admin_disabled':
         return null;
+      case 'legal':
+        return <LegalComponent onTabChange={setActiveTab} />;
+      case 'cgu':
+        return <CGUComponent />;
+      case 'privacy':
+        return <PrivacyComponent />;
+      case 'takedown':
+        return <TakedownComponent />;
+      case 'admin':
+        return <AdminDashboard />;
       default:
         return null;
     }
