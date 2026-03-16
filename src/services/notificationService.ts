@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase';
 
 // Clé VAPID publique — à remplacer par ta vraie clé générée
 // Générer sur : https://web-push-codelab.glitch.me/
-export const VAPID_PUBLIC_KEY = process.env.VITE_VAPID_PUBLIC_KEY || '';
+export const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY || '';
 
 // ── Convertir clé VAPID base64 → Uint8Array ───────────────────
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
