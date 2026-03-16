@@ -284,7 +284,7 @@ const VideoCarousel = ({ title, videos, onVideoSelect, large = false, channelUrl
 
   return (
     <div className={large ? "py-6" : "py-4"}>
-      {!hideTitleBar && channelUrl ? (
+      {!hideTitleBar && channelUrl && (
         <a
           href={channelUrl}
           target="_blank"
@@ -293,7 +293,8 @@ const VideoCarousel = ({ title, videos, onVideoSelect, large = false, channelUrl
         >
           <TitleContent />
         </a>
-      ) : !hideTitleBar ? (
+      )}
+      {!hideTitleBar && !channelUrl && (
         <h2 className={`px-6 font-bold text-white mb-3 flex items-center justify-between ${large ? 'text-2xl' : 'text-xl'}`}>
           <TitleContent />
         </h2>
