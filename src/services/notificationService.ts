@@ -1,13 +1,10 @@
 // notificationService.ts
-// Gère les permissions Push + abonnements Supabase
-
 import { supabase } from '../lib/supabase';
 
-// Clé VAPID publique — à remplacer par ta vraie clé générée
-// Générer sur : https://web-push-codelab.glitch.me/
-export const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY || '';
+// Clé VAPID publique hardcodée
+export const VAPID_PUBLIC_KEY = 'BPzJBxATegt3ERzf2gakMiCRvoEUXkwYwvCB_KbBOBmFh-uVB4sNm5LQuCL_Fe3ZpNkZwSTmB-8_wqYGxlAF5vw';
 
-// ── Convertir clé VAPID base64 → Uint8Array ───────────────────
+// Convertir clé VAPID base64 → Uint8Array
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
@@ -15,7 +12,7 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return Uint8Array.from([...rawData].map(char => char.charCodeAt(0)));
 }
 
-// ── Demander permission et s'abonner aux push ────────────────
+// Demander permission et s'abonner aux push
 export async function subscribeToPush(): Promise<boolean> {
   try {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
@@ -33,7 +30,6 @@ export async function subscribeToPush(): Promise<boolean> {
       });
     }
 
-    // Sauvegarder l'abonnement dans Supabase
     const { data: { user } } = await supabase.auth.getUser();
     if (user && subscription) {
       await supabase.from('push_subscriptions').upsert({
@@ -50,7 +46,7 @@ export async function subscribeToPush(): Promise<boolean> {
   }
 }
 
-// ── Se désabonner des push ────────────────────────────────────
+// Se désabonner
 export async function unsubscribeFromPush(): Promise<void> {
   try {
     const registration = await navigator.serviceWorker.ready;
@@ -67,53 +63,47 @@ export async function unsubscribeFromPush(): Promise<void> {
   }
 }
 
-// ── Vérifier si push est actif ────────────────────────────────
+// Vérifier si push activé
 export async function isPushEnabled(): Promise<boolean> {
   try {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
     const registration = await navigator.serviceWorker.ready;
     const subscription = await registration.pushManager.getSubscription();
-    return !!subscription && Notification.permission === 'granted';
+    return !!subscription;
   } catch {
     return false;
   }
 }
 
-// ── Gérer abonnement à une chaîne (Supabase) ─────────────────
-export async function toggleChannelSubscription(channelName: string, subscribe: boolean): Promise<void> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return;
-
-  if (subscribe) {
-    await supabase.from('channel_subscriptions').upsert({
-      user_id: user.id,
-      channel_name: channelName,
-    }, { onConflict: 'user_id,channel_name' });
-  } else {
-    await supabase.from('channel_subscriptions')
-      .delete()
-      .eq('user_id', user.id)
-      .eq('channel_name', channelName);
+// Abonnements par chaîne
+export async function getChannelSubscriptions(): Promise<string[]> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+    const { data } = await supabase
+      .from('channel_subscriptions')
+      .select('channel_name')
+      .eq('user_id', user.id);
+    return data?.map(s => s.channel_name) || [];
+  } catch {
+    return [];
   }
 }
 
-// ── Récupérer les abonnements chaînes de l'utilisateur ───────
-export async function getChannelSubscriptions(): Promise<string[]> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return [];
-
-  const { data } = await supabase
-    .from('channel_subscriptions')
-    .select('channel_name')
-    .eq('user_id', user.id);
-
-  return data?.map(s => s.channel_name) || [];
-}
-
-// ── Afficher une notification in-app ─────────────────────────
-export function showInAppNotification(title: string, body: string, url?: string) {
-  // Dispatch un événement custom écouté par l'app
-  window.dispatchEvent(new CustomEvent('ahrena-notification', {
-    detail: { title, body, url }
-  }));
+export async function toggleChannelSubscription(channelName: string, subscribe: boolean): Promise<void> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    if (subscribe) {
+      await supabase.from('channel_subscriptions').upsert({
+        user_id: user.id,
+        channel_name: channelName,
+      }, { onConflict: 'user_id,channel_name' });
+    } else {
+      await supabase.from('channel_subscriptions').delete()
+        .eq('user_id', user.id)
+        .eq('channel_name', channelName);
+    }
+  } catch (err) {
+    console.error('Channel subscription error:', err);
+  }
 }
