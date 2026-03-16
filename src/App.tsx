@@ -614,19 +614,6 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('live');
   const [liveVideos, setLiveVideos] = useState<Video[]>([]);
   const [channelVideos, setChannelVideos] = useState<{ [key: string]: Video[] }>({});
-  const [blacklistedIds, setBlacklistedIds] = useState<Set<string>>(new Set());
-
-  // Charger la blacklist depuis Supabase au démarrage
-  useEffect(() => {
-    const loadBlacklist = async () => {
-      try {
-        const { supabase } = await import('./lib/supabase');
-        const { data } = await supabase.from('video_blacklist').select('video_id');
-        if (data) setBlacklistedIds(new Set(data.map((d: any) => d.video_id)));
-      } catch {}
-    };
-    loadBlacklist();
-  }, []);
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
   const [infoVideo, setInfoVideo] = useState<Video | null>(null);
   const [loading, setLoading] = useState(true);
@@ -797,7 +784,7 @@ export default function App() {
                   <VideoCarousel 
                     key={channel.id}
                     title={`Les dernières vidéos de ${channel.name}`}
-                    videos={(channelVideos[channel.id] || []).filter(v => !blacklistedIds.has(v.id)).slice(0, 10)}
+                    videos={channelVideos[channel.id] || []}
                     onVideoSelect={setSelectedVideo}
                     channelUrl={channel.url}
                   />
