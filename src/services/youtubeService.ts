@@ -31,14 +31,19 @@ export async function fetchAllVideos(): Promise<{
       fetchCurrentLives(),
     ]);
 
-    // Fusionner : lives EN COURS en premier (dédoublonnés)
+    // Fusionner : lives EN COURS en premier, puis À VENIR (dédoublonnés)
     const liveIds = new Set(currentLives.map(v => v.id));
+
+    // Forcer isLive: true sur les lives en cours
+    const livesWithFlag = currentLives.map(v => ({ ...v, isLive: true, isUpcoming: false }));
+
+    // Garder uniquement les vrais à venir non déjà en direct
     const upcomingOnly = (upcomingData.lives || []).filter(
-      (v: Video) => !liveIds.has(v.id) && v.isUpcoming
+      (v: Video) => !liveIds.has(v.id) && v.isUpcoming === true
     );
 
     return {
-      lives: [...currentLives, ...upcomingOnly],
+      lives: [...livesWithFlag, ...upcomingOnly],
       channelVideos: upcomingData.channelVideos || {},
     };
   } catch {
