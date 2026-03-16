@@ -49,6 +49,8 @@ const REGIONS = ['Toutes', ...Array.from(new Set(Object.values(DEPT_REGIONS))).s
 const formatDate = (d: string) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
 const isToday    = (d: string, f?: string) => { const n = new Date(); return n >= new Date(d) && n <= new Date(new Date(f || d).setHours(23,59,59)); };
 const inDays     = (d: string, days: number) => { const diff = (new Date(d).getTime() - Date.now()) / 86400000; return diff >= 0 && diff <= days; };
+// Retourne true si le concours est entièrement passé (date de fin < aujourd'hui)
+const isPast     = (fin: string) => new Date(new Date(fin).setHours(23,59,59)) < new Date();
 
 function matchPeriode(p: string, debut: string, fin?: string) {
   if (p === "Toute l'année") return true;
@@ -125,6 +127,7 @@ const MapComponent = ({ videos, onVideoSelect }: { videos: Video[], onVideoSelec
   };
 
   const filteredNat = useMemo(() => couche === 'Allier (03) seulement' ? [] : NATIONAUX_2026.filter(n => {
+    if (isPast(n.dateFin)) return false; // Masquer les concours passés
     if (!matchPeriode(periode, n.dateDebut, n.dateFin)) return false;
     if (!matchCategorie(categorie, n.categorie)) return false;
     if (!matchFormat(format, n.format)) return false;
@@ -134,6 +137,7 @@ const MapComponent = ({ videos, onVideoSelect }: { videos: Video[], onVideoSelec
   }), [periode, categorie, format, type, region, couche]);
 
   const filteredAl = useMemo(() => couche === 'Nationaux seulement' ? [] : CONCOURS_ALLIER_2026.filter(c => {
+    if (isPast(c.dateFin || c.date)) return false; // Masquer les concours passés
     if (!matchPeriode(periode, c.date, c.dateFin)) return false;
     if (!matchCategorie(categorie, c.categorie)) return false;
     if (!matchFormat(format, c.format)) return false;

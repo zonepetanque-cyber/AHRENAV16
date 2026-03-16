@@ -37,7 +37,9 @@ async function fetchChannelRSS(channelId: string, channelName: string) {
     const xml = await res.text();
     const ids = [...xml.matchAll(/<yt:videoId>([^<]+)<\/yt:videoId>/g)].map(m => m[1].trim());
     const titles = [...xml.matchAll(/<title>([^<]*)<\/title>/g)].map(m => m[1].trim()).slice(1);
-    return ids.slice(0, 10).map((id, i) => ({
+    // On récupère 25 vidéos en tampon — l'app filtrera les blacklistées
+    // et affichera toujours les 10 premières non-masquées
+    return ids.slice(0, 25).map((id, i) => ({
       id,
       title: titles[i] || 'Vidéo pétanque',
       thumbnail: `https://img.youtube.com/vi/${id}/mqdefault.jpg`,
