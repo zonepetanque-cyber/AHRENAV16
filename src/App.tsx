@@ -774,15 +774,52 @@ export default function App() {
                       )}
                     </div>
 
-                    {/* Section Prochains Lives */}
-                    {aVenir.length > 0 && (
-                      <VideoCarousel
-                        title="Prochains Lives"
-                        videos={aVenir}
-                        onVideoSelect={setSelectedVideo}
-                        large={true}
-                      />
-                    )}
+                    {/* Section Prochains Lives — toujours affichée */}
+                    <div className="px-6 pb-4">
+                      <h2 className="text-xl font-bold text-white mb-3 flex items-center gap-2">
+                        Prochains Lives
+                      </h2>
+                      {aVenir.length > 0 ? (
+                        <div className="flex gap-4 overflow-x-auto no-scrollbar snap-x snap-mandatory scroll-smooth -mx-6 px-6">
+                          {aVenir.map((video: any) => (
+                            <div
+                              key={video.id}
+                              className="flex-none w-72 snap-start cursor-pointer group"
+                              onClick={() => setSelectedVideo(video)}
+                            >
+                              <div className="relative aspect-video rounded-xl overflow-hidden bg-zinc-900 mb-2 border border-white/10 shadow-lg">
+                                <img
+                                  src={video.thumbnail}
+                                  alt={video.title}
+                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                />
+                                <div className="absolute top-2 left-2 bg-blue-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wide">
+                                  🔵 À venir
+                                </div>
+                                {video.scheduledStartTime && (
+                                  <div className="absolute bottom-2 left-2 right-2 bg-black/70 backdrop-blur-sm rounded-lg px-2 py-1 text-[10px] text-white text-center">
+                                    {new Date(video.scheduledStartTime).toLocaleDateString('fr-FR', {
+                                      weekday: 'short', day: 'numeric', month: 'short',
+                                      hour: '2-digit', minute: '2-digit'
+                                    })}
+                                  </div>
+                                )}
+                                {video.channelAvatar && (
+                                  <img src={video.channelAvatar} alt="" className="absolute top-2 right-2 w-7 h-7 rounded-full border-2 border-white/40" />
+                                )}
+                              </div>
+                              <p className="text-white text-xs font-medium line-clamp-2 leading-snug">{video.title}</p>
+                              <p className="text-white/40 text-[10px] mt-0.5">{video.channelName}</p>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-3 bg-zinc-900/40 border border-white/5 rounded-xl px-5 py-4">
+                          <span className="text-blue-500/50">🔵</span>
+                          <p className="text-white/30 text-sm italic">Aucun live programmé pour le moment</p>
+                        </div>
+                      )}
+                    </div>
                   </>
                 );
               })()}
