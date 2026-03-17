@@ -163,7 +163,7 @@ const Hero = ({ onPlay, onInfo, heroVideos, onClubClick }: { onPlay: (video: Vid
       </div>
       
       {/* Foreground Text (Dynamic) */}
-      <div className="absolute bottom-24 left-6 right-6 flex flex-col gap-6 z-20">
+      <div className="absolute bottom-24 left-6 right-6 md:left-12 md:right-auto md:max-w-lg flex flex-col gap-4 z-20">
         <AnimatePresence mode="wait">
           <motion.div 
             key={currentSlide}
@@ -198,26 +198,26 @@ const Hero = ({ onPlay, onInfo, heroVideos, onClubClick }: { onPlay: (video: Vid
           </motion.div>
         </AnimatePresence>
 
-        <div className="flex gap-3">
+        <div className="flex gap-3 md:gap-2">
           <button 
             onClick={() => currentVideo && onPlay(currentVideo)}
-            className="flex-1 bg-white text-black font-bold py-3 rounded flex items-center justify-center gap-2 hover:bg-white/90 transition-colors"
+            className="flex-1 md:flex-none bg-white text-black font-bold py-3 md:py-2 md:px-6 rounded flex items-center justify-center gap-2 hover:bg-white/90 transition-colors text-sm md:text-xs"
           >
-            <Play fill="black" size={20} />
+            <Play fill="black" size={16} />
             {currentVideo?.isUpcoming ? 'Mettre un rappel' : 'Regarder'}
           </button>
           <button 
             onClick={() => currentVideo && onInfo(currentVideo)}
-            className="flex-1 bg-white/20 backdrop-blur-md text-white font-bold py-3 rounded flex items-center justify-center gap-2 hover:bg-white/30 transition-colors"
+            className="flex-1 md:flex-none bg-white/20 backdrop-blur-md text-white font-bold py-3 md:py-2 md:px-6 rounded flex items-center justify-center gap-2 hover:bg-white/30 transition-colors text-sm md:text-xs"
           >
-            <Info size={20} />
+            <Info size={16} />
             Plus d'infos
           </button>
         </div>
 
         <button 
           onClick={onClubClick}
-          className="mt-2 p-3 bg-red-600/10 backdrop-blur-md rounded-lg border border-red-600/20 flex items-center justify-between hover:bg-red-600/20 transition-colors"
+          className="md:max-w-xs p-2.5 bg-red-600/10 backdrop-blur-md rounded-lg border border-red-600/20 flex items-center justify-between hover:bg-red-600/20 transition-colors"
         >
           <div className="flex items-center gap-2">
             <div className="bg-red-600 p-1 rounded">
@@ -332,23 +332,23 @@ const VideoCarousel = ({ title, videos, onVideoSelect, large = false, channelUrl
       )}
 
       {/* Wrapper relatif pour positionner les flèches */}
-      <div className="relative">
+      <div className="relative overflow-visible">
 
         {/* Flèche gauche — desktop uniquement */}
         <button
           onClick={() => scroll('left')}
           className={`
             hidden sm:flex
-            absolute left-0 top-0 bottom-0 z-10
+            absolute left-0 top-0 bottom-0 z-20
             items-center justify-center
-            w-10 bg-gradient-to-r from-black via-black/80 to-transparent
+            w-12 bg-gradient-to-r from-black via-black/80 to-transparent
             text-white transition-all duration-200
             ${showLeft ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}
           `}
           aria-label="Défiler à gauche"
         >
-          <div className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/25 backdrop-blur-sm border border-white/20 flex items-center justify-center transition-colors">
-            <ChevronLeft size={16} className="text-white" />
+          <div className="w-9 h-9 rounded-full bg-white/20 hover:bg-white/40 backdrop-blur-sm border border-white/30 flex items-center justify-center transition-colors shadow-lg">
+            <ChevronLeft size={18} className="text-white" />
           </div>
         </button>
 
@@ -357,16 +357,16 @@ const VideoCarousel = ({ title, videos, onVideoSelect, large = false, channelUrl
           onClick={() => scroll('right')}
           className={`
             hidden sm:flex
-            absolute right-0 top-0 bottom-0 z-10
+            absolute right-0 top-0 bottom-0 z-20
             items-center justify-center
-            w-10 bg-gradient-to-l from-black via-black/80 to-transparent
+            w-12 bg-gradient-to-l from-black via-black/80 to-transparent
             text-white transition-all duration-200
             ${showRight ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}
           `}
           aria-label="Défiler à droite"
         >
-          <div className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/25 backdrop-blur-sm border border-white/20 flex items-center justify-center transition-colors">
-            <ChevronRight size={16} className="text-white" />
+          <div className="w-9 h-9 rounded-full bg-white/20 hover:bg-white/40 backdrop-blur-sm border border-white/30 flex items-center justify-center transition-colors shadow-lg">
+            <ChevronRight size={18} className="text-white" />
           </div>
         </button>
 

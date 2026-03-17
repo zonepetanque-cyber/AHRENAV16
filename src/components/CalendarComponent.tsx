@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import { Video } from '../services/youtubeService';
 import { NATIONAUX_2026, National } from '../data/nationaux2026';
 import { CONCOURS_ALLIER_2026, ConcourAllier, DEPT_ALLIER } from '../data/allier2026';
@@ -474,8 +475,8 @@ const FilterPanel = ({ filters, onChange, onClose }: {
     </div>
   );
 
-  return (
-    <div className="fixed inset-0 z-[800] bg-black/70 flex items-end md:items-center md:justify-center" onClick={onClose}>
+  return ReactDOM.createPortal(
+    <div className="fixed inset-0 z-[9999] bg-black/70 flex items-end md:items-center md:justify-center" onClick={onClose}>
       <div className="w-full md:max-w-lg bg-white rounded-t-3xl md:rounded-3xl overflow-hidden shadow-2xl max-h-[90vh] flex flex-col"
         onClick={e => e.stopPropagation()}>
 
@@ -547,7 +548,7 @@ const FilterPanel = ({ filters, onChange, onClose }: {
         </div>
       </div>
     </div>
-  );
+  , document.body);
 };
 
 // ── Composant principal ───────────────────────────────────────
