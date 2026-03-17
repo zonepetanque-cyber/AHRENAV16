@@ -1,7 +1,7 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, lazy, Suspense } from 'react';
 import ReactDOM from 'react-dom';
 import { Video } from '../services/youtubeService';
-import MapComponent from './MapComponent';
+const MapComponent = lazy(() => import('./MapComponent'));
 import { NATIONAUX_2026, National } from '../data/nationaux2026';
 import { CONCOURS_ALLIER_2026, ConcourAllier, DEPT_ALLIER } from '../data/allier2026';
 import { CONCOURS_NIEVRE_2026, ConcourNievre, DEPT_NIEVRE } from '../data/nievre2026';
@@ -613,10 +613,10 @@ const CalendarComponent = ({ videos, onVideoSelect }: { videos: Video[]; onVideo
   const isMapView = view === 'map';
 
   return (
-    <div className={`${isMapView ? 'h-screen flex flex-col' : 'pb-4 min-h-screen'} pt-28`}>
+    <div className="pt-28 pb-4 min-h-screen">
 
       {/* Barre de contrôle sticky — bien en dessous du header */}
-      <div className={`${isMapView ? 'flex-shrink-0' : 'sticky'} top-28 z-40 bg-zinc-950/98 backdrop-blur-md border-b border-white/8`}>
+      <div className="sticky top-28 z-40 bg-zinc-950/98 backdrop-blur-md border-b border-white/8">
         <div className="px-4 py-2.5 max-w-[1400px] mx-auto flex items-center justify-between gap-3">
 
           {/* Toggle vue + compteur */}
@@ -638,7 +638,7 @@ const CalendarComponent = ({ videos, onVideoSelect }: { videos: Video[]; onVideo
             {!isMapView && <span className="text-white/25 text-xs hidden sm:block">{filteredEvents.length} événements</span>}
           </div>
 
-          {/* Bouton Filtres — masqué en vue carte (MapComponent a ses propres filtres) */}
+          {/* Bouton Filtres — masqué en vue carte */}
           {!isMapView && (
             <button onClick={() => setShowFilters(true)}
               className={`flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl border transition-all
@@ -671,10 +671,16 @@ const CalendarComponent = ({ videos, onVideoSelect }: { videos: Video[]; onVideo
         )}
       </div>
 
-      {/* Vue Carte — plein écran, prend toute la hauteur restante */}
+      {/* Vue Carte */}
       {isMapView && (
-        <div className="flex-1 overflow-hidden">
-          <MapComponent videos={videos} onVideoSelect={onVideoSelect} />
+        <div style={{ height: 'calc(100vh - 220px)' }}>
+          <Suspense fallback={
+            <div className="flex items-center justify-center h-full">
+              <div className="text-white/30 text-sm animate-pulse">Chargement de la carte…</div>
+            </div>
+          }>
+            <MapComponent videos={videos} onVideoSelect={onVideoSelect} />
+          </Suspense>
         </div>
       )}
 
