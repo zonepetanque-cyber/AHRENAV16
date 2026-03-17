@@ -11,7 +11,7 @@ import { CONCOURS_REGIONAUX_2026 } from '../data/regionaux2026';
 import { CONCOURS_AM_2026, DEPT_AM } from '../data/am2026';
 import { CONCOURS_ARDECHE_2026, DEPT_ARDECHE } from '../data/ardeche2026';
 import {
-  Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight,
+  Calendar as CalendarIcon, Clock,
   List, MapPin, SlidersHorizontal, X, RotateCcw, Check, Radio, ChevronDown
 } from 'lucide-react';
 
@@ -502,39 +502,11 @@ const MonthView = ({ events, allEvents, onVideoSelect, forcedMonth }: {
 
   return (
     <div className="pb-6">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4 px-4">
-        <button
-          onClick={() => {
-            if (!isAtMin) {
-              const newIdx = idx - 1;
-              setIdx(newIdx);
-              setSelected(null);
-            }
-          }}
-          disabled={isAtMin}
-          className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors
-            ${isAtMin ? 'bg-zinc-900 text-white/15 cursor-not-allowed' : 'bg-zinc-800 text-white hover:bg-zinc-700'}`}
-        >
-          <ChevronLeft size={16}/>
-        </button>
+      {/* Titre du mois */}
+      <div className="flex items-center justify-center mb-4 px-4">
         <h2 className="text-white font-black text-lg uppercase tracking-wide">
           {MONTHS_FR[current.month]} {current.year}
         </h2>
-        <button
-          onClick={() => {
-            if (!isAtMax) {
-              const newIdx = idx + 1;
-              setIdx(newIdx);
-              setSelected(null);
-            }
-          }}
-          disabled={isAtMax}
-          className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors
-            ${isAtMax ? 'bg-zinc-900 text-white/15 cursor-not-allowed' : 'bg-zinc-800 text-white hover:bg-zinc-700'}`}
-        >
-          <ChevronRight size={16}/>
-        </button>
       </div>
 
       {/* Jours fixes */}
