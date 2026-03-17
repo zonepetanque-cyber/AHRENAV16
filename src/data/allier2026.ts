@@ -133,6 +133,13 @@ function latLng(ville: string): [number, number] {
 // DONNÉES DU CALENDRIER
 // ——————————————————————————————————————————
 
+export const DEPT_ALLIER = {
+  nom: "Allier",
+  code: "03",
+  facebook: "https://www.facebook.com/groups/836050583154809/?ref=share",
+  site: "https://allier-petanque-jp.fr/",
+};
+
 export const CONCOURS_ALLIER_2026: ConcourAllier[] = [
 
   // ══════════════ MARS 2026 ══════════════

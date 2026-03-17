@@ -40,7 +40,8 @@ import AdminDashboard from './components/AdminDashboard';
 // --- Components ---
 
 const Header = ({ onProfileClick, onSearchClick }: { onProfileClick: () => void, onSearchClick: () => void }) => (
-  <header className="fixed top-0 left-0 right-0 z-50 px-6 py-4 flex items-center justify-between bg-gradient-to-b from-black/95 via-black/50 to-transparent">
+  <header className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-b from-black/95 via-black/50 to-transparent">
+    <div className="mx-auto max-w-[520px] px-6 py-4 flex items-center justify-between">
     <div className="flex-none">
       <img 
         src="https://cdn.shopify.com/s/files/1/0915/3760/4942/files/Logo_AHRENA.png?v=1773386123" 
@@ -61,7 +62,8 @@ const Header = ({ onProfileClick, onSearchClick }: { onProfileClick: () => void,
 );
 
 const Navbar = ({ activeTab, onTabChange }: { activeTab: string, onTabChange: (tab: string) => void }) => (
-  <nav className="fixed bottom-0 left-0 right-0 bg-black/90 backdrop-blur-md border-t border-white/10 z-50 px-4 py-2 flex justify-around items-center">
+  <nav className="fixed bottom-0 left-0 right-0 z-50 bg-zinc-950/80">
+    <div className="mx-auto max-w-[520px] bg-black/90 backdrop-blur-md border-t border-white/10 px-4 py-2 flex justify-around items-center">
     <NavItem 
       icon={<Home size={24} />} 
       label="Accueil" 
@@ -92,6 +94,7 @@ const Navbar = ({ activeTab, onTabChange }: { activeTab: string, onTabChange: (t
       active={activeTab === 'favorites'} 
       onClick={() => onTabChange('favorites')}
     />
+    </div>
   </nav>
 );
 
@@ -251,6 +254,7 @@ interface VideoCarouselProps {
   onVideoSelect: (v: Video) => void;
   large?: boolean;
   channelUrl?: string;
+  channelAvatar?: string;
   hideTitleBar?: boolean;
 }
 
@@ -270,43 +274,110 @@ const formatLiveDate = (dateStr?: string) => {
   return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).replace(',', ' à');
 };
 
-const VideoCarousel = ({ title, videos, onVideoSelect, large = false, channelUrl, hideTitleBar = false }: VideoCarouselProps) => {
+const VideoCarousel = ({ title, videos, onVideoSelect, large = false, channelUrl, channelAvatar, hideTitleBar = false }: VideoCarouselProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [showLeft, setShowLeft] = useState(false);
+  const [showRight, setShowRight] = useState(true);
 
   if (videos.length === 0) return null;
 
+  const cardWidth = large ? 175 : 120;
+  const scrollAmount = cardWidth * 3 + 16 * 3; // 3 cartes + gaps
+
+  const scroll = (dir: 'left' | 'right') => {
+    if (!scrollRef.current) return;
+    scrollRef.current.scrollBy({ left: dir === 'left' ? -scrollAmount : scrollAmount, behavior: 'smooth' });
+  };
+
+  const onScroll = () => {
+    if (!scrollRef.current) return;
+    const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
+    setShowLeft(scrollLeft > 10);
+    setShowRight(scrollLeft < scrollWidth - clientWidth - 10);
+  };
+
   const TitleContent = () => (
-    <>
-      {title}
-      {channelUrl && <ChevronRight size={20} className="text-white/40 group-hover:text-white/80 transition-colors" />}
-    </>
+    <div className="flex items-center gap-3 flex-1 min-w-0">
+      {channelAvatar && (
+        <img
+          src={channelAvatar}
+          alt=""
+          referrerPolicy="no-referrer"
+          className="w-9 h-9 rounded-full border-2 border-white/10 flex-shrink-0 object-cover"
+          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+        />
+      )}
+      <span className={`truncate ${large ? 'text-2xl' : 'text-xl'}`}>{title}</span>
+      {channelUrl && <ChevronRight size={20} className="text-white/40 group-hover:text-white/80 transition-colors flex-shrink-0 ml-auto" />}
+    </div>
   );
 
   return (
-    <div className={large ? "py-6" : "py-4"}>
+    <div className={`${large ? "py-6" : "py-4"} group/carousel`}>
       {!hideTitleBar && channelUrl && (
         <a
           href={channelUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className={`px-6 font-bold text-white mb-3 flex items-center justify-between group cursor-pointer ${large ? 'text-2xl' : 'text-xl'}`}
+          className="px-6 font-bold text-white mb-3 flex items-center justify-between group cursor-pointer"
         >
           <TitleContent />
         </a>
       )}
       {!hideTitleBar && !channelUrl && (
-        <h2 className={`px-6 font-bold text-white mb-3 flex items-center justify-between ${large ? 'text-2xl' : 'text-xl'}`}>
+        <h2 className="px-6 font-bold text-white mb-3 flex items-center justify-between">
           <TitleContent />
         </h2>
       )}
-      <div 
-        ref={scrollRef}
-        className="flex gap-4 overflow-x-auto px-6 no-scrollbar snap-x snap-mandatory scroll-smooth"
-      >
+
+      {/* Wrapper relatif pour positionner les flèches */}
+      <div className="relative">
+
+        {/* Flèche gauche — desktop uniquement */}
+        <button
+          onClick={() => scroll('left')}
+          className={`
+            hidden sm:flex
+            absolute left-0 top-0 bottom-0 z-10
+            items-center justify-center
+            w-10 bg-gradient-to-r from-black via-black/80 to-transparent
+            text-white transition-all duration-200
+            ${showLeft ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}
+          `}
+          aria-label="Défiler à gauche"
+        >
+          <div className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/25 backdrop-blur-sm border border-white/20 flex items-center justify-center transition-colors">
+            <ChevronLeft size={16} className="text-white" />
+          </div>
+        </button>
+
+        {/* Flèche droite — desktop uniquement */}
+        <button
+          onClick={() => scroll('right')}
+          className={`
+            hidden sm:flex
+            absolute right-0 top-0 bottom-0 z-10
+            items-center justify-center
+            w-10 bg-gradient-to-l from-black via-black/80 to-transparent
+            text-white transition-all duration-200
+            ${showRight ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}
+          `}
+          aria-label="Défiler à droite"
+        >
+          <div className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/25 backdrop-blur-sm border border-white/20 flex items-center justify-center transition-colors">
+            <ChevronRight size={16} className="text-white" />
+          </div>
+        </button>
+
+        <div
+          ref={scrollRef}
+          onScroll={onScroll}
+          className="flex gap-4 overflow-x-auto px-6 no-scrollbar snap-x snap-mandatory scroll-smooth"
+        >
         {videos.map((video) => (
           <div 
             key={video.id} 
-            className={`flex-none snap-start group cursor-pointer ${large ? 'w-72 sm:w-80' : 'w-44'}`}
+            className={`flex-none snap-start group cursor-pointer ${large ? 'w-72 sm:w-[175px]' : 'w-44 sm:w-[120px]'}`}
             onClick={() => onVideoSelect(video)}
           >
             <div className={`relative aspect-video rounded-md overflow-hidden bg-zinc-900 mb-2 border border-white/5 group-hover:border-white/20 transition-all ${large ? 'shadow-lg shadow-red-900/10' : ''}`}>
@@ -368,6 +439,7 @@ const VideoCarousel = ({ title, videos, onVideoSelect, large = false, channelUrl
             )}
           </div>
         ))}
+        </div>
       </div>
     </div>
   );
@@ -600,7 +672,7 @@ const Skeleton = () => (
     </div>
     <div className="flex gap-4 overflow-x-auto px-6 no-scrollbar">
       {[1, 2, 3, 4].map((i) => (
-        <div key={i} className="flex-none w-44">
+        <div key={i} className="flex-none w-44 sm:w-[120px]">
           <div className="aspect-video rounded-md bg-zinc-900 border border-white/5 animate-pulse mb-2" />
           <div className="h-3 w-full bg-zinc-900 rounded animate-pulse mb-1" />
           <div className="h-3 w-2/3 bg-zinc-900 rounded animate-pulse" />
@@ -834,10 +906,11 @@ export default function App() {
                 CHANNELS.map((channel) => (
                   <VideoCarousel 
                     key={channel.id}
-                    title={`Les dernières vidéos de ${channel.name}`}
+                    title={channel.name}
                     videos={(channelVideos[channel.id] || []).filter(v => !blacklistedIds.has(v.id)).slice(0, 10)}
                     onVideoSelect={setSelectedVideo}
                     channelUrl={channel.url}
+                    channelAvatar={channel.avatar}
                   />
                 ))
               )}
@@ -870,12 +943,15 @@ export default function App() {
   };
 
   return (
-    <div 
-      className="min-h-screen bg-black text-white pb-24 font-sans selection:bg-white selection:text-black"
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-    >
+    <div className="min-h-screen bg-black font-sans selection:bg-white selection:text-black md:flex md:justify-center">
+      {/* Bandes latérales grises sur desktop */}
+      <div className="hidden md:block fixed inset-y-0 left-0 right-0 bg-zinc-950 -z-10" />
+      <div
+        className="relative w-full md:max-w-[520px] bg-black text-white pb-24 md:shadow-2xl md:shadow-black"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
       <AnimatePresence>
         {showSplash && (
           <SplashScreen onComplete={() => setShowSplash(false)} />
@@ -1035,6 +1111,7 @@ export default function App() {
       `}} />
       
       <InstallPWA />
+      </div>
     </div>
   );
 }
