@@ -362,6 +362,27 @@ const MonthView = ({ events, onVideoSelect, forcedMonth }: { events: UnifiedEven
   const [month, setMonth] = useState(forcedMonth !== null ? forcedMonth : today().getMonth());
   const [selected, setSelected] = useState<string | null>(null);
 
+  // Swipe touch
+  const touchStartX = React.useRef<number | null>(null);
+  const touchStartY = React.useRef<number | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null || touchStartY.current === null) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    const dy = e.changedTouches[0].clientY - touchStartY.current;
+    // Swipe horizontal seulement si plus large que vertical (évite conflits scroll)
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
+      if (dx < 0) next(); else prev();
+    }
+    touchStartX.current = null;
+    touchStartY.current = null;
+  };
+
   // Sync avec le filtre mois externe
   useEffect(() => {
     if (forcedMonth !== null) {
@@ -401,36 +422,43 @@ const MonthView = ({ events, onVideoSelect, forcedMonth }: { events: UnifiedEven
         <button onClick={next} className="w-9 h-9 rounded-full bg-zinc-800 flex items-center justify-center text-white hover:bg-zinc-700 transition-colors"><ChevronRight size={16}/></button>
       </div>
 
-      <div className="grid grid-cols-7 mb-1">
-        {DAYS_FR.map((d,i) => <div key={i} className="text-center text-[10px] font-black text-white/30 uppercase py-1">{d}</div>)}
-      </div>
+      {/* Grille swipeable */}
+      <div
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        className="select-none"
+      >
+        <div className="grid grid-cols-7 mb-1">
+          {DAYS_FR.map((d,i) => <div key={i} className="text-center text-[10px] font-black text-white/30 uppercase py-1">{d}</div>)}
+        </div>
 
-      <div className="grid grid-cols-7 gap-y-1">
-        {Array.from({length:startDow}).map((_,i) => <div key={`e-${i}`}/>)}
-        {Array.from({length:totalDays}).map((_,i) => {
-          const day = i+1;
-          const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-          const dayEvs  = evByDate.get(dateStr) || [];
-          const isToday = dateStr === todayStr;
-          const isSel   = dateStr === selected;
-          const past    = dateStr < todayStr && !isToday;
-          const dots    = [...new Set(dayEvs.map(e => SOURCE_COLOR[e.source]))].slice(0,3);
-          return (
-            <div key={dateStr}
-              onClick={() => dayEvs.length > 0 && setSelected(isSel ? null : dateStr)}
-              className={`relative flex flex-col items-center py-1 rounded-lg transition-all
-                ${dayEvs.length > 0 ? 'cursor-pointer' : ''}
-                ${isSel ? 'bg-red-600/30 ring-1 ring-red-500' : dayEvs.length > 0 ? 'hover:bg-white/5' : ''}
-                ${isToday ? 'ring-1 ring-white/40' : ''}
-                ${past && dayEvs.length > 0 ? 'opacity-40' : ''}`}>
-              <span className={`text-[12px] font-bold leading-none mb-0.5
-                ${isToday?'text-red-400':isSel?'text-white':dayEvs.length>0?'text-white':'text-white/25'}`}>{day}</span>
-              <div className="flex gap-0.5 h-1.5">
-                {dots.map((color,di) => <div key={di} className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{background:color}}/>)}
+        <div className="grid grid-cols-7 gap-y-1">
+          {Array.from({length:startDow}).map((_,i) => <div key={`e-${i}`}/>)}
+          {Array.from({length:totalDays}).map((_,i) => {
+            const day = i+1;
+            const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+            const dayEvs  = evByDate.get(dateStr) || [];
+            const isToday = dateStr === todayStr;
+            const isSel   = dateStr === selected;
+            const past    = dateStr < todayStr && !isToday;
+            const dots    = [...new Set(dayEvs.map(e => SOURCE_COLOR[e.source]))].slice(0,3);
+            return (
+              <div key={dateStr}
+                onClick={() => dayEvs.length > 0 && setSelected(isSel ? null : dateStr)}
+                className={`relative flex flex-col items-center py-1 rounded-lg transition-all
+                  ${dayEvs.length > 0 ? 'cursor-pointer' : ''}
+                  ${isSel ? 'bg-red-600/30 ring-1 ring-red-500' : dayEvs.length > 0 ? 'hover:bg-white/5' : ''}
+                  ${isToday ? 'ring-1 ring-white/40' : ''}
+                  ${past && dayEvs.length > 0 ? 'opacity-40' : ''}`}>
+                <span className={`text-[12px] font-bold leading-none mb-0.5
+                  ${isToday?'text-red-400':isSel?'text-white':dayEvs.length>0?'text-white':'text-white/25'}`}>{day}</span>
+                <div className="flex gap-0.5 h-1.5">
+                  {dots.map((color,di) => <div key={di} className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{background:color}}/>)}
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
 
       {selected && selectedEvents.length > 0 && (
