@@ -455,7 +455,7 @@ const MapComponent = ({ videos, onVideoSelect }: { videos: Video[], onVideoSelec
   };
 
   return (
-    <div className="relative" style={{height:'calc(100vh - 120px)'}}>
+    <div className="relative" style={{height:'calc(100vh - 56px)'}}>
 
       {/* Barre du haut */}
       <div className="absolute top-4 left-3 right-3 z-[500] flex items-center justify-between">
