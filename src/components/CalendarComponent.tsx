@@ -406,31 +406,42 @@ const MonthGrid = ({
 const MonthView = ({ events, onVideoSelect, forcedMonth }: {
   events: UnifiedEvent[]; onVideoSelect: (v: Video) => void; forcedMonth: number | null;
 }) => {
+  const todayDate = today();
+  const minYear  = todayDate.getFullYear();
+  const minMonth = todayDate.getMonth();
+
   const addMonths = (y: number, m: number, delta: number) => {
     const d = new Date(y, m + delta, 1);
     return { year: d.getFullYear(), month: d.getMonth() };
   };
 
   const [current, setCurrent] = useState(() => ({
-    year: today().getFullYear(),
-    month: forcedMonth !== null ? forcedMonth : today().getMonth(),
+    year: minYear,
+    month: forcedMonth !== null && forcedMonth >= minMonth ? forcedMonth : minMonth,
   }));
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected]   = useState<string | null>(null);
+  const [drag, setDrag]           = useState(0);      // px live pendant le touch
+  const [transitioning, setTransitioning] = useState(false);
 
-  // Index du slide central dans le tableau de 3
-  // On garde toujours [prev, current, next] et on repositionne instantanément après transition
   const containerRef = React.useRef<HTMLDivElement>(null);
-  const [slideOffset, setSlideOffset] = useState(0); // px de drag live
-  const [animating, setAnimating] = useState(false);
-  const touchStartX = React.useRef(0);
-  const touchStartY = React.useRef(0);
-  const isHoriz = React.useRef<boolean | null>(null);
-  const dragging = React.useRef(false);
+  const txStart  = React.useRef(0);
+  const tyStart  = React.useRef(0);
+  const isHoriz  = React.useRef<boolean | null>(null);
+  const isDrag   = React.useRef(false);
 
-  // Sync filtre mois externe
+  // mois précédent = null si on est déjà au mois courant (le plus ancien autorisé)
+  const isAtMin = current.year === minYear && current.month === minMonth;
+  const prevM   = isAtMin ? null : addMonths(current.year, current.month, -1);
+  const nextM   = addMonths(current.year, current.month, +1);
+
+  // Sync filtre mois externe (uniquement mois >= aujourd'hui)
   useEffect(() => {
     if (forcedMonth !== null) {
-      setCurrent(c => ({ ...c, month: forcedMonth }));
+      const y = forcedMonth < minMonth
+        ? minYear + 1
+        : minYear;
+      const safeMonth = forcedMonth < minMonth ? forcedMonth : forcedMonth;
+      setCurrent({ year: y, month: safeMonth });
       setSelected(null);
     }
   }, [forcedMonth]);
@@ -449,88 +460,107 @@ const MonthView = ({ events, onVideoSelect, forcedMonth }: {
     return map;
   }, [events]);
 
-  const todayStr = isoDate(today());
-  const W = containerRef.current?.offsetWidth ?? 0;
+  const todayStr = isoDate(todayDate);
+  const W = containerRef.current?.offsetWidth ?? 320;
 
-  const prevM = addMonths(current.year, current.month, -1);
-  const nextM = addMonths(current.year, current.month, +1);
-
-  const goTo = (delta: number) => {
-    if (animating) return;
-    const target = delta < 0 ? -W : W; // vers la droite = mois précédent, vers la gauche = mois suivant
-    setAnimating(true);
-    setSlideOffset(-target); // le strip se déplace dans le sens opposé au doigt
+  // Change de mois avec animation : le strip glisse dans la bonne direction puis reset
+  const goTo = React.useCallback((delta: number) => {
+    if (transitioning) return;
+    if (delta < 0 && isAtMin) return; // pas de retour avant le mois courant
+    setTransitioning(true);
+    // On anime le drag vers la position cible
+    setDrag(delta < 0 ? W : -W);
     setTimeout(() => {
       setCurrent(c => addMonths(c.year, c.month, delta));
-      setSlideOffset(0);
-      setAnimating(false);
+      setDrag(0);
       setSelected(null);
-    }, 300);
-  };
+      // On laisse un tick avant de réactiver pour éviter le flash
+      requestAnimationFrame(() => setTransitioning(false));
+    }, 280);
+  }, [transitioning, isAtMin, W]);
 
   const onTouchStart = (e: React.TouchEvent) => {
-    if (animating) return;
-    touchStartX.current = e.touches[0].clientX;
-    touchStartY.current = e.touches[0].clientY;
-    isHoriz.current = null;
-    dragging.current = true;
+    if (transitioning) return;
+    txStart.current  = e.touches[0].clientX;
+    tyStart.current  = e.touches[0].clientY;
+    isHoriz.current  = null;
+    isDrag.current   = true;
   };
 
   const onTouchMove = (e: React.TouchEvent) => {
-    if (!dragging.current || animating) return;
-    const dx = e.touches[0].clientX - touchStartX.current;
-    const dy = e.touches[0].clientY - touchStartY.current;
+    if (!isDrag.current || transitioning) return;
+    const dx = e.touches[0].clientX - txStart.current;
+    const dy = e.touches[0].clientY - tyStart.current;
 
     if (isHoriz.current === null) {
-      if (Math.abs(dx) > 6 || Math.abs(dy) > 6) {
+      if (Math.abs(dx) > 6 || Math.abs(dy) > 6)
         isHoriz.current = Math.abs(dx) > Math.abs(dy);
-      }
       return;
     }
     if (!isHoriz.current) return;
     e.preventDefault();
-    setSlideOffset(dx);
+
+    // Bloquer le drag vers la gauche si on est au mois min
+    if (isAtMin && dx > 0) return;
+    // Résistance légère aux bords
+    setDrag(dx);
   };
 
   const onTouchEnd = () => {
-    if (!dragging.current || animating) return;
-    dragging.current = false;
-    const threshold = W * 0.25;
-    if (slideOffset < -threshold) goTo(+1);       // swipe gauche → mois suivant
-    else if (slideOffset > threshold) goTo(-1);   // swipe droite → mois précédent
-    else { setAnimating(true); setSlideOffset(0); setTimeout(() => setAnimating(false), 300); }
+    if (!isDrag.current || transitioning) return;
+    isDrag.current  = false;
     isHoriz.current = null;
+    const threshold = W * 0.28;
+    if (drag < -threshold) goTo(+1);
+    else if (drag > threshold && !isAtMin) goTo(-1);
+    else {
+      // Retour élastique au centre
+      setTransitioning(true);
+      setDrag(0);
+      setTimeout(() => setTransitioning(false), 280);
+    }
   };
 
-  // Le strip de 3 mois : translateX de base = 0 (prev est à gauche hors écran, current centré, next à droite hors écran)
-  // On décale de slideOffset pendant le drag
-  const stripTranslate = slideOffset;
-
   const selectedEvents = selected ? (evByDate.get(selected) || []) : [];
+
+  // Les 3 slots : prev (ou vide), current, next
+  const slots = [
+    prevM ?? { year: current.year, month: current.month - 1 < 0 ? 11 : current.month - 1 },
+    current,
+    nextM,
+  ];
 
   return (
     <div className="pb-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-4 px-4">
-        <button onClick={() => goTo(-1)} className="w-9 h-9 rounded-full bg-zinc-800 flex items-center justify-center text-white hover:bg-zinc-700 transition-colors">
+        <button
+          onClick={() => goTo(-1)}
+          disabled={isAtMin}
+          className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors
+            ${isAtMin ? 'bg-zinc-900 text-white/15 cursor-not-allowed' : 'bg-zinc-800 text-white hover:bg-zinc-700'}`}
+        >
           <ChevronLeft size={16}/>
         </button>
         <h2 className="text-white font-black text-lg uppercase tracking-wide">
           {MONTHS_FR[current.month]} {current.year}
         </h2>
-        <button onClick={() => goTo(+1)} className="w-9 h-9 rounded-full bg-zinc-800 flex items-center justify-center text-white hover:bg-zinc-700 transition-colors">
+        <button
+          onClick={() => goTo(+1)}
+          className="w-9 h-9 rounded-full bg-zinc-800 flex items-center justify-center text-white hover:bg-zinc-700 transition-colors"
+        >
           <ChevronRight size={16}/>
         </button>
       </div>
 
-      {/* Jours fixes */}
+      {/* Jours de la semaine — fixes */}
       <div className="grid grid-cols-7 mb-1 px-4">
         {DAYS_FR.map((d, i) => (
           <div key={i} className="text-center text-[10px] font-black text-white/30 uppercase py-1">{d}</div>
         ))}
       </div>
 
-      {/* Carousel — overflow caché */}
+      {/* Carousel */}
       <div
         ref={containerRef}
         className="overflow-hidden px-4 select-none"
@@ -539,31 +569,32 @@ const MonthView = ({ events, onVideoSelect, forcedMonth }: {
         onTouchEnd={onTouchEnd}
         style={{ touchAction: 'pan-y' }}
       >
-        {/* Strip 3× largeur */}
         <div
           className="flex"
           style={{
-            width: W ? `${W * 3}px` : '300%',
-            transform: `translateX(calc(-${W}px + ${stripTranslate}px))`,
-            transition: animating || slideOffset === 0 && !dragging.current
-              ? 'transform 0.28s cubic-bezier(0.4,0,0.2,1)'
-              : 'none',
+            width: `${W * 3}px`,
+            // Le slot central (index 1) doit être visible → translateX = -W + drag
+            transform: `translateX(${-W + drag}px)`,
+            transition: isDrag.current ? 'none' : 'transform 0.28s cubic-bezier(0.4, 0, 0.2, 1)',
             willChange: 'transform',
           }}
         >
-          {[prevM, current, nextM].map((m, idx) => (
-            <div key={idx} style={{ width: W || '33.333%', flexShrink: 0 }}>
-              <MonthGrid
-                year={m.year} month={m.month}
-                evByDate={evByDate} todayStr={todayStr}
-                selected={selected} onSelectDate={setSelected}
-              />
+          {slots.map((m, idx) => (
+            <div key={idx} style={{ width: `${W}px`, flexShrink: 0 }}>
+              {/* N'affiche pas le slot précédent si on est au mois minimum */}
+              {idx === 0 && isAtMin ? <div/> : (
+                <MonthGrid
+                  year={m.year} month={m.month}
+                  evByDate={evByDate} todayStr={todayStr}
+                  selected={selected} onSelectDate={setSelected}
+                />
+              )}
             </div>
           ))}
         </div>
       </div>
 
-      {/* Événements du jour sélectionné */}
+      {/* Événements */}
       {selected && selectedEvents.length > 0 && (
         <div className="mt-5 px-4">
           <p className="text-white/50 text-xs font-bold uppercase tracking-wider mb-3">
