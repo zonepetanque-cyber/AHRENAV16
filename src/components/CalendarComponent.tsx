@@ -1,7 +1,6 @@
-import React, { useState, useMemo, useEffect, lazy, Suspense } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { Video } from '../services/youtubeService';
-const MapComponent = lazy(() => import('./MapComponent'));
 import { NATIONAUX_2026, National } from '../data/nationaux2026';
 import { CONCOURS_ALLIER_2026, ConcourAllier, DEPT_ALLIER } from '../data/allier2026';
 import { CONCOURS_NIEVRE_2026, ConcourNievre, DEPT_NIEVRE } from '../data/nievre2026';
@@ -11,7 +10,7 @@ import { CONCOURS_AHP_2026, DEPT_AHP } from '../data/ahp2026';
 import { CONCOURS_REGIONAUX_2026 } from '../data/regionaux2026';
 import {
   Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight,
-  List, MapPin, SlidersHorizontal, X, RotateCcw, Check, Radio, Map
+  List, MapPin, SlidersHorizontal, X, RotateCcw, Check, Radio
 } from 'lucide-react';
 
 // ── Helpers ───────────────────────────────────────────────────
@@ -576,12 +575,11 @@ const FilterPanel = ({ filters, onChange, onClose }: {
 
 // ── Composant principal ───────────────────────────────────────
 const CalendarComponent = ({ videos, onVideoSelect }: { videos: Video[]; onVideoSelect: (v: Video) => void }) => {
-  const [view, setView]           = useState<'month' | 'list' | 'map'>('month');
+  const [view, setView]           = useState<'month' | 'list'>('month');
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters]     = useState<AdvancedFilters>(makeDefaultFilters());
   const [todayKey, setTodayKey]   = useState(isoDate(new Date()));
 
-  // Recalcul automatique chaque jour à minuit
   useEffect(() => {
     const msUntilMidnight = () => {
       const now = new Date();
@@ -610,16 +608,13 @@ const CalendarComponent = ({ videos, onVideoSelect }: { videos: Video[]; onVideo
     filters.categories.size > 0,
   ].filter(Boolean).length;
 
-  const isMapView = view === 'map';
-
   return (
     <div className="pt-28 pb-4 min-h-screen">
 
-      {/* Barre de contrôle sticky — bien en dessous du header */}
+      {/* Barre de contrôle sticky */}
       <div className="sticky top-28 z-40 bg-zinc-950/98 backdrop-blur-md border-b border-white/8">
         <div className="px-4 py-2.5 max-w-[1400px] mx-auto flex items-center justify-between gap-3">
 
-          {/* Toggle vue + compteur */}
           <div className="flex items-center gap-3">
             <div className="flex gap-1 bg-zinc-900 p-1 rounded-xl">
               <button onClick={() => setView('month')}
@@ -630,30 +625,22 @@ const CalendarComponent = ({ videos, onVideoSelect }: { videos: Video[]; onVideo
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wide transition-all ${view === 'list' ? 'bg-white text-black' : 'text-white/40 hover:text-white'}`}>
                 <List size={11}/> Agenda
               </button>
-              <button onClick={() => setView('map')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wide transition-all ${view === 'map' ? 'bg-red-600 text-white' : 'text-white/40 hover:text-white'}`}>
-                <Map size={11}/> Carte
-              </button>
             </div>
-            {!isMapView && <span className="text-white/25 text-xs hidden sm:block">{filteredEvents.length} événements</span>}
+            <span className="text-white/25 text-xs hidden sm:block">{filteredEvents.length} événements</span>
           </div>
 
-          {/* Bouton Filtres — masqué en vue carte */}
-          {!isMapView && (
-            <button onClick={() => setShowFilters(true)}
-              className={`flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl border transition-all
-                ${activeCount > 0 ? 'bg-red-600 border-red-500 text-white' : 'bg-zinc-800 border-white/15 text-white/70 hover:border-white/30 hover:text-white'}`}>
-              <SlidersHorizontal size={13}/>
-              <span className="text-[11px] font-black uppercase tracking-wide">Filtres</span>
-              {activeCount > 0 && (
-                <span className="bg-white text-red-600 text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center">{activeCount}</span>
-              )}
-            </button>
-          )}
+          <button onClick={() => setShowFilters(true)}
+            className={`flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl border transition-all
+              ${activeCount > 0 ? 'bg-red-600 border-red-500 text-white' : 'bg-zinc-800 border-white/15 text-white/70 hover:border-white/30 hover:text-white'}`}>
+            <SlidersHorizontal size={13}/>
+            <span className="text-[11px] font-black uppercase tracking-wide">Filtres</span>
+            {activeCount > 0 && (
+              <span className="bg-white text-red-600 text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center">{activeCount}</span>
+            )}
+          </button>
         </div>
 
-        {/* Badges filtres actifs */}
-        {activeCount > 0 && !isMapView && (
+        {activeCount > 0 && (
           <div className="px-4 pb-2 max-w-[1400px] mx-auto flex items-center gap-2 flex-wrap">
             {!filters.sources.has('all') && [...filters.sources].map(s => (
               <span key={s} className="bg-red-600/20 text-red-400 text-[9px] font-bold px-2 py-0.5 rounded-full border border-red-600/30">
@@ -671,39 +658,20 @@ const CalendarComponent = ({ videos, onVideoSelect }: { videos: Video[]; onVideo
         )}
       </div>
 
-      {/* Vue Carte */}
-      {isMapView && (
-        <div style={{ height: 'calc(100vh - 220px)' }}>
-          <Suspense fallback={
-            <div className="flex items-center justify-center h-full">
-              <div className="text-white/30 text-sm animate-pulse">Chargement de la carte…</div>
-            </div>
-          }>
-            <MapComponent videos={videos} onVideoSelect={onVideoSelect} />
-          </Suspense>
-        </div>
-      )}
-
-      {/* Vues Mensuel / Agenda */}
-      {!isMapView && (
-        <>
-          {/* Légende formats */}
-          <div className="px-4 pt-3 mb-2 flex gap-3 overflow-x-auto no-scrollbar max-w-[1400px] mx-auto">
-            {[['3️⃣','Triplette'],['2️⃣','Doublette'],['1️⃣','T-à-T'],['⚡','Enduro'],['🎯','Autre']].map(([icon,label]) => (
-              <div key={label as string} className="flex-shrink-0 flex items-center gap-1 text-[9px] text-white/25">
-                <span>{icon}</span><span className="uppercase">{label}</span>
-              </div>
-            ))}
+      {/* Légende formats */}
+      <div className="px-4 pt-3 mb-2 flex gap-3 overflow-x-auto no-scrollbar max-w-[1400px] mx-auto">
+        {[['3️⃣','Triplette'],['2️⃣','Doublette'],['1️⃣','T-à-T'],['⚡','Enduro'],['🎯','Autre']].map(([icon,label]) => (
+          <div key={label as string} className="flex-shrink-0 flex items-center gap-1 text-[9px] text-white/25">
+            <span>{icon}</span><span className="uppercase">{label}</span>
           </div>
+        ))}
+      </div>
 
-          {view === 'month'
-            ? <MonthView events={filteredEvents} onVideoSelect={onVideoSelect}/>
-            : <ListView  events={filteredEvents} onVideoSelect={onVideoSelect}/>
-          }
-        </>
-      )}
+      {view === 'month'
+        ? <MonthView events={filteredEvents} onVideoSelect={onVideoSelect}/>
+        : <ListView  events={filteredEvents} onVideoSelect={onVideoSelect}/>
+      }
 
-      {/* Panneau filtres */}
       {showFilters && (
         <FilterPanel filters={filters} onChange={setFilters} onClose={() => setShowFilters(false)}/>
       )}
