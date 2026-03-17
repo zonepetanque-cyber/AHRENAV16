@@ -588,10 +588,10 @@ const CalendarComponent = ({ videos, onVideoSelect }: { videos: Video[]; onVideo
   ].filter(Boolean).length;
 
   return (
-    <div className="pt-14 pb-4 min-h-screen">
+    <div className="pt-28 pb-4 min-h-screen">
 
       {/* Barre de contrôle sticky — bien en dessous du header */}
-      <div className="sticky top-14 z-40 bg-zinc-950/98 backdrop-blur-md border-b border-white/8">
+      <div className="sticky top-28 z-40 bg-zinc-950/98 backdrop-blur-md border-b border-white/8">
         <div className="px-4 py-2.5 max-w-[1400px] mx-auto flex items-center justify-between gap-3">
 
           {/* Toggle vue + compteur */}
