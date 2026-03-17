@@ -588,63 +588,60 @@ const CalendarComponent = ({ videos, onVideoSelect }: { videos: Video[]; onVideo
   ].filter(Boolean).length;
 
   return (
-    <div className="pt-20 pb-4 min-h-screen">
+    <div className="pt-14 pb-4 min-h-screen">
 
-      {/* Header — limité en largeur sur desktop */}
-      <div className="px-4 mb-3 max-w-[1400px] mx-auto">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-black text-white uppercase italic mb-0.5">Calendrier</h1>
-            <p className="text-white/30 text-xs">{filteredEvents.length} événements · {new Date().getFullYear()}</p>
+      {/* Barre de contrôle sticky — bien en dessous du header */}
+      <div className="sticky top-14 z-40 bg-zinc-950/98 backdrop-blur-md border-b border-white/8">
+        <div className="px-4 py-2.5 max-w-[1400px] mx-auto flex items-center justify-between gap-3">
+
+          {/* Toggle vue + compteur */}
+          <div className="flex items-center gap-3">
+            <div className="flex gap-1 bg-zinc-900 p-1 rounded-xl">
+              <button onClick={() => setView('month')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wide transition-all ${view === 'month' ? 'bg-white text-black' : 'text-white/40 hover:text-white'}`}>
+                <CalendarIcon size={11}/> Mensuel
+              </button>
+              <button onClick={() => setView('list')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wide transition-all ${view === 'list' ? 'bg-white text-black' : 'text-white/40 hover:text-white'}`}>
+                <List size={11}/> Agenda
+              </button>
+            </div>
+            <span className="text-white/25 text-xs hidden sm:block">{filteredEvents.length} événements</span>
           </div>
+
+          {/* Bouton Filtres — toujours accessible */}
           <button onClick={() => setShowFilters(true)}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border transition-all
-              ${activeCount > 0 ? 'bg-blue-600 border-blue-500 text-white' : 'bg-zinc-900 border-white/10 text-white/60 hover:border-white/30 hover:text-white'}`}>
-            <SlidersHorizontal size={14}/>
+            className={`flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl border transition-all
+              ${activeCount > 0 ? 'bg-blue-600 border-blue-500 text-white' : 'bg-zinc-800 border-white/15 text-white/70 hover:border-white/30 hover:text-white'}`}>
+            <SlidersHorizontal size={13}/>
             <span className="text-[11px] font-black uppercase tracking-wide">Filtres</span>
             {activeCount > 0 && (
               <span className="bg-white text-blue-600 text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center">{activeCount}</span>
             )}
           </button>
         </div>
-      </div>
 
-      {/* Toggle vue */}
-      <div className="px-4 mb-3 max-w-[1400px] mx-auto">
-        <div className="flex gap-2 bg-zinc-900 p-1 rounded-xl w-fit">
-          <button onClick={() => setView('month')}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-black uppercase tracking-wide transition-all
-              ${view === 'month' ? 'bg-white text-black' : 'text-white/40 hover:text-white'}`}>
-            <CalendarIcon size={12}/> Mensuel
-          </button>
-          <button onClick={() => setView('list')}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-black uppercase tracking-wide transition-all
-              ${view === 'list' ? 'bg-white text-black' : 'text-white/40 hover:text-white'}`}>
-            <List size={12}/> Agenda
-          </button>
-        </div>
+        {/* Badges filtres actifs */}
+        {activeCount > 0 && (
+          <div className="px-4 pb-2 max-w-[1400px] mx-auto flex items-center gap-2 flex-wrap">
+            {!filters.sources.has('all') && [...filters.sources].map(s => (
+              <span key={s} className="bg-blue-600/20 text-blue-400 text-[9px] font-bold px-2 py-0.5 rounded-full border border-blue-600/30">
+                {SOURCE_LABEL[s as EventSource]}
+              </span>
+            ))}
+            {[...filters.formations, ...filters.joueurs, ...filters.categories].map(tag => (
+              <span key={tag} className="bg-purple-600/20 text-purple-400 text-[9px] font-bold px-2 py-0.5 rounded-full border border-purple-600/30">{tag}</span>
+            ))}
+            <button onClick={() => setFilters(makeDefaultFilters())}
+              className="flex items-center gap-1 text-white/30 hover:text-white text-[10px] font-bold transition-colors">
+              <RotateCcw size={10}/>Reset
+            </button>
+          </div>
+        )}
       </div>
-
-      {/* Badges filtres actifs */}
-      {activeCount > 0 && (
-        <div className="px-4 mb-3 flex items-center gap-2 flex-wrap">
-          {!filters.sources.has('all') && [...filters.sources].map(s => (
-            <span key={s} className="bg-blue-600/20 text-blue-400 text-[9px] font-bold px-2 py-0.5 rounded-full border border-blue-600/30">
-              {SOURCE_LABEL[s as EventSource]}
-            </span>
-          ))}
-          {[...filters.formations, ...filters.joueurs, ...filters.categories].map(tag => (
-            <span key={tag} className="bg-purple-600/20 text-purple-400 text-[9px] font-bold px-2 py-0.5 rounded-full border border-purple-600/30">{tag}</span>
-          ))}
-          <button onClick={() => setFilters(makeDefaultFilters())}
-            className="flex items-center gap-1 text-white/30 hover:text-white text-[10px] font-bold transition-colors">
-            <RotateCcw size={10}/>Reset
-          </button>
-        </div>
-      )}
 
       {/* Légende formats */}
-      <div className="px-4 mb-3 flex gap-3 overflow-x-auto no-scrollbar">
+      <div className="px-4 pt-3 mb-2 flex gap-3 overflow-x-auto no-scrollbar max-w-[1400px] mx-auto">
         {[['3️⃣','Triplette'],['2️⃣','Doublette'],['1️⃣','T-à-T'],['⚡','Enduro'],['🎯','Autre']].map(([icon,label]) => (
           <div key={label as string} className="flex-shrink-0 flex items-center gap-1 text-[9px] text-white/25">
             <span>{icon}</span><span className="uppercase">{label}</span>
