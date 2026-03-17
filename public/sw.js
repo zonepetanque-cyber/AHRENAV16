@@ -1,6 +1,5 @@
-// ── Version du cache — changer ce numéro force la mise à jour ──
-const CACHE_VERSION = 'ahrena-v' + Date.now();
-const CACHE_NAME = CACHE_VERSION;
+// ── Version du cache — Vite remplace __APP_VERSION__ au build ──
+const CACHE_NAME = 'ahrena-v__APP_VERSION__';
 
 // Fichiers à mettre en cache minimal (shell de l'app)
 const STATIC_CACHE = ['/', '/index.html', '/manifest.json'];
