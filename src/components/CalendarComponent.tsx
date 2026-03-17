@@ -186,12 +186,12 @@ function applyFilters(events: UnifiedEvent[], f: AdvancedFilters): UnifiedEvent[
 
 // ── Checkbox ──────────────────────────────────────────────────
 const Checkbox = ({ checked, onChange, label }: { checked: boolean; onChange: () => void; label: string }) => (
-  <button onClick={onChange} className="flex items-center gap-2.5 py-1 text-left group w-full">
+  <button onClick={onChange} className="flex items-center gap-2.5 py-1.5 text-left group w-full">
     <div className={`w-5 h-5 rounded flex items-center justify-center flex-shrink-0 border transition-all
-      ${checked ? 'bg-blue-600 border-blue-600' : 'border-gray-300 bg-white group-hover:border-blue-400'}`}>
+      ${checked ? 'bg-red-600 border-red-600' : 'border-white/20 bg-white/5 group-hover:border-white/40'}`}>
       {checked && <Check size={12} className="text-white" strokeWidth={3}/>}
     </div>
-    <span className={`text-[13px] transition-colors ${checked ? 'text-gray-900 font-semibold' : 'text-gray-600 group-hover:text-gray-800'}`}>{label}</span>
+    <span className={`text-[12px] uppercase tracking-wide transition-colors ${checked ? 'text-white font-bold' : 'text-white/50 group-hover:text-white/80'}`}>{label}</span>
   </button>
 );
 
@@ -469,28 +469,43 @@ const FilterPanel = ({ filters, onChange, onClose }: {
   const reset = () => setLocal(makeDefaultFilters());
 
   const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
-    <div className="mb-5">
-      <p className="text-blue-500 font-black italic text-sm mb-2">{title}</p>
+    <div className="mb-6">
+      <div className="flex items-center gap-2 mb-3">
+        <div className="h-px flex-1 bg-white/10" />
+        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 px-2">{title}</p>
+        <div className="h-px flex-1 bg-white/10" />
+      </div>
       {children}
     </div>
   );
 
   return ReactDOM.createPortal(
-    <div className="fixed inset-0 z-[9999] bg-black/70 flex items-end md:items-center md:justify-center" onClick={onClose}>
-      <div className="w-full md:max-w-lg bg-white rounded-t-3xl md:rounded-3xl overflow-hidden shadow-2xl max-h-[90vh] flex flex-col"
-        onClick={e => e.stopPropagation()}>
-
-        <div className="flex items-center justify-between px-6 pt-5 pb-3 border-b border-gray-100">
-          <h2 className="text-blue-600 font-black text-lg uppercase tracking-wide">+ DE FILTRES</h2>
-          <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors">
-            <X size={14} className="text-gray-600"/>
+    <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex items-end md:items-center md:justify-center" onClick={onClose}>
+      <div
+        className="w-full md:max-w-lg bg-zinc-950 border border-white/10 rounded-t-2xl md:rounded-2xl overflow-hidden shadow-2xl max-h-[90vh] flex flex-col"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-white/8">
+          <div className="flex items-center gap-3">
+            <div className="bg-red-600 p-1.5 rounded-lg">
+              <SlidersHorizontal size={14} className="text-white" />
+            </div>
+            <h2 className="text-white font-black text-sm uppercase tracking-[0.2em]">Filtres</h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-white/8 flex items-center justify-center hover:bg-white/15 transition-colors"
+          >
+            <X size={14} className="text-white/60" />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 py-4">
+        {/* Contenu scrollable */}
+        <div className="flex-1 overflow-y-auto px-6 py-5">
 
-          <Section title="Par département / source">
-            <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
+          <Section title="Département / source">
+            <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
               <Checkbox checked={local.sources.has('all')} onChange={() => toggleSource('all')} label="Tous"/>
               {SOURCES_LIST.map(s => (
                 <Checkbox key={s.key} checked={local.sources.has(s.key)} onChange={() => toggleSource(s.key)} label={s.label}/>
@@ -498,15 +513,15 @@ const FilterPanel = ({ filters, onChange, onClose }: {
             </div>
           </Section>
 
-          <Section title="Par type">
-            <div className="flex gap-8">
+          <Section title="Type">
+            <div className="flex gap-6">
               <Checkbox checked={local.officiel} onChange={() => setLocal(l => ({...l, officiel: !l.officiel}))} label="Officiel"/>
               <Checkbox checked={local.ouvert} onChange={() => setLocal(l => ({...l, ouvert: !l.ouvert}))} label="Ouvert à tous"/>
             </div>
           </Section>
 
-          <Section title="Par formation">
-            <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
+          <Section title="Formation">
+            <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
               {FORMATIONS.map(f => (
                 <Checkbox key={f} checked={local.formations.has(f)}
                   onChange={() => setLocal(l => ({...l, formations: toggleSet(l.formations, f)}))}
@@ -515,7 +530,7 @@ const FilterPanel = ({ filters, onChange, onClose }: {
             </div>
           </Section>
 
-          <Section title="Par type de joueur (officiel uniquement)">
+          <Section title="Type de joueur">
             <div className="grid grid-cols-3 gap-x-2 gap-y-0.5">
               {JOUEURS.map(j => (
                 <Checkbox key={j} checked={local.joueurs.has(j)}
@@ -525,8 +540,8 @@ const FilterPanel = ({ filters, onChange, onClose }: {
             </div>
           </Section>
 
-          <Section title="Par catégorie de concours (officiel uniquement)">
-            <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
+          <Section title="Catégorie de concours">
+            <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
               {CAT_TYPES.map(c => (
                 <Checkbox key={c} checked={local.categories.has(c)}
                   onChange={() => setLocal(l => ({...l, categories: toggleSet(l.categories, c)}))}
@@ -536,14 +551,21 @@ const FilterPanel = ({ filters, onChange, onClose }: {
           </Section>
         </div>
 
-        <div className="px-6 py-4 border-t border-gray-100 space-y-2">
-          <button onClick={() => { onChange(local); onClose(); }}
-            className="w-full bg-blue-600 text-white font-black py-3.5 rounded-xl uppercase tracking-wider text-sm hover:bg-blue-700 transition-colors">
-            VALIDER
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-white/8 space-y-3 bg-zinc-950">
+          <button
+            onClick={() => { onChange(local); onClose(); }}
+            className="w-full bg-red-600 hover:bg-red-700 text-white font-black py-3.5 rounded-xl uppercase tracking-[0.15em] text-sm transition-colors"
+          >
+            Appliquer les filtres
           </button>
           <div className="flex justify-center gap-8">
-            <button onClick={checkAll} className="text-gray-500 text-sm underline hover:text-gray-700">Tout cocher</button>
-            <button onClick={reset}    className="text-gray-500 text-sm underline hover:text-gray-700">Tout décocher</button>
+            <button onClick={checkAll} className="text-white/30 hover:text-white/60 text-xs uppercase tracking-wider font-bold transition-colors">
+              Tout cocher
+            </button>
+            <button onClick={reset} className="text-white/30 hover:text-white/60 text-xs uppercase tracking-wider font-bold transition-colors flex items-center gap-1">
+              <RotateCcw size={10} /> Réinitialiser
+            </button>
           </div>
         </div>
       </div>
