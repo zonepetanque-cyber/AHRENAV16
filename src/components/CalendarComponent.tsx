@@ -402,7 +402,7 @@ const MonthGrid = ({
   );
 };
 
-// ── MonthView — scroll-snap natif CSS ─────────────────────────
+// ── MonthView — scroll-snap CSS natif, sans saut ──────────────
 const MonthView = ({ events, onVideoSelect, forcedMonth }: {
   events: UnifiedEvent[]; onVideoSelect: (v: Video) => void; forcedMonth: number | null;
 }) => {
@@ -413,47 +413,6 @@ const MonthView = ({ events, onVideoSelect, forcedMonth }: {
   const addMonths = (y: number, m: number, delta: number) => {
     const d = new Date(y, m + delta, 1);
     return { year: d.getFullYear(), month: d.getMonth() };
-  };
-
-  // On garde un index absolu : 0 = mois courant, 1 = suivant, etc.
-  const [idx, setIdx] = useState(0);
-  const [selected, setSelected] = useState<string | null>(null);
-  const scrollRef = React.useRef<HTMLDivElement>(null);
-  const skipScrollEvent = React.useRef(false);
-
-  const current = addMonths(minYear, minMonth, idx);
-  const isAtMin = idx === 0;
-
-  // Sync filtre mois externe
-  useEffect(() => {
-    if (forcedMonth !== null) {
-      const newIdx = forcedMonth >= minMonth
-        ? forcedMonth - minMonth
-        : (12 - minMonth + forcedMonth);
-      setIdx(newIdx);
-      setSelected(null);
-    }
-  }, [forcedMonth]);
-
-  // Quand idx change via boutons → scroller programmatiquement au bon slide
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    skipScrollEvent.current = true;
-    el.scrollTo({ left: el.offsetWidth * idx, behavior: 'smooth' });
-    setTimeout(() => { skipScrollEvent.current = false; }, 400);
-  }, [idx]);
-
-  // Détecter le scroll-snap natif pour mettre à jour l'idx
-  const onScroll = () => {
-    if (skipScrollEvent.current) return;
-    const el = scrollRef.current;
-    if (!el) return;
-    const newIdx = Math.round(el.scrollLeft / el.offsetWidth);
-    if (newIdx !== idx && newIdx >= 0) {
-      setIdx(newIdx);
-      setSelected(null);
-    }
   };
 
   const evByDate = useMemo(() => {
@@ -470,19 +429,85 @@ const MonthView = ({ events, onVideoSelect, forcedMonth }: {
     return map;
   }, [events]);
 
+  // Dernier mois qui a des événements
+  const maxIdx = useMemo(() => {
+    let max = 0;
+    evByDate.forEach((_, dateStr) => {
+      const d = new Date(dateStr);
+      const diff = (d.getFullYear() - minYear) * 12 + (d.getMonth() - minMonth);
+      if (diff > max) max = diff;
+    });
+    return max;
+  }, [evByDate, minYear, minMonth]);
+
+  const [idx, setIdx]       = useState(0);
+  const [selected, setSelected] = useState<string | null>(null);
+  const scrollRef  = React.useRef<HTMLDivElement>(null);
+  const isScrolling = React.useRef(false); // true pendant un scrollTo programmatique
+
+  const current  = addMonths(minYear, minMonth, idx);
+  const isAtMin  = idx === 0;
+  const isAtMax  = idx >= maxIdx;
+
+  // Sync filtre mois externe
+  useEffect(() => {
+    if (forcedMonth !== null) {
+      const newIdx = forcedMonth >= minMonth
+        ? forcedMonth - minMonth
+        : (12 - minMonth + forcedMonth);
+      const clamped = Math.min(newIdx, maxIdx);
+      setIdx(clamped);
+      setSelected(null);
+    }
+  }, [forcedMonth, maxIdx]);
+
+  // Scroller vers idx sans déclencher onScroll en retour
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    isScrolling.current = true;
+    el.scrollTo({ left: el.offsetWidth * idx, behavior: 'smooth' });
+    // Libérer après la fin probable de l'animation smooth (~400ms)
+    const t = setTimeout(() => { isScrolling.current = false; }, 450);
+    return () => clearTimeout(t);
+  }, [idx]);
+
+  // Détecter quand l'utilisateur a scrollé manuellement et s'est arrêté sur un snap
+  const scrollTimeout = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onScroll = () => {
+    if (isScrolling.current) return; // scroll programmatique → ignorer
+    const el = scrollRef.current;
+    if (!el) return;
+    // Debounce : on attend que le scroll-snap soit fini avant de lire la position
+    if (scrollTimeout.current) clearTimeout(scrollTimeout.current);
+    scrollTimeout.current = setTimeout(() => {
+      const newIdx = Math.round(el.scrollLeft / el.offsetWidth);
+      const clamped = Math.max(0, Math.min(newIdx, maxIdx));
+      if (clamped !== idx) {
+        isScrolling.current = true; // on va corriger si hors limites
+        if (newIdx > maxIdx) {
+          // L'utilisateur a scrollé au-delà du max → ramener
+          el.scrollTo({ left: el.offsetWidth * maxIdx, behavior: 'smooth' });
+          setTimeout(() => { isScrolling.current = false; }, 450);
+        } else {
+          isScrolling.current = false;
+        }
+        setIdx(clamped);
+        setSelected(null);
+      }
+    }, 80);
+  };
+
   const todayStr = isoDate(todayDate);
   const selectedEvents = selected ? (evByDate.get(selected) || []) : [];
-
-  // Génère N mois à partir du mois courant (24 mois suffisent)
-  const TOTAL_MONTHS = 24;
-  const months = Array.from({ length: TOTAL_MONTHS }, (_, i) => addMonths(minYear, minMonth, i));
+  const months = Array.from({ length: maxIdx + 1 }, (_, i) => addMonths(minYear, minMonth, i));
 
   return (
     <div className="pb-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-4 px-4">
         <button
-          onClick={() => { if (!isAtMin) { setIdx(i => i - 1); setSelected(null); } }}
+          onClick={() => { if (!isAtMin) setIdx(i => i - 1); setSelected(null); }}
           disabled={isAtMin}
           className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors
             ${isAtMin ? 'bg-zinc-900 text-white/15 cursor-not-allowed' : 'bg-zinc-800 text-white hover:bg-zinc-700'}`}
@@ -493,32 +518,34 @@ const MonthView = ({ events, onVideoSelect, forcedMonth }: {
           {MONTHS_FR[current.month]} {current.year}
         </h2>
         <button
-          onClick={() => { setIdx(i => Math.min(i + 1, TOTAL_MONTHS - 1)); setSelected(null); }}
-          className="w-9 h-9 rounded-full bg-zinc-800 flex items-center justify-center text-white hover:bg-zinc-700 transition-colors"
+          onClick={() => { if (!isAtMax) setIdx(i => i + 1); setSelected(null); }}
+          disabled={isAtMax}
+          className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors
+            ${isAtMax ? 'bg-zinc-900 text-white/15 cursor-not-allowed' : 'bg-zinc-800 text-white hover:bg-zinc-700'}`}
         >
           <ChevronRight size={16}/>
         </button>
       </div>
 
-      {/* Jours de la semaine — fixes au-dessus */}
+      {/* Jours fixes */}
       <div className="grid grid-cols-7 mb-1 px-4">
         {DAYS_FR.map((d, i) => (
           <div key={i} className="text-center text-[10px] font-black text-white/30 uppercase py-1">{d}</div>
         ))}
       </div>
 
-      {/* Scroll-snap container */}
+      {/* Scroll-snap natif — pas de JS pour le mouvement */}
       <div
         ref={scrollRef}
         onScroll={onScroll}
-        className="overflow-x-auto"
         style={{
           display: 'flex',
+          overflowX: 'auto',
+          overflowY: 'hidden',
           scrollSnapType: 'x mandatory',
           WebkitOverflowScrolling: 'touch',
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
-          overflowY: 'hidden',
         }}
       >
         {months.map((m, i) => (
