@@ -403,8 +403,8 @@ const MonthGrid = ({
 };
 
 // ── MonthView — scroll-snap CSS natif, sans saut ──────────────
-const MonthView = ({ events, onVideoSelect, forcedMonth, onMonthChange }: {
-  events: UnifiedEvent[]; onVideoSelect: (v: Video) => void; forcedMonth: { month: number; year: number } | null; onMonthChange?: (m: { month: number; year: number }) => void;
+const MonthView = ({ events, allEvents, onVideoSelect, forcedMonth, onMonthChange }: {
+  events: UnifiedEvent[]; allEvents: UnifiedEvent[]; onVideoSelect: (v: Video) => void; forcedMonth: { month: number; year: number } | null; onMonthChange?: (m: { month: number; year: number }) => void;
 }) => {
   const todayDate = today();
   const minYear   = todayDate.getFullYear();
@@ -501,7 +501,7 @@ const MonthView = ({ events, onVideoSelect, forcedMonth, onMonthChange }: {
   };
 
   const todayStr = isoDate(todayDate);
-  const selectedEvents = selected ? (evByDate.get(selected) || []) : [];
+  const selectedEvents = selected ? (evByDateFiltered.get(selected) || []) : [];
   const months = Array.from({ length: maxIdx + 1 }, (_, i) => addMonths(minYear, minMonth, i));
 
   return (
@@ -967,7 +967,7 @@ const CalendarComponent = ({ videos, onVideoSelect }: { videos: Video[]; onVideo
       </div>
 
       {view === 'month'
-        ? <MonthView events={filteredEvents} onVideoSelect={onVideoSelect} forcedMonth={filters.month} onMonthChange={updateMonth}/>
+        ? <MonthView events={filteredEvents} allEvents={allEvents} onVideoSelect={onVideoSelect} forcedMonth={filters.month} onMonthChange={updateMonth}/>
         : <ListView  events={filteredEvents} onVideoSelect={onVideoSelect}/>
       }
 
