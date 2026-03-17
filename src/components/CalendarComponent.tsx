@@ -403,8 +403,8 @@ const MonthGrid = ({
 };
 
 // ── MonthView — scroll-snap CSS natif, sans saut ──────────────
-const MonthView = ({ events, onVideoSelect, forcedMonth }: {
-  events: UnifiedEvent[]; onVideoSelect: (v: Video) => void; forcedMonth: { month: number; year: number } | null;
+const MonthView = ({ events, onVideoSelect, forcedMonth, onMonthChange }: {
+  events: UnifiedEvent[]; onVideoSelect: (v: Video) => void; forcedMonth: { month: number; year: number } | null; onMonthChange?: (m: { month: number; year: number }) => void;
 }) => {
   const todayDate = today();
   const minYear   = todayDate.getFullYear();
@@ -492,6 +492,7 @@ const MonthView = ({ events, onVideoSelect, forcedMonth }: {
         }
         setIdx(clamped);
         setSelected(null);
+        onMonthChange?.(addMonths(minYear, minMonth, clamped));
       }
     }, 80);
   };
@@ -505,7 +506,15 @@ const MonthView = ({ events, onVideoSelect, forcedMonth }: {
       {/* Header */}
       <div className="flex items-center justify-between mb-4 px-4">
         <button
-          onClick={() => { if (!isAtMin) setIdx(i => i - 1); setSelected(null); }}
+          onClick={() => {
+            if (!isAtMin) {
+              const newIdx = idx - 1;
+              setIdx(newIdx);
+              setSelected(null);
+              const m = addMonths(minYear, minMonth, newIdx);
+              onMonthChange?.(m);
+            }
+          }}
           disabled={isAtMin}
           className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors
             ${isAtMin ? 'bg-zinc-900 text-white/15 cursor-not-allowed' : 'bg-zinc-800 text-white hover:bg-zinc-700'}`}
@@ -516,7 +525,15 @@ const MonthView = ({ events, onVideoSelect, forcedMonth }: {
           {MONTHS_FR[current.month]} {current.year}
         </h2>
         <button
-          onClick={() => { if (!isAtMax) setIdx(i => i + 1); setSelected(null); }}
+          onClick={() => {
+            if (!isAtMax) {
+              const newIdx = idx + 1;
+              setIdx(newIdx);
+              setSelected(null);
+              const m = addMonths(minYear, minMonth, newIdx);
+              onMonthChange?.(m);
+            }
+          }}
           disabled={isAtMax}
           className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors
             ${isAtMax ? 'bg-zinc-900 text-white/15 cursor-not-allowed' : 'bg-zinc-800 text-white hover:bg-zinc-700'}`}
@@ -947,7 +964,7 @@ const CalendarComponent = ({ videos, onVideoSelect }: { videos: Video[]; onVideo
       </div>
 
       {view === 'month'
-        ? <MonthView events={filteredEvents} onVideoSelect={onVideoSelect} forcedMonth={filters.month}/>
+        ? <MonthView events={filteredEvents} onVideoSelect={onVideoSelect} forcedMonth={filters.month} onMonthChange={updateMonth}/>
         : <ListView  events={filteredEvents} onVideoSelect={onVideoSelect}/>
       }
 
