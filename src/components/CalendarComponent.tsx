@@ -8,9 +8,11 @@ import { CONCOURS_AIN_2026, ConcourAin, DEPT_AIN } from '../data/ain2026';
 import { CONCOURS_AISNE_2026, DEPT_AISNE } from '../data/aisne2026';
 import { CONCOURS_AHP_2026, DEPT_AHP } from '../data/ahp2026';
 import { CONCOURS_REGIONAUX_2026 } from '../data/regionaux2026';
+import { CONCOURS_AM_2026, DEPT_AM } from '../data/am2026';
+import { CONCOURS_ARDECHE_2026, DEPT_ARDECHE } from '../data/ardeche2026';
 import {
   Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight,
-  List, MapPin, SlidersHorizontal, X, RotateCcw, Check, Radio
+  List, MapPin, SlidersHorizontal, X, RotateCcw, Check, Radio, ChevronDown
 } from 'lucide-react';
 
 // ── Helpers ───────────────────────────────────────────────────
@@ -23,29 +25,47 @@ const isPast = (date: string, dateFin?: string) => new Date((dateFin || date) + 
 const isUpcoming = (date: string, dateFin?: string) => !isPast(date, dateFin);
 
 const MONTHS_FR = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+const MONTHS_SHORT = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
 const DAYS_FR   = ['L','M','M','J','V','S','D'];
 
 // ── Source meta ───────────────────────────────────────────────
-type EventSource = 'live' | 'national' | 'allier' | 'nievre' | 'ain' | 'aisne' | 'ahp' | 'regional';
+type EventSource = 'live' | 'national' | 'allier' | 'nievre' | 'ain' | 'aisne' | 'ahp' | 'am' | 'ardeche' | 'regional';
 
 const SOURCE_COLOR: Record<EventSource, string> = {
   live: '#dc2626', national: '#3b82f6', allier: '#10b981',
   nievre: '#f97316', ain: '#8b5cf6', aisne: '#06b6d4',
-  ahp: '#84cc16', regional: '#f59e0b',
+  ahp: '#84cc16', am: '#0066CC', ardeche: '#f97316', regional: '#f59e0b',
 };
 const SOURCE_LABEL: Record<EventSource, string> = {
   live: 'Direct', national: 'National', allier: 'Allier (03)',
   nievre: 'Nièvre (58)', ain: 'Ain (01)', aisne: 'Aisne (02)',
-  ahp: 'AHP (04)', regional: 'Régionaux',
+  ahp: 'AHP (04)', am: 'Alpes-Mar. (06)', ardeche: 'Ardèche (07)', regional: 'Régionaux',
 };
+
 const DEPT_LINKS: Record<string, { facebook: string; site: string; code: string } | null> = {
   live: null, national: null, regional: null,
-  allier: { facebook: DEPT_ALLIER.facebook, site: DEPT_ALLIER.site, code: '03' },
-  nievre: { facebook: DEPT_NIEVRE.facebook, site: DEPT_NIEVRE.site, code: '58' },
-  ain:    { facebook: DEPT_AIN.facebook,    site: DEPT_AIN.site,    code: '01' },
-  aisne:  { facebook: DEPT_AISNE.facebook,  site: DEPT_AISNE.site,  code: '02' },
-  ahp:    { facebook: DEPT_AHP.facebook,    site: DEPT_AHP.site,    code: '04' },
+  allier:  { facebook: DEPT_ALLIER.facebook,  site: DEPT_ALLIER.site,  code: '03' },
+  nievre:  { facebook: DEPT_NIEVRE.facebook,  site: DEPT_NIEVRE.site,  code: '58' },
+  ain:     { facebook: DEPT_AIN.facebook,     site: DEPT_AIN.site,     code: '01' },
+  aisne:   { facebook: DEPT_AISNE.facebook,   site: DEPT_AISNE.site,   code: '02' },
+  ahp:     { facebook: DEPT_AHP.facebook,     site: DEPT_AHP.site,     code: '04' },
+  am:      { facebook: DEPT_AM.facebook,      site: DEPT_AM.site,      code: '06' },
+  ardeche: { facebook: DEPT_ARDECHE.facebook, site: DEPT_ARDECHE.site, code: '07' },
 };
+
+// ── Départements disponibles pour l'accordéon ─────────────────
+const DEPT_OPTIONS: { key: EventSource; label: string; color: string }[] = [
+  { key: 'allier',  label: 'Allier (03)',        color: '#10b981' },
+  { key: 'ahp',     label: 'AHP (04)',            color: '#84cc16' },
+  { key: 'am',      label: 'Alpes-Mar. (06)',     color: '#0066CC' },
+  { key: 'ardeche', label: 'Ardèche (07)',        color: '#f97316' },
+  { key: 'ain',     label: 'Ain (01)',             color: '#8b5cf6' },
+  { key: 'aisne',   label: 'Aisne (02)',           color: '#06b6d4' },
+  { key: 'nievre',  label: 'Nièvre (58)',          color: '#f97316' },
+  { key: 'regional',label: 'Régionaux',            color: '#f59e0b' },
+  { key: 'national',label: 'Nationaux FFPJP',      color: '#3b82f6' },
+  { key: 'live',    label: 'Directs YouTube',      color: '#dc2626' },
+];
 
 // ── Type unifié ───────────────────────────────────────────────
 interface UnifiedEvent {
@@ -74,25 +94,18 @@ interface AdvancedFilters {
   joueurs: Set<string>;
   categories: Set<string>;
   sources: Set<string>;
+  month: number | null; // 0-11 ou null = tous
 }
 
 const FORMATIONS = ['Tête-à-Tête', 'Doublette', 'Triplette', 'Doublette mixte', 'Triplette mixte', 'En équipe (CDC, CRC, CNC)'];
 const JOUEURS    = ['Jeune', 'Sénior', 'Vétéran', 'Masculin', 'Féminin', 'Promotion', 'Jeu Provençal'];
 const CAT_TYPES  = ['Départemental', 'Régional', 'National', 'Championnat', 'Autres (mondial, coupes, tir…)'];
-const SOURCES_LIST: { key: EventSource; label: string }[] = [
-  { key: 'live',     label: 'Directs YouTube' },
-  { key: 'national', label: 'Nationaux FFPJP' },
-  { key: 'regional', label: 'Régionaux' },
-  { key: 'allier',   label: 'Allier (03)' },
-  { key: 'nievre',   label: 'Nièvre (58)' },
-  { key: 'ain',      label: 'Ain (01)' },
-  { key: 'aisne',    label: 'Aisne (02)' },
-  { key: 'ahp',      label: 'AHP (04)' },
-];
 
 const makeDefaultFilters = (): AdvancedFilters => ({
   officiel: true, ouvert: true,
-  formations: new Set(), joueurs: new Set(), categories: new Set(), sources: new Set(['all']),
+  formations: new Set(), joueurs: new Set(), categories: new Set(),
+  sources: new Set(['all']),
+  month: null,
 });
 
 // ── Build events ──────────────────────────────────────────────
@@ -118,7 +131,7 @@ function buildEvents(videos: Video[]): UnifiedEvent[] {
 
   const addDept = (arr: any[], src: EventSource) => arr.forEach(c => events.push({
     id: `${src}-${c.id}`, date: c.date, dateFin: c.dateFin,
-    title: c.categorie, ville: c.ville, lieu: c.lieu, club: c.club, info: c.info,
+    title: c.intitule || c.categorie, ville: c.ville, lieu: c.lieu, club: c.club, info: c.info,
     heure: c.heure,
     source: src, format: c.format, categorie: c.categorie, typeEvent: c.type, raw: c,
   }));
@@ -128,6 +141,8 @@ function buildEvents(videos: Video[]): UnifiedEvent[] {
   addDept(CONCOURS_AIN_2026    as any[], 'ain');
   addDept(CONCOURS_AISNE_2026  as any[], 'aisne');
   addDept(CONCOURS_AHP_2026    as any[], 'ahp');
+  addDept(CONCOURS_AM_2026     as any[], 'am');
+  addDept(CONCOURS_ARDECHE_2026 as any[], 'ardeche');
 
   CONCOURS_REGIONAUX_2026.forEach(c => events.push({
     id: `reg-${c.id}`, date: c.date, dateFin: (c as any).dateFin,
@@ -135,19 +150,25 @@ function buildEvents(videos: Video[]): UnifiedEvent[] {
     source: 'regional', format: (c as any).format, categorie: c.categorie, typeEvent: 'RÉGIONAL', raw: c,
   }));
 
-  // Ne retourner que les événements à venir (aujourd'hui inclus)
   return events.filter(ev => isUpcoming(ev.date, ev.dateFin));
 }
 
 // ── Appliquer filtres ─────────────────────────────────────────
 function applyFilters(events: UnifiedEvent[], f: AdvancedFilters): UnifiedEvent[] {
   return events.filter(ev => {
+    // Filtre source/département
     if (!f.sources.has('all') && !f.sources.has(ev.source)) return false;
+
+    // Filtre mois
+    if (f.month !== null) {
+      const m = new Date(ev.date).getMonth();
+      if (m !== f.month) return false;
+    }
 
     if (f.formations.size > 0) {
       const c = ((ev.format || '') + ' ' + (ev.categorie || '')).toLowerCase();
       const ok =
-        (f.formations.has('Tête-à-Tête') && (c.includes('tête') || c.includes('individuel'))) ||
+        (f.formations.has('Tête-à-Tête') && (c.includes('tête') || c.includes('individuel') || c.includes('tàt') || c.includes('tat'))) ||
         (f.formations.has('Doublette') && c.includes('doublette') && !c.includes('mixte')) ||
         (f.formations.has('Triplette') && c.includes('triplette') && !c.includes('mixte')) ||
         (f.formations.has('Doublette mixte') && c.includes('doublette') && c.includes('mixte')) ||
@@ -157,15 +178,15 @@ function applyFilters(events: UnifiedEvent[], f: AdvancedFilters): UnifiedEvent[
     }
 
     if (f.joueurs.size > 0) {
-      const c = (ev.categorie || '').toLowerCase();
+      const c = ((ev.categorie || '') + ' ' + (ev.title || '')).toLowerCase();
       const ok =
-        (f.joueurs.has('Jeune') && c.includes('jeune')) ||
+        (f.joueurs.has('Jeune') && (c.includes('jeune') || c.includes('minime') || c.includes('cadet') || c.includes('benjamin'))) ||
         (f.joueurs.has('Sénior') && (c.includes('sénior')||c.includes('senior'))) ||
-        (f.joueurs.has('Vétéran') && (c.includes('vétéran')||c.includes('veteran'))) ||
-        (f.joueurs.has('Masculin') && (c.includes('masculin')||c.includes('homme'))) ||
-        (f.joueurs.has('Féminin') && (c.includes('féminin')||c.includes('feminin')||c.includes('fem'))) ||
-        (f.joueurs.has('Promotion') && c.includes('promo')) ||
-        (f.joueurs.has('Jeu Provençal') && (c.includes('provençal')||c.includes('provencal')));
+        (f.joueurs.has('Vétéran') && (c.includes('vétéran')||c.includes('veteran')||c.includes('vét'))) ||
+        (f.joueurs.has('Masculin') && (c.includes('masculin')||c.includes('homme')||c.includes('masc'))) ||
+        (f.joueurs.has('Féminin') && (c.includes('féminin')||c.includes('feminin')||c.includes('fem')||c.includes('dame'))) ||
+        (f.joueurs.has('Promotion') && (c.includes('promo')||c.includes('tprom')||c.includes('dprom'))) ||
+        (f.joueurs.has('Jeu Provençal') && (c.includes('provençal')||c.includes('provencal')||c.includes('prov')));
       if (!ok) return false;
     }
 
@@ -175,7 +196,7 @@ function applyFilters(events: UnifiedEvent[], f: AdvancedFilters): UnifiedEvent[
         (f.categories.has('Départemental') && t === 'concours') ||
         (f.categories.has('Régional') && t === 'régional') ||
         (f.categories.has('National') && t === 'national') ||
-        (f.categories.has('Championnat') && t === 'championnat') ||
+        (f.categories.has('Championnat') && (t === 'championnat' || t === 'qualificatif')) ||
         (f.categories.has('Autres (mondial, coupes, tir…)') && t === 'spécial');
       if (!ok) return false;
     }
@@ -215,7 +236,6 @@ const EventCard = ({ ev, onVideoSelect }: { ev: UnifiedEvent; onVideoSelect: (v:
       onClick={() => ev.video && onVideoSelect(ev.video)}
     >
       <div className="flex gap-3 p-3">
-        {/* Icône */}
         <div className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center text-base"
           style={{ background: color + '20' }}>
           {ev.source === 'live' && ev.video?.isLive
@@ -224,7 +244,6 @@ const EventCard = ({ ev, onVideoSelect }: { ev: UnifiedEvent; onVideoSelect: (v:
         </div>
 
         <div className="flex-1 min-w-0">
-          {/* Badges */}
           <div className="flex items-center gap-1.5 mb-1 flex-wrap">
             <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded"
               style={{ background: color + '22', color }}>
@@ -236,10 +255,8 @@ const EventCard = ({ ev, onVideoSelect }: { ev: UnifiedEvent; onVideoSelect: (v:
             {ev.format && <span className="text-[9px] text-white/20 uppercase">{ev.format}</span>}
           </div>
 
-          {/* Titre */}
           <p className="text-white font-bold text-[13px] leading-snug mb-1.5">{ev.title}</p>
 
-          {/* Ville */}
           {ev.ville && (
             <div className="flex items-center gap-1 text-white/60 text-[11px] mb-0.5">
               <MapPin size={9} className="flex-shrink-0 text-white/30"/>
@@ -247,16 +264,11 @@ const EventCard = ({ ev, onVideoSelect }: { ev: UnifiedEvent; onVideoSelect: (v:
               {ev.lieu && <span className="text-white/30">· {ev.lieu}</span>}
             </div>
           )}
-
-          {/* Club */}
           {ev.club && ev.club !== ev.ville && (
             <p className="text-white/30 text-[10px] mb-0.5 truncate">🏟 {ev.club}</p>
           )}
-
-          {/* Info */}
           {ev.info && <p className="text-white/25 text-[10px] italic mb-1">{ev.info}</p>}
 
-          {/* Date + heure */}
           <div className="flex items-center gap-3 mt-1.5 text-[10px] text-white/40">
             <div className="flex items-center gap-1">
               <CalendarIcon size={9}/>
@@ -283,7 +295,6 @@ const EventCard = ({ ev, onVideoSelect }: { ev: UnifiedEvent; onVideoSelect: (v:
         )}
       </div>
 
-      {/* Liens vérif */}
       {DEPT_LINKS[ev.source] && !past && (
         <div className="px-3 pb-2.5 flex items-center gap-2 flex-wrap border-t border-white/5">
           <span className="text-amber-400/60 text-[9px] font-bold">⚠️ Vérifier annulation</span>
@@ -323,7 +334,6 @@ const ListView = ({ events, onVideoSelect }: { events: UnifiedEvent[]; onVideoSe
       {grouped.map(([date, evs]) => {
         const d = new Date(date);
         const isToday = isoDate(today()) === date;
-        const past = isPast(date);
         return (
           <div key={date}>
             <div className="flex items-center gap-3 mb-2.5">
@@ -350,10 +360,18 @@ const ListView = ({ events, onVideoSelect }: { events: UnifiedEvent[]; onVideoSe
 };
 
 // ── MonthView ─────────────────────────────────────────────────
-const MonthView = ({ events, onVideoSelect }: { events: UnifiedEvent[]; onVideoSelect: (v: Video) => void }) => {
+const MonthView = ({ events, onVideoSelect, forcedMonth }: { events: UnifiedEvent[]; onVideoSelect: (v: Video) => void; forcedMonth: number | null }) => {
   const [year, setYear]   = useState(today().getFullYear());
-  const [month, setMonth] = useState(today().getMonth());
+  const [month, setMonth] = useState(forcedMonth !== null ? forcedMonth : today().getMonth());
   const [selected, setSelected] = useState<string | null>(null);
+
+  // Sync avec le filtre mois externe
+  useEffect(() => {
+    if (forcedMonth !== null) {
+      setMonth(forcedMonth);
+      setSelected(null);
+    }
+  }, [forcedMonth]);
 
   const prev = () => { if (month === 0) { setMonth(11); setYear(y=>y-1); } else setMonth(m=>m-1); setSelected(null); };
   const next = () => { if (month === 11) { setMonth(0); setYear(y=>y+1); } else setMonth(m=>m+1); setSelected(null); };
@@ -432,7 +450,144 @@ const MonthView = ({ events, onVideoSelect }: { events: UnifiedEvent[]; onVideoS
   );
 };
 
-// ── FilterPanel ───────────────────────────────────────────────
+// ── DeptAccordion ─────────────────────────────────────────────
+const DeptAccordion = ({ sources, onChange }: {
+  sources: Set<string>;
+  onChange: (sources: Set<string>) => void;
+}) => {
+  const [open, setOpen] = useState(false);
+
+  const toggleSource = (key: string) => {
+    if (key === 'all') { onChange(new Set(['all'])); return; }
+    const next = new Set(sources);
+    next.delete('all');
+    if (next.has(key)) next.delete(key); else next.add(key);
+    if (next.size === 0) next.add('all');
+    onChange(next);
+  };
+
+  const isAll = sources.has('all');
+  const activeCount = isAll ? 0 : sources.size;
+
+  const activeLabel = isAll
+    ? 'Tous les départements'
+    : activeCount === 1
+      ? DEPT_OPTIONS.find(d => sources.has(d.key))?.label || '1 département'
+      : `${activeCount} départements`;
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className={`flex items-center gap-2 px-3 py-2 rounded-xl border transition-all text-left
+          ${activeCount > 0
+            ? 'bg-red-600/15 border-red-500/40 text-white'
+            : 'bg-zinc-800 border-white/15 text-white/70 hover:border-white/30 hover:text-white'}`}
+      >
+        <MapPin size={13} className="flex-shrink-0"/>
+        <span className="text-[11px] font-black uppercase tracking-wide whitespace-nowrap">{activeLabel}</span>
+        {activeCount > 0 && (
+          <span className="bg-red-600 text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0">
+            {activeCount}
+          </span>
+        )}
+        <ChevronDown size={12} className={`flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}/>
+      </button>
+
+      {open && (
+        <>
+          {/* Overlay pour fermer */}
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)}/>
+          <div className="absolute left-0 top-full mt-2 z-50 bg-zinc-900 border border-white/15 rounded-2xl shadow-2xl overflow-hidden min-w-[220px]">
+            {/* Tous */}
+            <button
+              onClick={() => { toggleSource('all'); setOpen(false); }}
+              className={`w-full flex items-center gap-3 px-4 py-3 transition-colors border-b border-white/8
+                ${isAll ? 'bg-white/10 text-white' : 'text-white/50 hover:text-white hover:bg-white/5'}`}
+            >
+              <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0
+                ${isAll ? 'border-white bg-white' : 'border-white/30'}`}>
+                {isAll && <div className="w-2 h-2 rounded-full bg-zinc-900"/>}
+              </div>
+              <span className="text-[12px] font-black uppercase tracking-wide">Tous les départements</span>
+            </button>
+
+            {/* Liste départements */}
+            <div className="py-1 max-h-72 overflow-y-auto">
+              {DEPT_OPTIONS.map(dept => {
+                const active = !isAll && sources.has(dept.key);
+                return (
+                  <button
+                    key={dept.key}
+                    onClick={() => toggleSource(dept.key)}
+                    className={`w-full flex items-center gap-3 px-4 py-2.5 transition-colors
+                      ${active ? 'text-white' : 'text-white/50 hover:text-white hover:bg-white/5'}`}
+                  >
+                    <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: dept.color }}/>
+                    <span className="text-[12px] font-bold flex-1 text-left">{dept.label}</span>
+                    {active && <Check size={12} className="text-white flex-shrink-0"/>}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+// ── MonthStrip — filtre par mois ──────────────────────────────
+const MonthStrip = ({ selectedMonth, onChange }: {
+  selectedMonth: number | null;
+  onChange: (m: number | null) => void;
+}) => {
+  const currentMonth = today().getMonth();
+
+  // Générer 14 mois à partir du mois courant
+  const months = Array.from({ length: 14 }, (_, i) => {
+    const idx = (currentMonth + i) % 12;
+    const year = today().getFullYear() + Math.floor((currentMonth + i) / 12);
+    return { idx, year, label: MONTHS_SHORT[idx] };
+  });
+
+  return (
+    <div className="flex gap-1.5 overflow-x-auto no-scrollbar px-4 pb-2 pt-1">
+      {/* Tous */}
+      <button
+        onClick={() => onChange(null)}
+        className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wide transition-all
+          ${selectedMonth === null
+            ? 'bg-white text-black'
+            : 'bg-zinc-800 text-white/50 hover:text-white hover:bg-zinc-700'}`}
+      >
+        Tous
+      </button>
+
+      {months.map(({ idx, year, label }) => {
+        const active = selectedMonth === idx;
+        const isCurrent = idx === currentMonth && year === today().getFullYear();
+        return (
+          <button
+            key={`${idx}-${year}`}
+            onClick={() => onChange(active ? null : idx)}
+            className={`flex-shrink-0 flex flex-col items-center px-3 py-1 rounded-lg transition-all
+              ${active
+                ? 'bg-red-600 text-white'
+                : isCurrent
+                  ? 'bg-zinc-700 text-white ring-1 ring-white/30'
+                  : 'bg-zinc-800/80 text-white/40 hover:text-white hover:bg-zinc-700'}`}
+          >
+            <span className="text-[11px] font-black uppercase">{label}</span>
+            {isCurrent && !active && <span className="text-[7px] text-red-400 font-bold leading-none">●</span>}
+          </button>
+        );
+      })}
+    </div>
+  );
+};
+
+// ── FilterPanel (sans section Département) ────────────────────
 const FilterPanel = ({ filters, onChange, onClose }: {
   filters: AdvancedFilters; onChange: (f: AdvancedFilters) => void; onClose: () => void;
 }) => {
@@ -452,21 +607,7 @@ const FilterPanel = ({ filters, onChange, onClose }: {
     return next;
   };
 
-  const toggleSource = (key: string) => {
-    if (key === 'all') { setLocal(l => ({...l, sources: new Set(['all'])})); return; }
-    const next = new Set(local.sources);
-    next.delete('all');
-    if (next.has(key)) next.delete(key); else next.add(key);
-    if (next.size === 0) next.add('all');
-    setLocal(l => ({...l, sources: next}));
-  };
-
-  const checkAll = () => setLocal({
-    officiel: true, ouvert: true,
-    formations: new Set(FORMATIONS), joueurs: new Set(JOUEURS),
-    categories: new Set(CAT_TYPES), sources: new Set(['all']),
-  });
-  const reset = () => setLocal(makeDefaultFilters());
+  const reset = () => setLocal({ ...makeDefaultFilters(), sources: new Set(filters.sources), month: filters.month });
 
   const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
     <div className="mb-6">
@@ -482,7 +623,7 @@ const FilterPanel = ({ filters, onChange, onClose }: {
   return ReactDOM.createPortal(
     <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex items-end md:items-center md:justify-center" onClick={onClose}>
       <div
-        className="w-full md:max-w-lg bg-zinc-950 border border-white/10 rounded-t-2xl md:rounded-2xl overflow-hidden shadow-2xl max-h-[90vh] flex flex-col"
+        className="w-full md:max-w-lg bg-zinc-950 border border-white/10 rounded-t-2xl md:rounded-2xl overflow-hidden shadow-2xl max-h-[85vh] flex flex-col"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
@@ -491,34 +632,15 @@ const FilterPanel = ({ filters, onChange, onClose }: {
             <div className="bg-red-600 p-1.5 rounded-lg">
               <SlidersHorizontal size={14} className="text-white" />
             </div>
-            <h2 className="text-white font-black text-sm uppercase tracking-[0.2em]">Filtres</h2>
+            <h2 className="text-white font-black text-sm uppercase tracking-[0.2em]">Filtres avancés</h2>
           </div>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white/8 flex items-center justify-center hover:bg-white/15 transition-colors"
-          >
+          <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/8 flex items-center justify-center hover:bg-white/15 transition-colors">
             <X size={14} className="text-white/60" />
           </button>
         </div>
 
         {/* Contenu scrollable */}
         <div className="flex-1 overflow-y-auto px-6 py-5">
-
-          <Section title="Département / source">
-            <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
-              <Checkbox checked={local.sources.has('all')} onChange={() => toggleSource('all')} label="Tous"/>
-              {SOURCES_LIST.map(s => (
-                <Checkbox key={s.key} checked={local.sources.has(s.key)} onChange={() => toggleSource(s.key)} label={s.label}/>
-              ))}
-            </div>
-          </Section>
-
-          <Section title="Type">
-            <div className="flex gap-6">
-              <Checkbox checked={local.officiel} onChange={() => setLocal(l => ({...l, officiel: !l.officiel}))} label="Officiel"/>
-              <Checkbox checked={local.ouvert} onChange={() => setLocal(l => ({...l, ouvert: !l.ouvert}))} label="Ouvert à tous"/>
-            </div>
-          </Section>
 
           <Section title="Formation">
             <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
@@ -542,6 +664,12 @@ const FilterPanel = ({ filters, onChange, onClose }: {
 
           <Section title="Catégorie de concours">
             <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
+              {/* Tout — se décoche dès qu'on choisit une catégorie */}
+              <Checkbox
+                checked={local.categories.size === 0}
+                onChange={() => setLocal(l => ({ ...l, categories: new Set() }))}
+                label="Tout"
+              />
               {CAT_TYPES.map(c => (
                 <Checkbox key={c} checked={local.categories.has(c)}
                   onChange={() => setLocal(l => ({...l, categories: toggleSet(l.categories, c)}))}
@@ -554,15 +682,12 @@ const FilterPanel = ({ filters, onChange, onClose }: {
         {/* Footer */}
         <div className="px-6 py-4 border-t border-white/8 space-y-3 bg-zinc-950">
           <button
-            onClick={() => { onChange(local); onClose(); }}
+            onClick={() => { onChange({ ...local, sources: filters.sources, month: filters.month }); onClose(); }}
             className="w-full bg-red-600 hover:bg-red-700 text-white font-black py-3.5 rounded-xl uppercase tracking-[0.15em] text-sm transition-colors"
           >
             Appliquer les filtres
           </button>
-          <div className="flex justify-center gap-8">
-            <button onClick={checkAll} className="text-white/30 hover:text-white/60 text-xs uppercase tracking-wider font-bold transition-colors">
-              Tout cocher
-            </button>
+          <div className="flex justify-center">
             <button onClick={reset} className="text-white/30 hover:text-white/60 text-xs uppercase tracking-wider font-bold transition-colors flex items-center gap-1">
               <RotateCcw size={10} /> Réinitialiser
             </button>
@@ -601,74 +726,77 @@ const CalendarComponent = ({ videos, onVideoSelect }: { videos: Video[]; onVideo
   const allEvents      = useMemo(() => buildEvents(videos), [videos, todayKey]);
   const filteredEvents = useMemo(() => applyFilters(allEvents, filters), [allEvents, filters]);
 
-  const activeCount = [
-    !filters.sources.has('all'),
+  const activeAdvanced = [
     filters.formations.size > 0,
     filters.joueurs.size > 0,
     filters.categories.size > 0,
   ].filter(Boolean).length;
+
+  const updateSources = (sources: Set<string>) => setFilters(f => ({ ...f, sources }));
+  const updateMonth   = (month: number | null) => setFilters(f => ({ ...f, month }));
 
   return (
     <div className="pt-28 pb-4 min-h-screen">
 
       {/* Barre de contrôle sticky */}
       <div className="sticky top-28 z-40 bg-zinc-950/98 backdrop-blur-md border-b border-white/8">
-        <div className="px-4 py-2.5 max-w-[1400px] mx-auto flex items-center justify-between gap-3">
 
-          <div className="flex items-center gap-3">
-            <div className="flex gap-1 bg-zinc-900 p-1 rounded-xl">
-              <button onClick={() => setView('month')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wide transition-all ${view === 'month' ? 'bg-white text-black' : 'text-white/40 hover:text-white'}`}>
-                <CalendarIcon size={11}/> Mensuel
-              </button>
-              <button onClick={() => setView('list')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wide transition-all ${view === 'list' ? 'bg-white text-black' : 'text-white/40 hover:text-white'}`}>
-                <List size={11}/> Agenda
-              </button>
-            </div>
-            <span className="text-white/25 text-xs hidden sm:block">{filteredEvents.length} événements</span>
+        {/* Ligne 1 : vue + dept + filtres */}
+        <div className="px-4 py-2.5 flex items-center justify-between gap-2">
+
+          {/* Toggle vue */}
+          <div className="flex gap-1 bg-zinc-900 p-1 rounded-xl flex-shrink-0">
+            <button onClick={() => setView('month')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wide transition-all ${view === 'month' ? 'bg-white text-black' : 'text-white/40 hover:text-white'}`}>
+              <CalendarIcon size={11}/> <span className="hidden sm:inline">Mensuel</span>
+            </button>
+            <button onClick={() => setView('list')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wide transition-all ${view === 'list' ? 'bg-white text-black' : 'text-white/40 hover:text-white'}`}>
+              <List size={11}/> <span className="hidden sm:inline">Agenda</span>
+            </button>
           </div>
 
+          {/* Accordéon département */}
+          <div className="flex-1 flex justify-center">
+            <DeptAccordion sources={filters.sources} onChange={updateSources}/>
+          </div>
+
+          {/* Filtres avancés */}
           <button onClick={() => setShowFilters(true)}
-            className={`flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl border transition-all
-              ${activeCount > 0 ? 'bg-red-600 border-red-500 text-white' : 'bg-zinc-800 border-white/15 text-white/70 hover:border-white/30 hover:text-white'}`}>
+            className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl border transition-all
+              ${activeAdvanced > 0 ? 'bg-red-600 border-red-500 text-white' : 'bg-zinc-800 border-white/15 text-white/70 hover:border-white/30 hover:text-white'}`}>
             <SlidersHorizontal size={13}/>
-            <span className="text-[11px] font-black uppercase tracking-wide">Filtres</span>
-            {activeCount > 0 && (
-              <span className="bg-white text-red-600 text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center">{activeCount}</span>
+            <span className="text-[11px] font-black uppercase tracking-wide hidden sm:inline">Filtres</span>
+            {activeAdvanced > 0 && (
+              <span className="bg-white text-red-600 text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center">{activeAdvanced}</span>
             )}
           </button>
         </div>
 
-        {activeCount > 0 && (
-          <div className="px-4 pb-2 max-w-[1400px] mx-auto flex items-center gap-2 flex-wrap">
-            {!filters.sources.has('all') && [...filters.sources].map(s => (
-              <span key={s} className="bg-red-600/20 text-red-400 text-[9px] font-bold px-2 py-0.5 rounded-full border border-red-600/30">
-                {SOURCE_LABEL[s as EventSource]}
-              </span>
-            ))}
+        {/* Ligne 2 : strip mois */}
+        <MonthStrip selectedMonth={filters.month} onChange={updateMonth}/>
+
+        {/* Tags actifs */}
+        {activeAdvanced > 0 && (
+          <div className="px-4 pb-2 flex items-center gap-2 flex-wrap">
             {[...filters.formations, ...filters.joueurs, ...filters.categories].map(tag => (
               <span key={tag} className="bg-white/10 text-white/50 text-[9px] font-bold px-2 py-0.5 rounded-full border border-white/15">{tag}</span>
             ))}
-            <button onClick={() => setFilters(makeDefaultFilters())}
+            <button onClick={() => setFilters(f => ({ ...f, formations: new Set(), joueurs: new Set(), categories: new Set() }))}
               className="flex items-center gap-1 text-white/30 hover:text-white text-[10px] font-bold transition-colors">
               <RotateCcw size={10}/>Reset
             </button>
           </div>
         )}
-      </div>
 
-      {/* Légende formats */}
-      <div className="px-4 pt-3 mb-2 flex gap-3 overflow-x-auto no-scrollbar max-w-[1400px] mx-auto">
-        {[['3️⃣','Triplette'],['2️⃣','Doublette'],['1️⃣','T-à-T'],['⚡','Enduro'],['🎯','Autre']].map(([icon,label]) => (
-          <div key={label as string} className="flex-shrink-0 flex items-center gap-1 text-[9px] text-white/25">
-            <span>{icon}</span><span className="uppercase">{label}</span>
-          </div>
-        ))}
+        {/* Compteur */}
+        <div className="px-4 pb-1.5">
+          <span className="text-white/25 text-[10px]">{filteredEvents.length} événements</span>
+        </div>
       </div>
 
       {view === 'month'
-        ? <MonthView events={filteredEvents} onVideoSelect={onVideoSelect}/>
+        ? <MonthView events={filteredEvents} onVideoSelect={onVideoSelect} forcedMonth={filters.month}/>
         : <ListView  events={filteredEvents} onVideoSelect={onVideoSelect}/>
       }
 
