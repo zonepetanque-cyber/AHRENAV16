@@ -402,49 +402,59 @@ const MonthGrid = ({
   );
 };
 
-// ── MonthView avec carousel fluide ────────────────────────────
+// ── MonthView — scroll-snap natif CSS ─────────────────────────
 const MonthView = ({ events, onVideoSelect, forcedMonth }: {
   events: UnifiedEvent[]; onVideoSelect: (v: Video) => void; forcedMonth: number | null;
 }) => {
   const todayDate = today();
-  const minYear  = todayDate.getFullYear();
-  const minMonth = todayDate.getMonth();
+  const minYear   = todayDate.getFullYear();
+  const minMonth  = todayDate.getMonth();
 
   const addMonths = (y: number, m: number, delta: number) => {
     const d = new Date(y, m + delta, 1);
     return { year: d.getFullYear(), month: d.getMonth() };
   };
 
-  const [current, setCurrent] = useState(() => ({
-    year: minYear,
-    month: forcedMonth !== null && forcedMonth >= minMonth ? forcedMonth : minMonth,
-  }));
-  const [selected, setSelected]   = useState<string | null>(null);
-  const [drag, setDrag]           = useState(0);      // px live pendant le touch
-  const [transitioning, setTransitioning] = useState(false);
+  // On garde un index absolu : 0 = mois courant, 1 = suivant, etc.
+  const [idx, setIdx] = useState(0);
+  const [selected, setSelected] = useState<string | null>(null);
+  const scrollRef = React.useRef<HTMLDivElement>(null);
+  const skipScrollEvent = React.useRef(false);
 
-  const containerRef = React.useRef<HTMLDivElement>(null);
-  const txStart  = React.useRef(0);
-  const tyStart  = React.useRef(0);
-  const isHoriz  = React.useRef<boolean | null>(null);
-  const isDrag   = React.useRef(false);
+  const current = addMonths(minYear, minMonth, idx);
+  const isAtMin = idx === 0;
 
-  // mois précédent = null si on est déjà au mois courant (le plus ancien autorisé)
-  const isAtMin = current.year === minYear && current.month === minMonth;
-  const prevM   = isAtMin ? null : addMonths(current.year, current.month, -1);
-  const nextM   = addMonths(current.year, current.month, +1);
-
-  // Sync filtre mois externe (uniquement mois >= aujourd'hui)
+  // Sync filtre mois externe
   useEffect(() => {
     if (forcedMonth !== null) {
-      const y = forcedMonth < minMonth
-        ? minYear + 1
-        : minYear;
-      const safeMonth = forcedMonth < minMonth ? forcedMonth : forcedMonth;
-      setCurrent({ year: y, month: safeMonth });
+      const newIdx = forcedMonth >= minMonth
+        ? forcedMonth - minMonth
+        : (12 - minMonth + forcedMonth);
+      setIdx(newIdx);
       setSelected(null);
     }
   }, [forcedMonth]);
+
+  // Quand idx change via boutons → scroller programmatiquement au bon slide
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    skipScrollEvent.current = true;
+    el.scrollTo({ left: el.offsetWidth * idx, behavior: 'smooth' });
+    setTimeout(() => { skipScrollEvent.current = false; }, 400);
+  }, [idx]);
+
+  // Détecter le scroll-snap natif pour mettre à jour l'idx
+  const onScroll = () => {
+    if (skipScrollEvent.current) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    const newIdx = Math.round(el.scrollLeft / el.offsetWidth);
+    if (newIdx !== idx && newIdx >= 0) {
+      setIdx(newIdx);
+      setSelected(null);
+    }
+  };
 
   const evByDate = useMemo(() => {
     const map = new Map<string, UnifiedEvent[]>();
@@ -461,81 +471,18 @@ const MonthView = ({ events, onVideoSelect, forcedMonth }: {
   }, [events]);
 
   const todayStr = isoDate(todayDate);
-  const W = containerRef.current?.offsetWidth ?? 320;
-
-  // Change de mois avec animation : le strip glisse dans la bonne direction puis reset
-  const goTo = React.useCallback((delta: number) => {
-    if (transitioning) return;
-    if (delta < 0 && isAtMin) return; // pas de retour avant le mois courant
-    setTransitioning(true);
-    // On anime le drag vers la position cible
-    setDrag(delta < 0 ? W : -W);
-    setTimeout(() => {
-      setCurrent(c => addMonths(c.year, c.month, delta));
-      setDrag(0);
-      setSelected(null);
-      // On laisse un tick avant de réactiver pour éviter le flash
-      requestAnimationFrame(() => setTransitioning(false));
-    }, 280);
-  }, [transitioning, isAtMin, W]);
-
-  const onTouchStart = (e: React.TouchEvent) => {
-    if (transitioning) return;
-    txStart.current  = e.touches[0].clientX;
-    tyStart.current  = e.touches[0].clientY;
-    isHoriz.current  = null;
-    isDrag.current   = true;
-  };
-
-  const onTouchMove = (e: React.TouchEvent) => {
-    if (!isDrag.current || transitioning) return;
-    const dx = e.touches[0].clientX - txStart.current;
-    const dy = e.touches[0].clientY - tyStart.current;
-
-    if (isHoriz.current === null) {
-      if (Math.abs(dx) > 6 || Math.abs(dy) > 6)
-        isHoriz.current = Math.abs(dx) > Math.abs(dy);
-      return;
-    }
-    if (!isHoriz.current) return;
-    e.preventDefault();
-
-    // Bloquer le drag vers la gauche si on est au mois min
-    if (isAtMin && dx > 0) return;
-    // Résistance légère aux bords
-    setDrag(dx);
-  };
-
-  const onTouchEnd = () => {
-    if (!isDrag.current || transitioning) return;
-    isDrag.current  = false;
-    isHoriz.current = null;
-    const threshold = W * 0.28;
-    if (drag < -threshold) goTo(+1);
-    else if (drag > threshold && !isAtMin) goTo(-1);
-    else {
-      // Retour élastique au centre
-      setTransitioning(true);
-      setDrag(0);
-      setTimeout(() => setTransitioning(false), 280);
-    }
-  };
-
   const selectedEvents = selected ? (evByDate.get(selected) || []) : [];
 
-  // Les 3 slots : prev (ou vide), current, next
-  const slots = [
-    prevM ?? { year: current.year, month: current.month - 1 < 0 ? 11 : current.month - 1 },
-    current,
-    nextM,
-  ];
+  // Génère N mois à partir du mois courant (24 mois suffisent)
+  const TOTAL_MONTHS = 24;
+  const months = Array.from({ length: TOTAL_MONTHS }, (_, i) => addMonths(minYear, minMonth, i));
 
   return (
     <div className="pb-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-4 px-4">
         <button
-          onClick={() => goTo(-1)}
+          onClick={() => { if (!isAtMin) { setIdx(i => i - 1); setSelected(null); } }}
           disabled={isAtMin}
           className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors
             ${isAtMin ? 'bg-zinc-900 text-white/15 cursor-not-allowed' : 'bg-zinc-800 text-white hover:bg-zinc-700'}`}
@@ -546,55 +493,54 @@ const MonthView = ({ events, onVideoSelect, forcedMonth }: {
           {MONTHS_FR[current.month]} {current.year}
         </h2>
         <button
-          onClick={() => goTo(+1)}
+          onClick={() => { setIdx(i => Math.min(i + 1, TOTAL_MONTHS - 1)); setSelected(null); }}
           className="w-9 h-9 rounded-full bg-zinc-800 flex items-center justify-center text-white hover:bg-zinc-700 transition-colors"
         >
           <ChevronRight size={16}/>
         </button>
       </div>
 
-      {/* Jours de la semaine — fixes */}
+      {/* Jours de la semaine — fixes au-dessus */}
       <div className="grid grid-cols-7 mb-1 px-4">
         {DAYS_FR.map((d, i) => (
           <div key={i} className="text-center text-[10px] font-black text-white/30 uppercase py-1">{d}</div>
         ))}
       </div>
 
-      {/* Carousel */}
+      {/* Scroll-snap container */}
       <div
-        ref={containerRef}
-        className="overflow-hidden px-4 select-none"
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
-        style={{ touchAction: 'pan-y' }}
+        ref={scrollRef}
+        onScroll={onScroll}
+        className="overflow-x-auto"
+        style={{
+          display: 'flex',
+          scrollSnapType: 'x mandatory',
+          WebkitOverflowScrolling: 'touch',
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none',
+          overflowY: 'hidden',
+        }}
       >
-        <div
-          className="flex"
-          style={{
-            width: `${W * 3}px`,
-            // Le slot central (index 1) doit être visible → translateX = -W + drag
-            transform: `translateX(${-W + drag}px)`,
-            transition: isDrag.current ? 'none' : 'transform 0.28s cubic-bezier(0.4, 0, 0.2, 1)',
-            willChange: 'transform',
-          }}
-        >
-          {slots.map((m, idx) => (
-            <div key={idx} style={{ width: `${W}px`, flexShrink: 0 }}>
-              {/* N'affiche pas le slot précédent si on est au mois minimum */}
-              {idx === 0 && isAtMin ? <div/> : (
-                <MonthGrid
-                  year={m.year} month={m.month}
-                  evByDate={evByDate} todayStr={todayStr}
-                  selected={selected} onSelectDate={setSelected}
-                />
-              )}
-            </div>
-          ))}
-        </div>
+        {months.map((m, i) => (
+          <div
+            key={i}
+            style={{
+              minWidth: '100%',
+              scrollSnapAlign: 'start',
+              padding: '0 16px',
+              boxSizing: 'border-box',
+            }}
+          >
+            <MonthGrid
+              year={m.year} month={m.month}
+              evByDate={evByDate} todayStr={todayStr}
+              selected={selected} onSelectDate={setSelected}
+            />
+          </div>
+        ))}
       </div>
 
-      {/* Événements */}
+      {/* Événements du jour sélectionné */}
       {selected && selectedEvents.length > 0 && (
         <div className="mt-5 px-4">
           <p className="text-white/50 text-xs font-bold uppercase tracking-wider mb-3">
