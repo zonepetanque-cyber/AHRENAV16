@@ -442,22 +442,24 @@ const MonthView = ({ events, onVideoSelect, forcedMonth, onMonthChange }: {
 
   const [idx, setIdx]       = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
-  const scrollRef  = React.useRef<HTMLDivElement>(null);
-  const isScrolling = React.useRef(false); // true pendant un scrollTo programmatique
+  const scrollRef   = React.useRef<HTMLDivElement>(null);
+  const isScrolling = React.useRef(false);
+  const internalNav = React.useRef(false); // true quand le changement vient des flèches internes
 
-  const current  = addMonths(minYear, minMonth, idx);
-  const isAtMin  = idx === 0;
-  const isAtMax  = idx >= maxIdx;
+  const current = addMonths(minYear, minMonth, idx);
+  const isAtMin = idx === 0;
+  const isAtMax = idx >= maxIdx;
 
-  // Sync filtre mois externe
+  // Sync filtre mois externe — ignoré si c'est nous qui venons de changer
   useEffect(() => {
+    if (internalNav.current) { internalNav.current = false; return; }
     if (forcedMonth !== null) {
       const newIdx = (forcedMonth.year - minYear) * 12 + (forcedMonth.month - minMonth);
       const clamped = Math.max(0, Math.min(newIdx, maxIdx));
       setIdx(clamped);
       setSelected(null);
     }
-  }, [forcedMonth, maxIdx]);
+  }, [forcedMonth]);
 
   // Scroller vers idx sans déclencher onScroll en retour
   useEffect(() => {
@@ -490,6 +492,7 @@ const MonthView = ({ events, onVideoSelect, forcedMonth, onMonthChange }: {
         } else {
           isScrolling.current = false;
         }
+        internalNav.current = true;
         setIdx(clamped);
         setSelected(null);
         onMonthChange?.(addMonths(minYear, minMonth, clamped));
@@ -509,10 +512,10 @@ const MonthView = ({ events, onVideoSelect, forcedMonth, onMonthChange }: {
           onClick={() => {
             if (!isAtMin) {
               const newIdx = idx - 1;
+              internalNav.current = true;
               setIdx(newIdx);
               setSelected(null);
-              const m = addMonths(minYear, minMonth, newIdx);
-              onMonthChange?.(m);
+              onMonthChange?.(addMonths(minYear, minMonth, newIdx));
             }
           }}
           disabled={isAtMin}
@@ -528,10 +531,10 @@ const MonthView = ({ events, onVideoSelect, forcedMonth, onMonthChange }: {
           onClick={() => {
             if (!isAtMax) {
               const newIdx = idx + 1;
+              internalNav.current = true;
               setIdx(newIdx);
               setSelected(null);
-              const m = addMonths(minYear, minMonth, newIdx);
-              onMonthChange?.(m);
+              onMonthChange?.(addMonths(minYear, minMonth, newIdx));
             }
           }}
           disabled={isAtMax}
