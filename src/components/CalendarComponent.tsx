@@ -368,7 +368,7 @@ const MonthGrid = ({
   const totalDays = new Date(year, month + 1, 0).getDate();
   const startDow  = (new Date(year, month, 1).getDay() + 6) % 7;
   return (
-    <div className="grid grid-cols-7 gap-y-1" style={{ width: '100%' }}>
+    <div className="grid grid-cols-7 gap-y-1">
       {Array.from({ length: startDow }).map((_, i) => <div key={`e-${i}`} />)}
       {Array.from({ length: totalDays }).map((_, i) => {
         const day = i + 1;
@@ -406,20 +406,26 @@ const MonthGrid = ({
 const MonthView = ({ events, onVideoSelect, forcedMonth }: {
   events: UnifiedEvent[]; onVideoSelect: (v: Video) => void; forcedMonth: number | null;
 }) => {
-  const [current, setCurrent] = useState(() => {
-    const m = forcedMonth !== null ? forcedMonth : today().getMonth();
-    return { year: today().getFullYear(), month: m };
-  });
+  const addMonths = (y: number, m: number, delta: number) => {
+    const d = new Date(y, m + delta, 1);
+    return { year: d.getFullYear(), month: d.getMonth() };
+  };
+
+  const [current, setCurrent] = useState(() => ({
+    year: today().getFullYear(),
+    month: forcedMonth !== null ? forcedMonth : today().getMonth(),
+  }));
   const [selected, setSelected] = useState<string | null>(null);
 
-  // drag state
+  // Index du slide central dans le tableau de 3
+  // On garde toujours [prev, current, next] et on repositionne instantanément après transition
   const containerRef = React.useRef<HTMLDivElement>(null);
-  const dragX = React.useRef(0);
-  const isDragging = React.useRef(false);
-  const isHorizontal = React.useRef<boolean | null>(null);
-  const startX = React.useRef(0);
-  const startY = React.useRef(0);
-  const [offset, setOffset] = useState(0); // px suivi en temps réel
+  const [slideOffset, setSlideOffset] = useState(0); // px de drag live
+  const [animating, setAnimating] = useState(false);
+  const touchStartX = React.useRef(0);
+  const touchStartY = React.useRef(0);
+  const isHoriz = React.useRef<boolean | null>(null);
+  const dragging = React.useRef(false);
 
   // Sync filtre mois externe
   useEffect(() => {
@@ -428,15 +434,6 @@ const MonthView = ({ events, onVideoSelect, forcedMonth }: {
       setSelected(null);
     }
   }, [forcedMonth]);
-
-  const addMonths = (y: number, m: number, delta: number) => {
-    const d = new Date(y, m + delta, 1);
-    return { year: d.getFullYear(), month: d.getMonth() };
-  };
-
-  const prev = current;
-  const prevM = addMonths(current.year, current.month, -1);
-  const nextM = addMonths(current.year, current.month, +1);
 
   const evByDate = useMemo(() => {
     const map = new Map<string, UnifiedEvent[]>();
@@ -453,112 +450,116 @@ const MonthView = ({ events, onVideoSelect, forcedMonth }: {
   }, [events]);
 
   const todayStr = isoDate(today());
-  const selectedEvents = selected ? (evByDate.get(selected) || []) : [];
+  const W = containerRef.current?.offsetWidth ?? 0;
 
-  // Touch handlers
+  const prevM = addMonths(current.year, current.month, -1);
+  const nextM = addMonths(current.year, current.month, +1);
+
+  const goTo = (delta: number) => {
+    if (animating) return;
+    const target = delta < 0 ? -W : W; // vers la droite = mois précédent, vers la gauche = mois suivant
+    setAnimating(true);
+    setSlideOffset(-target); // le strip se déplace dans le sens opposé au doigt
+    setTimeout(() => {
+      setCurrent(c => addMonths(c.year, c.month, delta));
+      setSlideOffset(0);
+      setAnimating(false);
+      setSelected(null);
+    }, 300);
+  };
+
   const onTouchStart = (e: React.TouchEvent) => {
-    startX.current = e.touches[0].clientX;
-    startY.current = e.touches[0].clientY;
-    isDragging.current = true;
-    isHorizontal.current = null;
-    dragX.current = 0;
-    setOffset(0);
+    if (animating) return;
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+    isHoriz.current = null;
+    dragging.current = true;
   };
 
   const onTouchMove = (e: React.TouchEvent) => {
-    if (!isDragging.current) return;
-    const dx = e.touches[0].clientX - startX.current;
-    const dy = e.touches[0].clientY - startY.current;
+    if (!dragging.current || animating) return;
+    const dx = e.touches[0].clientX - touchStartX.current;
+    const dy = e.touches[0].clientY - touchStartY.current;
 
-    if (isHorizontal.current === null) {
-      if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
-        isHorizontal.current = Math.abs(dx) > Math.abs(dy);
+    if (isHoriz.current === null) {
+      if (Math.abs(dx) > 6 || Math.abs(dy) > 6) {
+        isHoriz.current = Math.abs(dx) > Math.abs(dy);
       }
       return;
     }
-
-    if (!isHorizontal.current) return;
-    e.preventDefault(); // bloque le scroll vertical pendant swipe horizontal
-    dragX.current = dx;
-    setOffset(dx);
+    if (!isHoriz.current) return;
+    e.preventDefault();
+    setSlideOffset(dx);
   };
 
   const onTouchEnd = () => {
-    if (!isDragging.current) return;
-    isDragging.current = false;
-    const threshold = (containerRef.current?.offsetWidth || 300) * 0.3;
-
-    if (dragX.current < -threshold) {
-      setCurrent(addMonths(current.year, current.month, +1));
-      setSelected(null);
-    } else if (dragX.current > threshold) {
-      setCurrent(addMonths(current.year, current.month, -1));
-      setSelected(null);
-    }
-    setOffset(0);
-    isHorizontal.current = null;
-    dragX.current = 0;
+    if (!dragging.current || animating) return;
+    dragging.current = false;
+    const threshold = W * 0.25;
+    if (slideOffset < -threshold) goTo(+1);       // swipe gauche → mois suivant
+    else if (slideOffset > threshold) goTo(-1);   // swipe droite → mois précédent
+    else { setAnimating(true); setSlideOffset(0); setTimeout(() => setAnimating(false), 300); }
+    isHoriz.current = null;
   };
 
-  const goNext = () => { setCurrent(addMonths(current.year, current.month, +1)); setSelected(null); };
-  const goPrev = () => { setCurrent(addMonths(current.year, current.month, -1)); setSelected(null); };
+  // Le strip de 3 mois : translateX de base = 0 (prev est à gauche hors écran, current centré, next à droite hors écran)
+  // On décale de slideOffset pendant le drag
+  const stripTranslate = slideOffset;
 
-  // Calcul du translateX du carousel (mois central = index 1 sur 3)
-  const W = containerRef.current?.offsetWidth || 0;
-  // -W = mois précédent, 0 = mois courant, +W = mois suivant
-  const translateX = -W + offset;
+  const selectedEvents = selected ? (evByDate.get(selected) || []) : [];
 
   return (
     <div className="pb-6">
-      {/* Header mois */}
+      {/* Header */}
       <div className="flex items-center justify-between mb-4 px-4">
-        <button onClick={goPrev} className="w-9 h-9 rounded-full bg-zinc-800 flex items-center justify-center text-white hover:bg-zinc-700 transition-colors">
+        <button onClick={() => goTo(-1)} className="w-9 h-9 rounded-full bg-zinc-800 flex items-center justify-center text-white hover:bg-zinc-700 transition-colors">
           <ChevronLeft size={16}/>
         </button>
         <h2 className="text-white font-black text-lg uppercase tracking-wide">
           {MONTHS_FR[current.month]} {current.year}
         </h2>
-        <button onClick={goNext} className="w-9 h-9 rounded-full bg-zinc-800 flex items-center justify-center text-white hover:bg-zinc-700 transition-colors">
+        <button onClick={() => goTo(+1)} className="w-9 h-9 rounded-full bg-zinc-800 flex items-center justify-center text-white hover:bg-zinc-700 transition-colors">
           <ChevronRight size={16}/>
         </button>
       </div>
 
-      {/* Jours de la semaine (fixes) */}
+      {/* Jours fixes */}
       <div className="grid grid-cols-7 mb-1 px-4">
         {DAYS_FR.map((d, i) => (
           <div key={i} className="text-center text-[10px] font-black text-white/30 uppercase py-1">{d}</div>
         ))}
       </div>
 
-      {/* Carousel */}
+      {/* Carousel — overflow caché */}
       <div
         ref={containerRef}
-        className="overflow-hidden px-4"
+        className="overflow-hidden px-4 select-none"
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
         style={{ touchAction: 'pan-y' }}
       >
+        {/* Strip 3× largeur */}
         <div
-          className="flex select-none"
+          className="flex"
           style={{
-            transform: `translateX(${translateX}px)`,
-            transition: offset === 0 ? 'transform 0.3s cubic-bezier(0.25,0.46,0.45,0.94)' : 'none',
             width: W ? `${W * 3}px` : '300%',
+            transform: `translateX(calc(-${W}px + ${stripTranslate}px))`,
+            transition: animating || slideOffset === 0 && !dragging.current
+              ? 'transform 0.28s cubic-bezier(0.4,0,0.2,1)'
+              : 'none',
+            willChange: 'transform',
           }}
         >
-          {/* Mois précédent */}
-          <div style={{ width: W || '33.333%', flexShrink: 0 }}>
-            <MonthGrid year={prevM.year} month={prevM.month} evByDate={evByDate} todayStr={todayStr} selected={selected} onSelectDate={setSelected}/>
-          </div>
-          {/* Mois courant */}
-          <div style={{ width: W || '33.333%', flexShrink: 0 }}>
-            <MonthGrid year={current.year} month={current.month} evByDate={evByDate} todayStr={todayStr} selected={selected} onSelectDate={setSelected}/>
-          </div>
-          {/* Mois suivant */}
-          <div style={{ width: W || '33.333%', flexShrink: 0 }}>
-            <MonthGrid year={nextM.year} month={nextM.month} evByDate={evByDate} todayStr={todayStr} selected={selected} onSelectDate={setSelected}/>
-          </div>
+          {[prevM, current, nextM].map((m, idx) => (
+            <div key={idx} style={{ width: W || '33.333%', flexShrink: 0 }}>
+              <MonthGrid
+                year={m.year} month={m.month}
+                evByDate={evByDate} todayStr={todayStr}
+                selected={selected} onSelectDate={setSelected}
+              />
+            </div>
+          ))}
         </div>
       </div>
 
