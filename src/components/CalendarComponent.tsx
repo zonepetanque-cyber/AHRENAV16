@@ -55,16 +55,13 @@ const DEPT_LINKS: Record<string, { facebook: string; site: string; code: string 
 
 // ── Départements disponibles pour l'accordéon ─────────────────
 const DEPT_OPTIONS: { key: EventSource; label: string; color: string }[] = [
-  { key: 'allier',  label: 'Allier (03)',        color: '#10b981' },
+  { key: 'ain',     label: 'Ain (01)',            color: '#8b5cf6' },
+  { key: 'aisne',   label: 'Aisne (02)',          color: '#06b6d4' },
+  { key: 'allier',  label: 'Allier (03)',         color: '#10b981' },
   { key: 'ahp',     label: 'AHP (04)',            color: '#84cc16' },
   { key: 'am',      label: 'Alpes-Mar. (06)',     color: '#0066CC' },
   { key: 'ardeche', label: 'Ardèche (07)',        color: '#f97316' },
-  { key: 'ain',     label: 'Ain (01)',             color: '#8b5cf6' },
-  { key: 'aisne',   label: 'Aisne (02)',           color: '#06b6d4' },
-  { key: 'nievre',  label: 'Nièvre (58)',          color: '#f97316' },
-  { key: 'regional',label: 'Régionaux',            color: '#f59e0b' },
-  { key: 'national',label: 'Nationaux FFPJP',      color: '#3b82f6' },
-  { key: 'live',    label: 'Directs YouTube',      color: '#dc2626' },
+  { key: 'nievre',  label: 'Nièvre (58)',         color: '#ea580c' },
 ];
 
 // ── Type unifié ───────────────────────────────────────────────
