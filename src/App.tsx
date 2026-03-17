@@ -41,7 +41,7 @@ import AdminDashboard from './components/AdminDashboard';
 
 const Header = ({ onProfileClick, onSearchClick }: { onProfileClick: () => void, onSearchClick: () => void }) => (
   <header className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-b from-black/95 via-black/50 to-transparent">
-    <div className="mx-auto max-w-[520px] px-6 py-4 flex items-center justify-between">
+    <div className="mx-auto max-w-[1400px] px-6 py-4 flex items-center justify-between">
     <div className="flex-none">
       <img 
         src="https://cdn.shopify.com/s/files/1/0915/3760/4942/files/Logo_AHRENA.png?v=1773386123" 
@@ -64,7 +64,7 @@ const Header = ({ onProfileClick, onSearchClick }: { onProfileClick: () => void,
 
 const Navbar = ({ activeTab, onTabChange }: { activeTab: string, onTabChange: (tab: string) => void }) => (
   <nav className="fixed bottom-0 left-0 right-0 z-50 bg-zinc-950/80">
-    <div className="mx-auto max-w-[520px] bg-black/90 backdrop-blur-md border-t border-white/10 px-4 py-2 flex justify-around items-center">
+    <div className="mx-auto max-w-[1400px] bg-black/90 backdrop-blur-md border-t border-white/10 px-4 py-2 flex justify-around items-center md:justify-start md:gap-2 md:px-8">
     <NavItem 
       icon={<Home size={24} />} 
       label="Accueil" 
@@ -102,10 +102,10 @@ const Navbar = ({ activeTab, onTabChange }: { activeTab: string, onTabChange: (t
 const NavItem = ({ icon, label, active = false, onClick }: { icon: React.ReactNode, label: string, active?: boolean, onClick: () => void }) => (
   <button 
     onClick={onClick}
-    className={`flex flex-col items-center gap-1 transition-colors ${active ? 'text-white' : 'text-white/40 hover:text-white/70'}`}
+    className={`flex flex-col items-center gap-1 transition-colors px-2 md:flex-row md:gap-2 md:px-4 md:py-2 md:rounded-xl ${active ? 'text-white md:bg-white/10' : 'text-white/40 hover:text-white/70 md:hover:bg-white/5'}`}
   >
     {icon}
-    <span className="text-[10px] uppercase tracking-wider font-medium">{label}</span>
+    <span className="text-[10px] uppercase tracking-wider font-medium md:text-[11px]">{label}</span>
   </button>
 );
 
@@ -378,7 +378,7 @@ const VideoCarousel = ({ title, videos, onVideoSelect, large = false, channelUrl
         {videos.map((video) => (
           <div 
             key={video.id} 
-            className={`flex-none snap-start group cursor-pointer ${large ? 'w-72 sm:w-[175px]' : 'w-44 sm:w-[120px]'}`}
+            className={`flex-none snap-start group cursor-pointer ${large ? 'w-72 sm:w-[300px] md:w-[calc((100vw-6rem)/4.5)]' : 'w-44 sm:w-[160px] md:w-[calc((100vw-6rem)/4.5)]'}`}
             onClick={() => onVideoSelect(video)}
           >
             <div className={`relative aspect-video rounded-md overflow-hidden bg-zinc-900 mb-2 border border-white/5 group-hover:border-white/20 transition-all ${large ? 'shadow-lg shadow-red-900/10' : ''}`}>
@@ -816,7 +816,7 @@ export default function App() {
               onClubClick={() => setActiveTab('club')}
             />
 
-            <main className="relative z-10 -mt-12">
+            <main className="relative z-10 -mt-12 md:max-w-[1400px] md:mx-auto">
               {/* ── Carrousel LIVES EN COURS ── */}
               {loading ? (
                 <Skeleton />
@@ -944,11 +944,9 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-black font-sans selection:bg-white selection:text-black md:flex md:justify-center">
-      {/* Bandes latérales grises sur desktop */}
-      <div className="hidden md:block fixed inset-y-0 left-0 right-0 bg-zinc-950 -z-10" />
+    <div className="min-h-screen bg-black font-sans selection:bg-white selection:text-black">
       <div
-        className="relative w-full md:max-w-[520px] bg-black text-white pb-24 md:shadow-2xl md:shadow-black"
+        className="relative w-full bg-black text-white pb-24"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -969,7 +967,9 @@ export default function App() {
         </div>
       )}
 
-      {renderContent()}
+      <div className={activeTab !== 'live' ? 'md:max-w-[1400px] md:mx-auto' : ''}>
+        {renderContent()}
+      </div>
 
       <Navbar activeTab={activeTab} onTabChange={setActiveTab} />
       
