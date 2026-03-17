@@ -91,7 +91,7 @@ interface AdvancedFilters {
   joueurs: Set<string>;
   categories: Set<string>;
   sources: Set<string>;
-  month: number | null; // 0-11 ou null = tous
+  month: { month: number; year: number } | null; // null = tous
 }
 
 const FORMATIONS = ['Tête-à-Tête', 'Doublette', 'Triplette', 'Doublette mixte', 'Triplette mixte', 'En équipe (CDC, CRC, CNC)'];
@@ -158,8 +158,8 @@ function applyFilters(events: UnifiedEvent[], f: AdvancedFilters): UnifiedEvent[
 
     // Filtre mois
     if (f.month !== null) {
-      const m = new Date(ev.date).getMonth();
-      if (m !== f.month) return false;
+      const d = new Date(ev.date);
+      if (d.getMonth() !== f.month.month || d.getFullYear() !== f.month.year) return false;
     }
 
     if (f.formations.size > 0) {
@@ -404,7 +404,7 @@ const MonthGrid = ({
 
 // ── MonthView — scroll-snap CSS natif, sans saut ──────────────
 const MonthView = ({ events, onVideoSelect, forcedMonth }: {
-  events: UnifiedEvent[]; onVideoSelect: (v: Video) => void; forcedMonth: number | null;
+  events: UnifiedEvent[]; onVideoSelect: (v: Video) => void; forcedMonth: { month: number; year: number } | null;
 }) => {
   const todayDate = today();
   const minYear   = todayDate.getFullYear();
@@ -452,10 +452,8 @@ const MonthView = ({ events, onVideoSelect, forcedMonth }: {
   // Sync filtre mois externe
   useEffect(() => {
     if (forcedMonth !== null) {
-      const newIdx = forcedMonth >= minMonth
-        ? forcedMonth - minMonth
-        : (12 - minMonth + forcedMonth);
-      const clamped = Math.min(newIdx, maxIdx);
+      const newIdx = (forcedMonth.year - minYear) * 12 + (forcedMonth.month - minMonth);
+      const clamped = Math.max(0, Math.min(newIdx, maxIdx));
       setIdx(clamped);
       setSelected(null);
     }
@@ -670,18 +668,20 @@ const DeptAccordion = ({ sources, onChange }: {
 };
 
 // ── MonthStrip — filtre par mois ──────────────────────────────
-const MonthStrip = ({ selectedMonth, onChange }: {
-  selectedMonth: number | null;
-  onChange: (m: number | null) => void;
+const MonthStrip = ({ selectedMonth, onChange, availableMonths }: {
+  selectedMonth: { month: number; year: number } | null;
+  onChange: (m: { month: number; year: number } | null) => void;
+  availableMonths: { month: number; year: number }[];
 }) => {
-  const currentMonth = today().getMonth();
+  const now = today();
+  const currentMonth = now.getMonth();
+  const currentYear  = now.getFullYear();
 
-  // Générer 14 mois à partir du mois courant
-  const months = Array.from({ length: 14 }, (_, i) => {
-    const idx = (currentMonth + i) % 12;
-    const year = today().getFullYear() + Math.floor((currentMonth + i) / 12);
-    return { idx, year, label: MONTHS_SHORT[idx] };
-  });
+  // Utiliser uniquement les mois qui ont des événements
+  const months = availableMonths.map(m => ({
+    ...m,
+    label: MONTHS_SHORT[m.month],
+  }));
 
   return (
     <div className="flex gap-1.5 overflow-x-auto no-scrollbar px-4 pb-2 pt-1">
@@ -696,13 +696,13 @@ const MonthStrip = ({ selectedMonth, onChange }: {
         Tous
       </button>
 
-      {months.map(({ idx, year, label }) => {
-        const active = selectedMonth === idx;
-        const isCurrent = idx === currentMonth && year === today().getFullYear();
+      {months.map(({ month, year, label }) => {
+        const active = selectedMonth?.month === month && selectedMonth?.year === year;
+        const isCurrent = month === currentMonth && year === currentYear;
         return (
           <button
-            key={`${idx}-${year}`}
-            onClick={() => onChange(active ? null : idx)}
+            key={`${month}-${year}`}
+            onClick={() => onChange(active ? null : { month, year })}
             className={`flex-shrink-0 flex flex-col items-center px-3 py-1 rounded-lg transition-all
               ${active
                 ? 'bg-red-600 text-white'
@@ -865,7 +865,26 @@ const CalendarComponent = ({ videos, onVideoSelect }: { videos: Video[]; onVideo
   ].filter(Boolean).length;
 
   const updateSources = (sources: Set<string>) => setFilters(f => ({ ...f, sources }));
-  const updateMonth   = (month: number | null) => setFilters(f => ({ ...f, month }));
+  const updateMonth   = (month: { month: number; year: number } | null) => setFilters(f => ({ ...f, month }));
+
+  // Mois disponibles (ayant au moins 1 événement), triés, à partir du mois courant
+  const availableMonths = useMemo(() => {
+    const now = new Date();
+    const minY = now.getFullYear();
+    const minM = now.getMonth();
+    const seen = new Set<string>();
+    const result: { month: number; year: number }[] = [];
+    allEvents.forEach(ev => {
+      const d = new Date(ev.date);
+      const y = d.getFullYear();
+      const m = d.getMonth();
+      if (y < minY || (y === minY && m < minM)) return; // ignorer passés
+      const key = `${y}-${m}`;
+      if (!seen.has(key)) { seen.add(key); result.push({ year: y, month: m }); }
+    });
+    result.sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
+    return result;
+  }, [allEvents]);
 
   return (
     <div className="pt-28 pb-4 min-h-screen">
@@ -906,7 +925,7 @@ const CalendarComponent = ({ videos, onVideoSelect }: { videos: Video[]; onVideo
         </div>
 
         {/* Ligne 2 : strip mois */}
-        <MonthStrip selectedMonth={filters.month} onChange={updateMonth}/>
+        <MonthStrip selectedMonth={filters.month} onChange={updateMonth} availableMonths={availableMonths}/>
 
         {/* Tags actifs */}
         {activeAdvanced > 0 && (
