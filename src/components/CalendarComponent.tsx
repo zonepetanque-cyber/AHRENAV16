@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Video } from '../services/youtubeService';
 import { NATIONAUX_2026, National } from '../data/nationaux2026';
 import { CONCOURS_ALLIER_2026, ConcourAllier, DEPT_ALLIER } from '../data/allier2026';
@@ -19,6 +19,7 @@ const formatShort = (d: string) => new Date(d).toLocaleDateString('fr-FR', { day
 const formatFull  = (d: string) => new Date(d).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
 const formatTime  = (d: string) => new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 const isPast = (date: string, dateFin?: string) => new Date((dateFin || date) + 'T23:59:59') < today();
+const isUpcoming = (date: string, dateFin?: string) => !isPast(date, dateFin);
 
 const MONTHS_FR = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
 const DAYS_FR   = ['L','M','M','J','V','S','D'];
@@ -133,7 +134,8 @@ function buildEvents(videos: Video[]): UnifiedEvent[] {
     source: 'regional', format: (c as any).format, categorie: c.categorie, typeEvent: 'RÉGIONAL', raw: c,
   }));
 
-  return events;
+  // Ne retourner que les événements à venir (aujourd'hui inclus)
+  return events.filter(ev => isUpcoming(ev.date, ev.dateFin));
 }
 
 // ── Appliquer filtres ─────────────────────────────────────────
@@ -206,7 +208,7 @@ const EventCard = ({ ev, onVideoSelect }: { ev: UnifiedEvent; onVideoSelect: (v:
   return (
     <div
       className={`rounded-xl border border-white/5 overflow-hidden transition-all
-        ${past ? 'opacity-40' : 'hover:border-white/15'}
+        hover:border-white/15
         ${ev.video ? 'cursor-pointer active:scale-[0.98]' : ''}`}
       style={{ borderLeft: `3px solid ${color}` }}
       onClick={() => ev.video && onVideoSelect(ev.video)}
@@ -322,15 +324,15 @@ const ListView = ({ events, onVideoSelect }: { events: UnifiedEvent[]; onVideoSe
         const isToday = isoDate(today()) === date;
         const past = isPast(date);
         return (
-          <div key={date} className={past ? 'opacity-50' : ''}>
+          <div key={date}>
             <div className="flex items-center gap-3 mb-2.5">
               <div className={`flex-shrink-0 w-11 h-11 rounded-xl flex flex-col items-center justify-center
-                ${isToday ? 'bg-red-600' : past ? 'bg-zinc-800/60' : 'bg-zinc-800'}`}>
+                ${isToday ? 'bg-red-600' : 'bg-zinc-800'}`}>
                 <span className="text-[9px] font-bold text-white/60 uppercase leading-none">{MONTHS_FR[d.getMonth()].slice(0,3)}</span>
                 <span className="text-base font-black text-white leading-none">{d.getDate()}</span>
               </div>
               <div>
-                <p className={`font-black text-xs uppercase tracking-wider ${isToday ? 'text-red-400' : past ? 'text-white/30' : 'text-white/60'}`}>
+                <p className={`font-black text-xs uppercase tracking-wider ${isToday ? 'text-red-400' : 'text-white/60'}`}>
                   {isToday ? "Aujourd'hui" : d.toLocaleDateString('fr-FR', { weekday: 'long' })}
                 </p>
                 <p className="text-white/25 text-[10px]">{evs.length} événement{evs.length > 1 ? 's' : ''}</p>
@@ -553,8 +555,28 @@ const CalendarComponent = ({ videos, onVideoSelect }: { videos: Video[]; onVideo
   const [view, setView]           = useState<'month' | 'list'>('month');
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters]     = useState<AdvancedFilters>(makeDefaultFilters());
+  const [todayKey, setTodayKey]   = useState(isoDate(new Date()));
 
-  const allEvents      = useMemo(() => buildEvents(videos), [videos]);
+  // Recalcul automatique chaque jour à minuit
+  useEffect(() => {
+    const msUntilMidnight = () => {
+      const now = new Date();
+      const midnight = new Date(now);
+      midnight.setHours(24, 0, 0, 0);
+      return midnight.getTime() - now.getTime();
+    };
+    const scheduleRefresh = () => {
+      const t = setTimeout(() => {
+        setTodayKey(isoDate(new Date()));
+        scheduleRefresh();
+      }, msUntilMidnight());
+      return t;
+    };
+    const timer = scheduleRefresh();
+    return () => clearTimeout(timer);
+  }, []);
+
+  const allEvents      = useMemo(() => buildEvents(videos), [videos, todayKey]);
   const filteredEvents = useMemo(() => applyFilters(allEvents, filters), [allEvents, filters]);
 
   const activeCount = [
@@ -567,25 +589,27 @@ const CalendarComponent = ({ videos, onVideoSelect }: { videos: Video[]; onVideo
   return (
     <div className="pt-20 pb-4 min-h-screen">
 
-      {/* Header */}
-      <div className="px-4 mb-3 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-black text-white uppercase italic mb-0.5">Calendrier</h1>
-          <p className="text-white/30 text-xs">{filteredEvents.length} événements · {new Date().getFullYear()}</p>
+      {/* Header — limité en largeur sur desktop */}
+      <div className="px-4 mb-3 max-w-[1400px] mx-auto">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-black text-white uppercase italic mb-0.5">Calendrier</h1>
+            <p className="text-white/30 text-xs">{filteredEvents.length} événements · {new Date().getFullYear()}</p>
+          </div>
+          <button onClick={() => setShowFilters(true)}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border transition-all
+              ${activeCount > 0 ? 'bg-blue-600 border-blue-500 text-white' : 'bg-zinc-900 border-white/10 text-white/60 hover:border-white/30 hover:text-white'}`}>
+            <SlidersHorizontal size={14}/>
+            <span className="text-[11px] font-black uppercase tracking-wide">Filtres</span>
+            {activeCount > 0 && (
+              <span className="bg-white text-blue-600 text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center">{activeCount}</span>
+            )}
+          </button>
         </div>
-        <button onClick={() => setShowFilters(true)}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border transition-all
-            ${activeCount > 0 ? 'bg-blue-600 border-blue-500 text-white' : 'bg-zinc-900 border-white/10 text-white/60 hover:border-white/30 hover:text-white'}`}>
-          <SlidersHorizontal size={14}/>
-          <span className="text-[11px] font-black uppercase tracking-wide">Filtres</span>
-          {activeCount > 0 && (
-            <span className="bg-white text-blue-600 text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center">{activeCount}</span>
-          )}
-        </button>
       </div>
 
       {/* Toggle vue */}
-      <div className="px-4 mb-3">
+      <div className="px-4 mb-3 max-w-[1400px] mx-auto">
         <div className="flex gap-2 bg-zinc-900 p-1 rounded-xl w-fit">
           <button onClick={() => setView('month')}
             className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-black uppercase tracking-wide transition-all
