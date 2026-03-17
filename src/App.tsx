@@ -3,7 +3,7 @@ import {
   Play, 
   Calendar, 
   Users, 
-  MapPin, 
+  Tv,
   Heart, 
   X, 
   Info, 
@@ -22,7 +22,7 @@ import { CHANNELS } from './constants';
 import { fetchAllVideos, Video } from './services/youtubeService';
 import { supabase } from './lib/supabase';
 import { User as SupabaseUser } from '@supabase/supabase-js';
-import MapComponent from './components/MapComponent';
+import ProgrammeComponent from './components/ProgrammeComponent';
 import CalendarComponent from './components/CalendarComponent';
 import ClubComponent from './components/ClubComponent';
 import FavoritesComponent from './components/FavoritesComponent';
@@ -72,6 +72,12 @@ const Navbar = ({ activeTab, onTabChange }: { activeTab: string, onTabChange: (t
       onClick={() => onTabChange('live')}
     />
     <NavItem 
+      icon={<Tv size={24} />} 
+      label="Programme" 
+      active={activeTab === 'programme'} 
+      onClick={() => onTabChange('programme')}
+    />
+    <NavItem 
       icon={<Calendar size={24} />} 
       label="Calendrier" 
       active={activeTab === 'calendar'} 
@@ -82,12 +88,6 @@ const Navbar = ({ activeTab, onTabChange }: { activeTab: string, onTabChange: (t
       label="Le Club" 
       active={activeTab === 'club'} 
       onClick={() => onTabChange('club')}
-    />
-    <NavItem 
-      icon={<MapPin size={24} />} 
-      label="Carte" 
-      active={activeTab === 'map'} 
-      onClick={() => onTabChange('map')}
     />
     <NavItem 
       icon={<Heart size={24} />} 
@@ -918,12 +918,12 @@ export default function App() {
             </main>
           </>
         );
+      case 'programme':
+        return <ProgrammeComponent videos={liveVideos} onVideoSelect={setSelectedVideo} />;
       case 'calendar':
         return <CalendarComponent videos={liveVideos} onVideoSelect={setSelectedVideo} />;
       case 'club':
         return <ClubComponent onTabChange={setActiveTab} />;
-      case 'map':
-        return <MapComponent videos={liveVideos} onVideoSelect={setSelectedVideo} />;
       case 'favorites':
         return <FavoritesComponent onVideoSelect={setSelectedVideo} />;
       case 'admin_disabled':
