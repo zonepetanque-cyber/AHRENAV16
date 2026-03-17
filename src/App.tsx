@@ -58,6 +58,7 @@ const Header = ({ onProfileClick, onSearchClick }: { onProfileClick: () => void,
         <User size={22} />
       </button>
     </div>
+    </div>
   </header>
 );
 
