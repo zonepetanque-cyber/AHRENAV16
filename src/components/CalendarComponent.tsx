@@ -541,7 +541,7 @@ const MonthView = ({ events, allEvents, onVideoSelect, forcedMonth }: {
   };
 
   const todayStr = isoDate(todayDate);
-  const selectedEvents = selected ? (evByDateFiltered.get(selected) || []) : [];
+  const selectedEvents = selected ? (evByDate.get(selected) || []) : [];
   const months = Array.from({ length: maxIdx + 1 }, (_, i) => addMonths(minYear, minMonth, i));
 
   return (
