@@ -53,9 +53,9 @@ const NewsCard = ({ item }: { item: NewsItem }) => {
       rel="noopener noreferrer"
       className="block group"
     >
-      <div className="flex gap-3 p-3 rounded-xl border border-white/5 hover:border-white/15 hover:bg-white/5 transition-all active:scale-[0.98]">
+      <div className="flex gap-3 p-3 md:p-4 rounded-xl border border-white/5 hover:border-white/15 hover:bg-white/5 transition-all active:scale-[0.98]">
         {/* Image ou couleur dept */}
-        <div className="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden bg-zinc-900">
+        <div className="flex-shrink-0 w-16 h-16 md:w-28 md:h-20 rounded-lg overflow-hidden bg-zinc-900">
           {item.image && !imgError ? (
             <img
               src={item.image}
@@ -77,9 +77,9 @@ const NewsCard = ({ item }: { item: NewsItem }) => {
         {/* Contenu */}
         <div className="flex-1 min-w-0">
           {/* Badge département */}
-          <div className="flex items-center gap-1.5 mb-1">
+          <div className="flex items-center gap-1.5 mb-1.5">
             <span
-              className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded"
+              className="text-[9px] md:text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded"
               style={{ background: item.color + '22', color: item.color }}
             >
               {item.code === 'MEDIA' ? '📰 ' : ''}{item.dept}
@@ -90,11 +90,11 @@ const NewsCard = ({ item }: { item: NewsItem }) => {
             </span>
           </div>
 
-          <p className="text-white font-semibold text-[12px] leading-snug line-clamp-2 group-hover:text-white/90 mb-0.5">
+          <p className="text-white font-semibold text-[12px] md:text-sm leading-snug line-clamp-2 group-hover:text-white/90 mb-1">
             {item.title}
           </p>
           {item.excerpt && item.excerpt !== item.title && (
-            <p className="text-white/35 text-[10px] leading-snug line-clamp-2">
+            <p className="text-white/35 text-[10px] md:text-xs leading-snug line-clamp-2 md:line-clamp-3">
               {item.excerpt}
             </p>
           )}
@@ -197,7 +197,7 @@ const NewsComponent = () => {
     <div className="pb-4 min-h-screen">
 
       {/* Filtre par département — sticky sous le header du modal */}
-      <div className="sticky top-[65px] z-40 bg-zinc-950/98 backdrop-blur-md border-b border-white/8">
+      <div className="sticky top-16 z-40 bg-zinc-950/98 backdrop-blur-md border-b border-white/8">
         <div className="max-w-5xl mx-auto px-4 py-2.5 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             {!loading && (
@@ -224,7 +224,7 @@ const NewsComponent = () => {
 
         {/* Filtre par département */}
         {availableDepts.length > 1 && (
-          <div className="max-w-5xl mx-auto flex gap-1.5 overflow-x-auto no-scrollbar px-4 pb-3 pt-1">
+          <div className="max-w-5xl mx-auto flex flex-wrap gap-1.5 px-4 pb-3 pt-1">
             <button
               onClick={() => setFilterCode(null)}
               className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wide transition-all
@@ -236,7 +236,7 @@ const NewsComponent = () => {
               <button
                 key={d.code}
                 onClick={() => setFilterCode(filterCode === d.code ? null : d.code)}
-                className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wide transition-all`}
+                className="flex-shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wide transition-all"
                 style={filterCode === d.code
                   ? { background: d.color, color: '#fff' }
                   : { background: d.color + '20', color: d.color }}
