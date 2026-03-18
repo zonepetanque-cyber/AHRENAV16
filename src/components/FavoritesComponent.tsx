@@ -23,7 +23,7 @@ const FavoritesComponent = ({ onVideoSelect }: { onVideoSelect: (v: Video) => vo
   }
 
   return (
-    <div className="pt-36 pb-12 px-6">
+    <div className="pt-32 pb-12 px-6">
       <h1 className="text-3xl font-black text-white uppercase italic mb-8">Mes Favoris</h1>
       
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">

@@ -91,7 +91,7 @@ const ProgrammeComponent = ({ videos, onVideoSelect }: ProgrammeComponentProps) 
   const sortedDays = Object.keys(grouped).sort();
 
   return (
-    <div className="min-h-screen bg-black text-white pb-28 pt-36">
+    <div className="min-h-screen bg-black text-white pb-28 pt-32">
 
       {/* Header */}
       <div className="px-5 pt-4 pb-2">

@@ -55,7 +55,7 @@ const SOURCE_COLOR: Record<EventSource, string> = {
 const SOURCE_LABEL: Record<EventSource, string> = {
   live: 'Direct', national: 'National', allier: 'Allier (03)',
   nievre: 'Nièvre (58)', ain: 'Ain (01)', aisne: 'Aisne (02)',
-  ahp: 'AHP (04)', am: 'Alpes-Mar. (06)', ardeche: 'Ardèche (07)',
+  ahp: 'Alpes-de-Haute-Provence (04)', am: 'Alpes-Mar. (06)', ardeche: 'Ardèche (07)',
   ariege: 'Ariège (09)', aube: 'Aube (10)', aude: 'Aude (11)', aveyron: 'Aveyron (12)', bdr: 'Bouches-du-Rhône (13)', calvados: 'Calvados (14)', cantal: 'Cantal (15)', charente_maritime: 'Charente-Maritime (17)', cher: 'Cher (18)', correze: 'Corrèze (19)', corse2a: 'Corse-du-Sud (2A)', corse2b: 'Haute-Corse (2B)', cotedor: 'Côte-d\'Or (21)', jeunes: 'Circuit National Jeunes', regional: 'Régionaux',
 };
 
@@ -90,7 +90,7 @@ const DEPT_DATA: { key: EventSource | string; label: string; color: string; last
   { key: 'ain',     label: 'Ain (01)',            color: '#8b5cf6' },
   { key: 'aisne',   label: 'Aisne (02)',          color: '#06b6d4' },
   { key: 'allier',  label: 'Allier (03)',         color: '#10b981' },
-  { key: 'ahp',     label: 'AHP (04)',            color: '#84cc16' },
+  { key: 'ahp',     label: 'Alpes-de-Haute-Provence (04)',            color: '#84cc16' },
   { key: 'hpa',     label: 'Hautes-Alpes (05)',   color: '#6b7280' },
   { key: 'am',      label: 'Alpes-Mar. (06)',     color: '#0066CC' },
   { key: 'ardeche', label: 'Ardèche (07)',        color: '#f97316' },
@@ -1057,11 +1057,15 @@ const DeptAccordion = ({ sources, onChange }: {
                 if (!dept.available) {
                   return (
                     <div key={dept.key}
-                      className="flex items-center gap-4 px-5 py-3.5 opacity-35 cursor-not-allowed">
-                      <div className="w-5 h-5 rounded-md border-2 border-white/15 flex-shrink-0"/>
-                      <div className="w-3 h-3 rounded-full bg-zinc-600 flex-shrink-0"/>
+                      className="relative flex items-center gap-4 px-5 py-3.5 cursor-not-allowed overflow-hidden">
+                      {/* Hachures diagonales sur toute la largeur */}
+                      <div className="absolute inset-0 opacity-[0.07]" style={{
+                        backgroundImage: 'repeating-linear-gradient(45deg, #ffffff 0px, #ffffff 1px, transparent 1px, transparent 8px)',
+                      }}/>
+                      <div className="w-5 h-5 rounded-md border-2 border-white/10 flex-shrink-0 opacity-40"/>
+                      <div className="w-3 h-3 rounded-full flex-shrink-0 opacity-30" style={{ background: dept.color }}/>
                       <span className="text-sm font-bold flex-1 text-white/25 line-through">{dept.label}</span>
-                      <span className="text-[9px] font-black uppercase text-white/20 bg-white/5 px-2 py-0.5 rounded-full border border-white/8">
+                      <span className="text-[9px] font-black uppercase text-white/20 bg-white/5 px-2 py-0.5 rounded-full border border-white/8 flex-shrink-0">
                         Bientôt
                       </span>
                     </div>
@@ -1344,10 +1348,10 @@ const CalendarComponent = ({ videos, onVideoSelect }: { videos: Video[]; onVideo
   }, [allEvents]);
 
   return (
-    <div className="pt-36 pb-4 min-h-screen">
+    <div className="pt-32 pb-4 min-h-screen">
 
       {/* Barre de contrôle sticky */}
-      <div className="sticky top-36 z-40 bg-zinc-950/98 backdrop-blur-md border-b border-white/8">
+      <div className="sticky top-32 z-40 bg-zinc-950/98 backdrop-blur-md border-b border-white/8">
 
         {/* Ligne 1 : vue + dept + filtres */}
         <div className="px-4 py-2.5 flex items-center justify-between gap-2">

@@ -126,7 +126,7 @@ const ClubComponent = ({ onTabChange }: { onTabChange: (tab: string) => void }) 
 
   if (!user) {
     return (
-      <div className="pt-36 pb-12 px-6 max-w-2xl mx-auto">
+      <div className="pt-32 pb-12 px-6 max-w-2xl mx-auto">
         <div className="text-center mb-12">
           <h1 className="text-3xl font-black text-white uppercase italic mb-2">Rejoindre le Club</h1>
           <p className="text-white/40 text-sm">Accédez à l'expérience ultime AHRENA pour seulement 2€/mois.</p>
@@ -167,7 +167,7 @@ const ClubComponent = ({ onTabChange }: { onTabChange: (tab: string) => void }) 
   }
 
   return (
-    <div className="pt-36 pb-12 px-6 max-w-2xl mx-auto">
+    <div className="pt-32 pb-12 px-6 max-w-2xl mx-auto">
       <div className="flex items-center justify-between mb-12">
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 bg-zinc-800 rounded-full flex items-center justify-center text-white border border-white/10">
