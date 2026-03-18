@@ -15,7 +15,8 @@ import {
   Maximize2,
   ChevronDown,
   Home,
-  PictureInPicture2
+  PictureInPicture2,
+  Newspaper
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { CHANNELS } from './constants';
@@ -27,6 +28,7 @@ import CalendarComponent from './components/CalendarComponent';
 import ClubComponent from './components/ClubComponent';
 import FavoritesComponent from './components/FavoritesComponent';
 import ChatComponent from './components/ChatComponent';
+import NewsComponent from './components/NewsComponent';
 
 import MultiplexView from './components/MultiplexView';
 import SplashScreen from './components/SplashScreen';
@@ -39,7 +41,7 @@ import AdminDashboard from './components/AdminDashboard';
 
 // --- Components ---
 
-const Header = ({ onProfileClick, onSearchClick }: { onProfileClick: () => void, onSearchClick: () => void }) => (
+const Header = ({ onProfileClick, onSearchClick, onNewsClick }: { onProfileClick: () => void, onSearchClick: () => void, onNewsClick: () => void }) => (
   <header className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-b from-black/95 via-black/50 to-transparent">
     <div className="mx-auto max-w-[1400px] px-6 py-4 flex items-center justify-between">
     <div className="flex-none">
@@ -51,6 +53,9 @@ const Header = ({ onProfileClick, onSearchClick }: { onProfileClick: () => void,
       />
     </div>
     <div className="flex items-center gap-4">
+      <button onClick={onNewsClick} className="p-2 text-white/70 hover:text-white transition-colors">
+        <Newspaper size={22} />
+      </button>
       <button onClick={onSearchClick} className="p-2 text-white/70 hover:text-white transition-colors">
         <Search size={22} />
       </button>
@@ -432,7 +437,7 @@ const VideoCarousel = ({ title, videos, onVideoSelect, large = false, channelUrl
               )}
               <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors" />
             </div>
-            <h3 className={`text-white/90 font-medium leading-snug line-clamp-2 group-hover:text-white transition-colors ${large ? 'text-sm' : 'text-[11px]'}`}>
+            <h3 className={`text-white/90 font-medium leading-snug line-clamp-2 group-hover:text-white transition-colors ${large ? 'text-sm' : 'text-[11px]'}`} style={{minHeight: '2.5em'}}>
               {video.title}
             </h3>
             {large && video.channelName && (
@@ -686,6 +691,44 @@ const Skeleton = () => (
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [activeTab, setActiveTab] = useState('live');
+  const [showNews, setShowNews] = useState(false);
+  const [showNewsPopup, setShowNewsPopup] = useState(false);
+  const [popupNews, setPopupNews] = useState<any[]>([]);
+
+  // Vérifie si le popup doit s'afficher aujourd'hui
+  useEffect(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const lastSeen = localStorage.getItem('ahrena_news_popup_date');
+    if (lastSeen === today) return; // Déjà vu aujourd'hui
+
+    // Attendre la fin du splash screen (3s) + 1s de délai
+    const timer = setTimeout(async () => {
+      try {
+        // Essayer d'abord le cache local
+        const cached = localStorage.getItem('ahrena_news_cache');
+        let items = [];
+        if (cached) {
+          const { data } = JSON.parse(cached);
+          items = (data.items || []).slice(0, 3);
+        } else {
+          // Fetch silencieux en arrière-plan
+          const res = await fetch('/api/news');
+          if (res.ok) {
+            const data = await res.json();
+            items = (data.items || []).slice(0, 3);
+            localStorage.setItem('ahrena_news_cache', JSON.stringify({ data, timestamp: Date.now() }));
+          }
+        }
+        if (items.length > 0) {
+          setPopupNews(items);
+          setShowNewsPopup(true);
+          localStorage.setItem('ahrena_news_popup_date', today);
+        }
+      } catch {}
+    }, 4000);
+
+    return () => clearTimeout(timer);
+  }, []);
   const [liveVideos, setLiveVideos] = useState<Video[]>([]);
   const [channelVideos, setChannelVideos] = useState<{ [key: string]: Video[] }>({});
   const [blacklistedIds, setBlacklistedIds] = useState<Set<string>>(new Set());
@@ -731,14 +774,28 @@ export default function App() {
 
     // Check auth state
     try {
+      // Récupère la session courante (gère aussi le retour OAuth via hash #access_token)
       supabase.auth.getSession().then(({ data: { session } }) => {
         setUser(session?.user ?? null);
+
+        // Nettoie le hash OAuth de l'URL après que Supabase l'a traité
+        // Évite que Chrome garde une URL avec #access_token visible
+        if (window.location.hash && window.location.hash.includes('access_token')) {
+          window.history.replaceState(null, '', window.location.pathname);
+        }
       }).catch(err => {
         console.error("Supabase session error:", err);
       });
 
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
         setUser(session?.user ?? null);
+
+        // Au SIGNED_IN via OAuth, nettoie l'URL et ferme le modal auth
+        if (event === 'SIGNED_IN') {
+          if (window.location.hash) {
+            window.history.replaceState(null, '', window.location.pathname);
+          }
+        }
       });
 
       return () => subscription.unsubscribe();
@@ -946,7 +1003,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-black font-sans selection:bg-white selection:text-black">
       <div
-        className="relative w-full bg-black text-white pb-24"
+        className="relative w-full bg-black text-white pb-36"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -957,7 +1014,7 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      <Header onProfileClick={() => setActiveTab('club')} onSearchClick={() => {}} />
+      <Header onProfileClick={() => setActiveTab('club')} onSearchClick={() => {}} onNewsClick={() => setShowNews(true)} />
       
       {refreshing && (
         <div className="fixed top-20 left-0 right-0 z-[60] flex justify-center">
@@ -1068,6 +1125,34 @@ export default function App() {
         }}
       />
 
+      {/* Modal Actualités — déclenché par la loupe */}
+      <AnimatePresence>
+        {showNews && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-sm overflow-y-auto"
+          >
+            {/* Header du modal */}
+            <div className="sticky top-0 z-10 bg-black/90 backdrop-blur-md border-b border-white/10 px-4 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Newspaper size={18} className="text-white/60" />
+                <h2 className="text-white font-black text-sm uppercase tracking-[0.2em]">Actualités des comités</h2>
+              </div>
+              <button
+                onClick={() => setShowNews(false)}
+                className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
+              >
+                <X size={18} className="text-white" />
+              </button>
+            </div>
+
+            <NewsComponent />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {showMultiplex && (
         <MultiplexView 
           videos={multiplexVideos}
@@ -1110,7 +1195,73 @@ export default function App() {
           scrollbar-width: none;
         }
       `}} />
-      
+
+      {/* Pop-up quotidien actualités */}
+      <AnimatePresence>
+        {showNewsPopup && (
+          <motion.div
+            initial={{ opacity: 0, y: 80 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 80 }}
+            transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+            className="fixed bottom-24 left-4 right-4 z-[90] md:max-w-sm md:left-auto md:right-6"
+          >
+            <div className="bg-zinc-900 border border-white/15 rounded-2xl shadow-2xl overflow-hidden">
+              <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-white/8">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                  <span className="text-white font-black text-xs uppercase tracking-[0.15em]">
+                    Actus du jour
+                  </span>
+                </div>
+                <button
+                  onClick={() => setShowNewsPopup(false)}
+                  className="p-1 text-white/30 hover:text-white/70 transition-colors"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+
+              <div className="divide-y divide-white/5">
+                {popupNews.map((item: any, i: number) => (
+                  <a
+                    key={i}
+                    href={item.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-start gap-3 px-4 py-2.5 hover:bg-white/5 transition-colors"
+                    onClick={() => setShowNewsPopup(false)}
+                  >
+                    <div
+                      className="flex-shrink-0 w-1.5 h-1.5 rounded-full mt-1.5"
+                      style={{ background: item.color }}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white/80 text-[11px] font-semibold leading-snug line-clamp-2">
+                        {item.title}
+                      </p>
+                      <p className="text-white/30 text-[9px] mt-0.5 uppercase tracking-wide">
+                        {item.dept}
+                      </p>
+                    </div>
+                  </a>
+                ))}
+              </div>
+
+              <div className="px-4 py-3 border-t border-white/8">
+                <button
+                  onClick={() => { setShowNewsPopup(false); setShowNews(true); }}
+                  className="w-full flex items-center justify-center gap-2 bg-white/10 hover:bg-white/15 text-white font-black text-[11px] uppercase tracking-wider py-2.5 rounded-xl transition-colors"
+                >
+                  <Newspaper size={12} />
+                  Voir toutes les actualités
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <InstallPWA />
       </div>
     </div>

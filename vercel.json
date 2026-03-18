@@ -30,7 +30,7 @@
   ],
   "crons": [
     {
-      "path": "/api/filter?token=ahrena-filter-2026",
+      "path": "/api/filter",
       "schedule": "0 3 * * *"
     }
   ]

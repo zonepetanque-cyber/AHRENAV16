@@ -3,39 +3,54 @@ import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 
-// ── Service Worker : mise à jour silencieuse et automatique ────
+// ── Service Worker : mise à jour automatique et silencieuse ────
 if ('serviceWorker' in navigator) {
+
+  // Rechargement silencieux quand le SW actif change
+  // Déclaré en dehors de 'load' pour capter l'événement à coup sûr
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (refreshing) return;
+    refreshing = true;
+    window.location.reload();
+  });
+
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').then(reg => {
 
-      // Vérifie une mise à jour toutes les 30 secondes
-      setInterval(() => reg.update(), 30 * 1000);
+      // Force l'activation d'un SW en attente
+      const activateWaiting = (worker: ServiceWorker | null) => {
+        if (!worker) return;
+        worker.postMessage({ type: 'SKIP_WAITING' });
+      };
 
-      // Vérifie à chaque fois que l'app revient au premier plan
-      document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') reg.update();
-      });
+      // Cas 1 : un SW est déjà en 'waiting' à l'arrivée (cas iOS fréquent)
+      if (reg.waiting) {
+        activateWaiting(reg.waiting);
+      }
 
-      // Dès qu'un nouveau SW est prêt → on l'active immédiatement
+      // Cas 2 : un nouveau SW est trouvé pendant la session
       reg.addEventListener('updatefound', () => {
         const newWorker = reg.installing;
         if (!newWorker) return;
+
         newWorker.addEventListener('statechange', () => {
-          if (newWorker.state === 'installed') {
-            newWorker.postMessage({ type: 'SKIP_WAITING' });
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            // Nouveau SW installé + un SW actif existe → mise à jour silencieuse
+            activateWaiting(newWorker);
           }
         });
       });
 
-    }).catch(err => console.error('[SW] Erreur:', err));
+      // Déclenche une vérification au retour au premier plan (ouverture de l'app)
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') reg.update();
+      });
 
-    // Dès que le contrôleur change → rechargement silencieux
-    let refreshing = false;
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (refreshing) return;
-      refreshing = true;
-      window.location.reload();
-    });
+      // Déclenche aussi à la reconnexion réseau
+      window.addEventListener('online', () => reg.update());
+
+    }).catch(err => console.error('[SW] Erreur:', err));
   });
 }
 

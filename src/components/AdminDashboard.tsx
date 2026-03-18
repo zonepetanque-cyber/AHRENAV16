@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 import {
   Users, Crown, Ban, Search, AlertTriangle, CheckCircle2, Loader2,
   ShieldAlert, TrendingUp, MessageSquare, Bell, RefreshCw, Trash2,
-  UserCheck, UserX, ChevronRight, BarChart2, Send, Eye, X
+  UserCheck, UserX, Send, Eye, X
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -307,7 +307,7 @@ const AdminDashboard = () => {
     setFilterLoading(true);
     setFilterResult(null);
     try {
-      const res = await fetch('/api/filter', { headers: { 'x-filter-token': 'ahrena-filter-2026' } });
+      const res = await fetch('/api/filter');
       const data = await res.json();
       setFilterResult(data.filtered === 0 ? `✅ ${data.message}` : `🚫 ${data.filtered} vidéo(s) masquée(s)`);
       if (data.filtered > 0) fetchBlacklist();

@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import ReactDOM from 'react-dom';
 import { Video } from '../services/youtubeService';
 import { NATIONAUX_2026, National } from '../data/nationaux2026';
 import { CONCOURS_ALLIER_2026, ConcourAllier, DEPT_ALLIER } from '../data/allier2026';
@@ -10,6 +9,15 @@ import { CONCOURS_AHP_2026, DEPT_AHP } from '../data/ahp2026';
 import { CONCOURS_REGIONAUX_2026 } from '../data/regionaux2026';
 import { CONCOURS_AM_2026, DEPT_AM } from '../data/am2026';
 import { CONCOURS_ARDECHE_2026, DEPT_ARDECHE } from '../data/ardeche2026';
+import { CONCOURS_ARIEGE_2026, DEPT_ARIEGE } from '../data/ariege2026';
+import { CONCOURS_AUBE_2026, DEPT_AUBE } from '../data/aube2026';
+import { CONCOURS_AUDE_2026, DEPT_AUDE } from '../data/aude2026';
+import { CONCOURS_AVEYRON_2026, DEPT_AVEYRON } from '../data/aveyron2026';
+import { CONCOURS_BDR_2026, DEPT_BDR } from '../data/bdr2026';
+import { CONCOURS_CALVADOS_2026, DEPT_CALVADOS } from '../data/calvados2026';
+import { CONCOURS_JEUNES_2026, SOURCE_JEUNES } from '../data/jeunes2026';
+import { CONCOURS_CANTAL_2026, DEPT_CANTAL } from '../data/cantal2026';
+import { CONCOURS_CHARENTE_MARITIME_2026, DEPT_CHARENTE_MARITIME } from '../data/charentemaritime2026';
 import {
   Calendar as CalendarIcon, Clock,
   List, MapPin, SlidersHorizontal, X, RotateCcw, Check, Radio, ChevronDown
@@ -29,17 +37,19 @@ const MONTHS_SHORT = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','O
 const DAYS_FR   = ['L','M','M','J','V','S','D'];
 
 // ── Source meta ───────────────────────────────────────────────
-type EventSource = 'live' | 'national' | 'allier' | 'nievre' | 'ain' | 'aisne' | 'ahp' | 'am' | 'ardeche' | 'regional';
+type EventSource = 'live' | 'national' | 'allier' | 'nievre' | 'ain' | 'aisne' | 'ahp' | 'am' | 'ardeche' | 'ariege' | 'aube' | 'aude' | 'aveyron' | 'bdr' | 'calvados' | 'cantal' | 'charente_maritime' | 'jeunes' | 'regional';
 
 const SOURCE_COLOR: Record<EventSource, string> = {
   live: '#dc2626', national: '#3b82f6', allier: '#10b981',
   nievre: '#f97316', ain: '#8b5cf6', aisne: '#06b6d4',
-  ahp: '#84cc16', am: '#0066CC', ardeche: '#f97316', regional: '#f59e0b',
+  ahp: '#84cc16', am: '#0066CC', ardeche: '#f97316', ariege: '#e11d48',
+  aube: '#f43f5e', aude: '#a855f7', aveyron: '#f97316', bdr: '#ef4444', calvados: '#3b82f6', cantal: '#d97706', charente_maritime: '#0891b2', jeunes: '#10b981', regional: '#f59e0b',
 };
 const SOURCE_LABEL: Record<EventSource, string> = {
   live: 'Direct', national: 'National', allier: 'Allier (03)',
   nievre: 'Nièvre (58)', ain: 'Ain (01)', aisne: 'Aisne (02)',
-  ahp: 'AHP (04)', am: 'Alpes-Mar. (06)', ardeche: 'Ardèche (07)', regional: 'Régionaux',
+  ahp: 'AHP (04)', am: 'Alpes-Mar. (06)', ardeche: 'Ardèche (07)',
+  ariege: 'Ariège (09)', aube: 'Aube (10)', aude: 'Aude (11)', aveyron: 'Aveyron (12)', bdr: 'Bouches-du-Rhône (13)', calvados: 'Calvados (14)', cantal: 'Cantal (15)', charente_maritime: 'Charente-Maritime (17)', jeunes: 'Circuit National Jeunes', regional: 'Régionaux',
 };
 
 const DEPT_LINKS: Record<string, { facebook: string; site: string; code: string } | null> = {
@@ -51,17 +61,38 @@ const DEPT_LINKS: Record<string, { facebook: string; site: string; code: string 
   ahp:     { facebook: DEPT_AHP.facebook,     site: DEPT_AHP.site,     code: '04' },
   am:      { facebook: DEPT_AM.facebook,      site: DEPT_AM.site,      code: '06' },
   ardeche: { facebook: DEPT_ARDECHE.facebook, site: DEPT_ARDECHE.site, code: '07' },
+  ariege:  { facebook: DEPT_ARIEGE.facebook,  site: DEPT_ARIEGE.site,  code: '09' },
+  aube:    { facebook: DEPT_AUBE.facebook,    site: DEPT_AUBE.site,    code: '10' },
+  aude:    { facebook: DEPT_AUDE.facebook,    site: DEPT_AUDE.site,    code: '11' },
+  aveyron: { facebook: DEPT_AVEYRON.facebook, site: DEPT_AVEYRON.site, code: '12' },
+  bdr:     { facebook: DEPT_BDR.facebook,     site: DEPT_BDR.site,     code: '13' },
+  calvados: { facebook: DEPT_CALVADOS.facebook, site: DEPT_CALVADOS.site, code: '14' },
+  cantal:             { facebook: DEPT_CANTAL.facebook,             site: DEPT_CANTAL.site,             code: '15' },
+  charente_maritime:  { facebook: DEPT_CHARENTE_MARITIME.facebook,  site: DEPT_CHARENTE_MARITIME.site,  code: '17' },
+  jeunes:             { facebook: SOURCE_JEUNES.facebook,            site: SOURCE_JEUNES.site,           code: 'FR' },
 };
 
 // ── Départements disponibles pour l'accordéon ─────────────────
-const DEPT_OPTIONS: { key: EventSource; label: string; color: string }[] = [
-  { key: 'ain',     label: 'Ain (01)',            color: '#8b5cf6' },
-  { key: 'aisne',   label: 'Aisne (02)',          color: '#06b6d4' },
-  { key: 'allier',  label: 'Allier (03)',         color: '#10b981' },
-  { key: 'ahp',     label: 'AHP (04)',            color: '#84cc16' },
-  { key: 'am',      label: 'Alpes-Mar. (06)',     color: '#0066CC' },
-  { key: 'ardeche', label: 'Ardèche (07)',        color: '#f97316' },
-  { key: 'nievre',  label: 'Nièvre (58)',         color: '#ea580c' },
+const DEPT_OPTIONS: { key: EventSource | string; label: string; color: string; available: boolean }[] = [
+  { key: 'ain',     label: 'Ain (01)',            color: '#8b5cf6', available: true  },
+  { key: 'aisne',   label: 'Aisne (02)',          color: '#06b6d4', available: true  },
+  { key: 'allier',  label: 'Allier (03)',         color: '#10b981', available: true  },
+  { key: 'ahp',     label: 'AHP (04)',            color: '#84cc16', available: true  },
+  { key: 'hpa',     label: 'Hautes-Alpes (05)',   color: '#6b7280', available: false },
+  { key: 'am',      label: 'Alpes-Mar. (06)',     color: '#0066CC', available: true  },
+  { key: 'ardeche', label: 'Ardèche (07)',        color: '#f97316', available: true  },
+  { key: 'ardennes',label: 'Ardennes (08)',       color: '#6b7280', available: false },
+  { key: 'ariege',  label: 'Ariège (09)',         color: '#e11d48', available: true  },
+  { key: 'aube',    label: 'Aube (10)',           color: '#f43f5e', available: true  },
+  { key: 'aude',    label: 'Aude (11)',           color: '#a855f7', available: true  },
+  { key: 'aveyron', label: 'Aveyron (12)',         color: '#f97316', available: true  },
+  { key: 'bdr',     label: 'Bouches-du-Rhône (13)', color: '#ef4444', available: true  },
+  { key: 'calvados', label: 'Calvados (14)',          color: '#3b82f6', available: true  },
+  { key: 'cantal',              label: 'Cantal (15)',              color: '#d97706', available: true  },
+  { key: 'charente',            label: 'Charente (16)',            color: '#6b7280', available: false },
+  { key: 'charente_maritime',   label: 'Charente-Maritime (17)',   color: '#0891b2', available: true  },
+  { key: 'jeunes',              label: 'Circuit National Jeunes',  color: '#10b981', available: true  },
+  { key: 'nievre',  label: 'Nièvre (58)',         color: '#ea580c', available: true  },
 ];
 
 // ── Type unifié ───────────────────────────────────────────────
@@ -95,7 +126,7 @@ interface AdvancedFilters {
 }
 
 const FORMATIONS = ['Tête-à-Tête', 'Doublette', 'Triplette', 'Doublette mixte', 'Triplette mixte', 'En équipe (CDC, CRC, CNC)'];
-const JOUEURS    = ['Jeune', 'Sénior', 'Vétéran', 'Masculin', 'Féminin', 'Promotion', 'Jeu Provençal'];
+const JOUEURS    = ['Jeune', 'Benjamins', 'Minimes', 'Cadets', 'Juniors', 'Sénior', 'Vétéran', 'Masculin', 'Féminin', 'Promotion', 'Jeu Provençal'];
 const CAT_TYPES  = ['Départemental', 'Régional', 'National', 'Championnat', 'Autres (mondial, coupes, tir…)'];
 
 const makeDefaultFilters = (): AdvancedFilters => ({
@@ -140,6 +171,15 @@ function buildEvents(videos: Video[]): UnifiedEvent[] {
   addDept(CONCOURS_AHP_2026    as any[], 'ahp');
   addDept(CONCOURS_AM_2026     as any[], 'am');
   addDept(CONCOURS_ARDECHE_2026 as any[], 'ardeche');
+  addDept(CONCOURS_ARIEGE_2026  as any[], 'ariege');
+  addDept(CONCOURS_AUBE_2026    as any[], 'aube');
+  addDept(CONCOURS_AUDE_2026    as any[], 'aude');
+  addDept(CONCOURS_AVEYRON_2026 as any[], 'aveyron');
+  addDept(CONCOURS_BDR_2026     as any[], 'bdr');
+  addDept(CONCOURS_CALVADOS_2026 as any[], 'calvados');
+  addDept(CONCOURS_CANTAL_2026            as any[], 'cantal');
+  addDept(CONCOURS_CHARENTE_MARITIME_2026 as any[], 'charente_maritime');
+  addDept(CONCOURS_JEUNES_2026            as any[], 'jeunes');
 
   CONCOURS_REGIONAUX_2026.forEach(c => events.push({
     id: `reg-${c.id}`, date: c.date, dateFin: (c as any).dateFin,
@@ -177,7 +217,11 @@ function applyFilters(events: UnifiedEvent[], f: AdvancedFilters): UnifiedEvent[
     if (f.joueurs.size > 0) {
       const c = ((ev.categorie || '') + ' ' + (ev.title || '')).toLowerCase();
       const ok =
-        (f.joueurs.has('Jeune') && (c.includes('jeune') || c.includes('minime') || c.includes('cadet') || c.includes('benjamin'))) ||
+        (f.joueurs.has('Jeune') && (c.includes('jeune') || c.includes('minime') || c.includes('cadet') || c.includes('benjamin') || c.includes('junior'))) ||
+        (f.joueurs.has('Benjamins') && c.includes('benjamin')) ||
+        (f.joueurs.has('Minimes') && c.includes('minime')) ||
+        (f.joueurs.has('Cadets') && c.includes('cadet')) ||
+        (f.joueurs.has('Juniors') && (c.includes('junior') || c.includes('juniors'))) ||
         (f.joueurs.has('Sénior') && (c.includes('sénior')||c.includes('senior'))) ||
         (f.joueurs.has('Vétéran') && (c.includes('vétéran')||c.includes('veteran')||c.includes('vét'))) ||
         (f.joueurs.has('Masculin') && (c.includes('masculin')||c.includes('homme')||c.includes('masc'))) ||
@@ -516,14 +560,13 @@ const MonthView = ({ events, allEvents, onVideoSelect, forcedMonth }: {
         ))}
       </div>
 
-      {/* Scroll-snap natif — pas de JS pour le mouvement */}
+      {/* Scroll-snap natif */}
       <div
         ref={scrollRef}
         onScroll={onScroll}
         style={{
           display: 'flex',
           overflowX: 'auto',
-          overflowY: 'hidden',
           scrollSnapType: 'x mandatory',
           WebkitOverflowScrolling: 'touch',
           scrollbarWidth: 'none',
@@ -549,16 +592,52 @@ const MonthView = ({ events, allEvents, onVideoSelect, forcedMonth }: {
         ))}
       </div>
 
-      {/* Événements du jour sélectionné */}
-      {selected && selectedEvents.length > 0 && (
-        <div className="mt-5 px-4">
-          <p className="text-white/50 text-xs font-bold uppercase tracking-wider mb-3">
-            {formatFull(selected)} · {selectedEvents.length} événement{selectedEvents.length > 1 ? 's' : ''}
-          </p>
-          <div className="space-y-2">
-            {selectedEvents.map(ev => <EventCard key={ev.id} ev={ev} onVideoSelect={onVideoSelect}/>)}
+      {/* Bottom sheet événements du jour — via portal pour éviter tout conflit de rendu */}
+      {selected && selectedEvents.length > 0 && ReactDOM.createPortal(
+        <div
+          className="fixed inset-0 z-[200] flex items-end"
+          onClick={() => setSelected(null)}
+        >
+          {/* Fond semi-transparent */}
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+
+          {/* Panel */}
+          <div
+            className="relative w-full max-w-2xl mx-auto bg-zinc-950 border-t border-white/10 rounded-t-2xl shadow-2xl max-h-[70vh] flex flex-col"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Handle */}
+            <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
+              <div className="w-10 h-1 rounded-full bg-white/20" />
+            </div>
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 pb-3 pt-1 flex-shrink-0">
+              <div>
+                <p className="text-white font-black text-sm uppercase tracking-wide">
+                  {formatFull(selected)}
+                </p>
+                <p className="text-white/40 text-xs mt-0.5">
+                  {selectedEvents.length} événement{selectedEvents.length > 1 ? 's' : ''}
+                </p>
+              </div>
+              <button
+                onClick={() => setSelected(null)}
+                className="w-8 h-8 rounded-full bg-white/8 flex items-center justify-center hover:bg-white/15 transition-colors"
+              >
+                <X size={14} className="text-white/60" />
+              </button>
+            </div>
+
+            {/* Liste scrollable */}
+            <div className="overflow-y-auto px-4 pb-6 space-y-2 flex-1">
+              {selectedEvents.map(ev => (
+                <EventCard key={ev.id} ev={ev} onVideoSelect={(v) => { setSelected(null); onVideoSelect(v); }} />
+              ))}
+            </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
@@ -583,10 +662,11 @@ const DeptAccordion = ({ sources, onChange }: {
   const isAll = sources.has('all');
   const activeCount = isAll ? 0 : sources.size;
 
+  const availableDepts = DEPT_OPTIONS.filter(d => d.available);
   const activeLabel = isAll
     ? 'Tous les départements'
     : activeCount === 1
-      ? DEPT_OPTIONS.find(d => sources.has(d.key))?.label || '1 département'
+      ? availableDepts.find(d => sources.has(d.key))?.label || '1 département'
       : `${activeCount} départements`;
 
   return (
@@ -612,7 +692,8 @@ const DeptAccordion = ({ sources, onChange }: {
         <>
           {/* Overlay pour fermer */}
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)}/>
-          <div className="absolute left-0 top-full mt-2 z-50 bg-zinc-900 border border-white/15 rounded-2xl shadow-2xl overflow-hidden min-w-[220px]">
+          <div className="absolute left-0 top-full mt-2 z-50 bg-zinc-900 border border-white/15 rounded-2xl shadow-2xl overflow-hidden min-w-[240px]">
+
             {/* Tous */}
             <button
               onClick={() => { toggleSource('all'); setOpen(false); }}
@@ -627,15 +708,34 @@ const DeptAccordion = ({ sources, onChange }: {
             </button>
 
             {/* Liste départements */}
-            <div className="py-1 max-h-72 overflow-y-auto">
+            <div className="py-1 max-h-80 overflow-y-auto">
               {DEPT_OPTIONS.map(dept => {
                 const active = !isAll && sources.has(dept.key);
+
+                if (!dept.available) {
+                  return (
+                    <div
+                      key={dept.key}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 opacity-40 cursor-not-allowed"
+                      title="Calendrier pas encore disponible"
+                    >
+                      <div className="w-2.5 h-2.5 rounded-full flex-shrink-0 bg-zinc-600"/>
+                      <span className="text-[12px] font-bold flex-1 text-left text-white/30 line-through">
+                        {dept.label}
+                      </span>
+                      <span className="text-[9px] font-black uppercase tracking-wider text-white/25 bg-white/8 px-1.5 py-0.5 rounded-full border border-white/10 flex-shrink-0">
+                        Bientôt
+                      </span>
+                    </div>
+                  );
+                }
+
                 return (
                   <button
                     key={dept.key}
                     onClick={() => toggleSource(dept.key)}
                     className={`w-full flex items-center gap-3 px-4 py-2.5 transition-colors
-                      ${active ? 'text-white' : 'text-white/50 hover:text-white hover:bg-white/5'}`}
+                      ${active ? 'text-white bg-white/5' : 'text-white/50 hover:text-white hover:bg-white/5'}`}
                   >
                     <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: dept.color }}/>
                     <span className="text-[12px] font-bold flex-1 text-left">{dept.label}</span>
@@ -643,6 +743,12 @@ const DeptAccordion = ({ sources, onChange }: {
                   </button>
                 );
               })}
+            </div>
+
+            {/* Légende bas */}
+            <div className="px-4 py-2.5 border-t border-white/8 flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-zinc-600 opacity-40"/>
+              <span className="text-[10px] text-white/25 italic">Calendrier non encore intégré</span>
             </div>
           </div>
         </>

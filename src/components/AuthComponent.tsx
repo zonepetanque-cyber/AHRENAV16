@@ -36,10 +36,21 @@ const AuthComponent = () => {
     setLoading(true);
     setError(null);
     try {
+      // Construit l'URL de redirection : toujours l'origine de la PWA
+      // Sur Android, après OAuth Google, le navigateur revient sur cette URL
+      // et Supabase détecte le token dans le hash (#access_token=...)
+      const redirectTo = window.location.origin + '/';
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin
+          redirectTo,
+          // PKCE est activé côté supabase.ts (flowType: 'pkce')
+          // skipBrowserRedirect: false → laisse Supabase ouvrir Google
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
         }
       });
       if (error) throw error;
