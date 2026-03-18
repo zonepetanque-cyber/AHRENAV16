@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ExternalLink, RefreshCw, Newspaper, AlertCircle, ChevronRight, Clock } from 'lucide-react';
+import { ExternalLink, RefreshCw, Newspaper, AlertCircle, ChevronRight, Clock, ChevronDown } from 'lucide-react';
 
 interface NewsItem {
   id: string;
@@ -22,7 +22,7 @@ interface NewsResponse {
 }
 
 const CACHE_KEY = 'ahrena_news_cache';
-const CACHE_DURATION = 2 * 60 * 60 * 1000; // 2h
+const CACHE_DURATION = 2 * 60 * 60 * 1000;
 
 const formatDate = (iso: string): string => {
   try {
@@ -32,64 +32,41 @@ const formatDate = (iso: string): string => {
     const mins = Math.floor(diff / 60000);
     const hours = Math.floor(diff / 3600000);
     const days = Math.floor(diff / 86400000);
-
     if (mins < 60) return `Il y a ${mins} min`;
     if (hours < 24) return `Il y a ${hours}h`;
     if (days === 1) return 'Hier';
     if (days < 7) return `Il y a ${days} jours`;
     return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
-  } catch {
-    return '';
-  }
+  } catch { return ''; }
 };
 
+// NewsCard
 const NewsCard = ({ item }: { item: NewsItem }) => {
   const [imgError, setImgError] = useState(false);
-
   return (
-    <a
-      href={item.link}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="block group"
-    >
+    <a href={item.link} target="_blank" rel="noopener noreferrer" className="block group">
       <div className="flex gap-3 p-3 md:p-4 rounded-xl border border-white/5 hover:border-white/15 hover:bg-white/5 transition-all active:scale-[0.98]">
-        {/* Image ou couleur dept */}
         <div className="flex-shrink-0 w-16 h-16 md:w-28 md:h-20 rounded-lg overflow-hidden bg-zinc-900">
           {item.image && !imgError ? (
-            <img
-              src={item.image}
-              alt=""
-              referrerPolicy="no-referrer"
+            <img src={item.image} alt="" referrerPolicy="no-referrer"
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-              onError={() => setImgError(true)}
-            />
+              onError={() => setImgError(true)} />
           ) : (
-            <div
-              className="w-full h-full flex items-center justify-center"
-              style={{ background: item.color + '22' }}
-            >
+            <div className="w-full h-full flex items-center justify-center" style={{ background: item.color + '22' }}>
               <Newspaper size={20} style={{ color: item.color }} />
             </div>
           )}
         </div>
-
-        {/* Contenu */}
         <div className="flex-1 min-w-0">
-          {/* Badge département */}
           <div className="flex items-center gap-1.5 mb-1.5">
-            <span
-              className="text-[9px] md:text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded"
-              style={{ background: item.color + '22', color: item.color }}
-            >
-              {item.code === 'MEDIA' ? '📰 ' : ''}{item.dept}
+            <span className="text-[9px] md:text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded"
+              style={{ background: item.color + '22', color: item.color }}>
+              {item.dept}
             </span>
             <span className="flex items-center gap-0.5 text-white/25 text-[9px]">
-              <Clock size={8} />
-              {formatDate(item.date)}
+              <Clock size={8} />{formatDate(item.date)}
             </span>
           </div>
-
           <p className="text-white font-semibold text-[12px] md:text-sm leading-snug line-clamp-2 group-hover:text-white/90 mb-1">
             {item.title}
           </p>
@@ -99,7 +76,6 @@ const NewsCard = ({ item }: { item: NewsItem }) => {
             </p>
           )}
         </div>
-
         <div className="flex-shrink-0 self-center">
           <ChevronRight size={14} className="text-white/20 group-hover:text-white/50 transition-colors" />
         </div>
@@ -108,6 +84,138 @@ const NewsCard = ({ item }: { item: NewsItem }) => {
   );
 };
 
+// Types de filtre
+type FilterValue = { type: 'all' } | { type: 'dept'; code: string } | { type: 'media'; dept: string };
+
+// NewsFilter avec accordéons
+const NewsFilter = ({ news, filter, setFilter }: {
+  news: NewsItem[];
+  filter: FilterValue;
+  setFilter: (f: FilterValue) => void;
+}) => {
+  const [openAccordion, setOpenAccordion] = useState<'comites' | 'medias' | null>(null);
+
+  // Fermer en cliquant en dehors
+  useEffect(() => {
+    if (!openAccordion) return;
+    const handler = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('[data-accordion]')) setOpenAccordion(null);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [openAccordion]);
+
+  const comites = Array.from(
+    new Map(
+      news.filter(i => i.code !== 'MEDIA' && i.code !== 'FR')
+        .map(i => [i.code, { code: i.code, dept: i.dept, color: i.color }])
+    ).values()
+  ).sort((a, b) => (parseInt(a.code) || 999) - (parseInt(b.code) || 999));
+
+  const medias = Array.from(
+    new Map(
+      news.filter(i => i.code === 'MEDIA' || i.code === 'FR')
+        .map(i => [i.dept, { code: i.code, dept: i.dept, color: i.color }])
+    ).values()
+  );
+
+  const isComiteActive = filter.type === 'dept';
+  const isMediaActive = filter.type === 'media';
+  const activeComiteLabel = isComiteActive ? comites.find(c => c.code === (filter as any).code)?.dept ?? null : null;
+  const activeMediaLabel = isMediaActive ? (filter as any).dept : null;
+
+  return (
+    <div className="max-w-5xl mx-auto px-4 pb-3 pt-1 flex flex-wrap gap-2 items-center">
+
+      {/* TOUS */}
+      <button
+        onClick={() => { setFilter({ type: 'all' }); setOpenAccordion(null); }}
+        className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wide transition-all
+          ${filter.type === 'all' ? 'bg-white text-black' : 'bg-zinc-800 text-white/50 hover:text-white hover:bg-zinc-700'}`}
+      >
+        Tous
+      </button>
+
+      {/* Accordéon COMITÉS */}
+      <div className="relative" data-accordion>
+        <button
+          onClick={() => setOpenAccordion(prev => prev === 'comites' ? null : 'comites')}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wide transition-all
+            ${isComiteActive ? 'bg-[#D4AF37] text-black'
+              : openAccordion === 'comites' ? 'bg-zinc-700 text-white'
+              : 'bg-zinc-800 text-white/50 hover:text-white hover:bg-zinc-700'}`}
+        >
+          🏛 {activeComiteLabel ?? 'Comités'}
+          <ChevronDown size={12} className={`transition-transform duration-200 ${openAccordion === 'comites' ? 'rotate-180' : ''}`} />
+        </button>
+
+        {openAccordion === 'comites' && (
+          <div className="absolute left-0 top-[calc(100%+6px)] z-50 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl overflow-hidden min-w-[220px] max-h-72 overflow-y-auto">
+            <div className="py-1.5">
+              {comites.length === 0 ? (
+                <p className="text-white/30 text-[10px] px-4 py-3">Aucun comité disponible</p>
+              ) : comites.map(d => {
+                const active = filter.type === 'dept' && (filter as any).code === d.code;
+                return (
+                  <button key={d.code}
+                    onClick={() => { setFilter(active ? { type: 'all' } : { type: 'dept', code: d.code }); setOpenAccordion(null); }}
+                    className={`w-full text-left flex items-center gap-2.5 px-4 py-2.5 text-[11px] font-bold transition-all
+                      ${active ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white'}`}
+                  >
+                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: d.color }} />
+                    <span className="flex-1">{d.dept}</span>
+                    {active && <span className="text-[#D4AF37] text-xs">✓</span>}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Accordéon MÉDIAS */}
+      <div className="relative" data-accordion>
+        <button
+          onClick={() => setOpenAccordion(prev => prev === 'medias' ? null : 'medias')}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wide transition-all
+            ${isMediaActive ? 'bg-[#e11d48] text-white'
+              : openAccordion === 'medias' ? 'bg-zinc-700 text-white'
+              : 'bg-zinc-800 text-white/50 hover:text-white hover:bg-zinc-700'}`}
+        >
+          📰 {activeMediaLabel ?? 'Médias'}
+          <ChevronDown size={12} className={`transition-transform duration-200 ${openAccordion === 'medias' ? 'rotate-180' : ''}`} />
+        </button>
+
+        {openAccordion === 'medias' && (
+          <div className="absolute left-0 top-[calc(100%+6px)] z-50 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl overflow-hidden min-w-[220px]">
+            <div className="py-1.5">
+              {medias.length === 0 ? (
+                <p className="text-white/30 text-[10px] px-4 py-3">Aucun média disponible</p>
+              ) : medias.map(d => {
+                const active = filter.type === 'media' && (filter as any).dept === d.dept;
+                return (
+                  <button key={d.dept}
+                    onClick={() => { setFilter(active ? { type: 'all' } : { type: 'media', dept: d.dept }); setOpenAccordion(null); }}
+                    className={`w-full text-left flex items-center gap-2.5 px-4 py-2.5 text-[11px] font-bold transition-all
+                      ${active ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white'}`}
+                  >
+                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: d.color }} />
+                    <span className="flex-1">{d.dept}</span>
+                    {active && <span className="text-[#e11d48] text-xs">✓</span>}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+
+    </div>
+  );
+};
+
+// NewsComponent principal
 const NewsComponent = () => {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -115,11 +223,10 @@ const NewsComponent = () => {
   const [error, setError] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [failedCount, setFailedCount] = useState(0);
-  const [filterCode, setFilterCode] = useState<string | null>(null);
+  const [filter, setFilter] = useState<FilterValue>({ type: 'all' });
   const [updatedAtStr, setUpdatedAtStr] = useState('');
 
   const loadNews = useCallback(async (force = false) => {
-    // Vérifier le cache local
     if (!force) {
       try {
         const cached = localStorage.getItem(CACHE_KEY);
@@ -135,24 +242,17 @@ const NewsComponent = () => {
         }
       } catch {}
     }
-
     try {
       const res = await fetch('/api/news');
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data: NewsResponse = await res.json();
-
       setNews(data.items || []);
       setFailedCount((data.failedDepts || []).length);
       setUpdatedAt(data.updatedAt);
       setError(false);
-
-      // Mettre en cache
-      try {
-        localStorage.setItem(CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() }));
-      } catch {}
+      try { localStorage.setItem(CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() })); } catch {}
     } catch {
       setError(true);
-      // Charger depuis cache même expiré
       try {
         const cached = localStorage.getItem(CACHE_KEY);
         if (cached) {
@@ -168,9 +268,7 @@ const NewsComponent = () => {
     }
   }, []);
 
-  useEffect(() => {
-    loadNews();
-  }, [loadNews]);
+  useEffect(() => { loadNews(); }, [loadNews]);
 
   useEffect(() => {
     if (!updatedAt) return;
@@ -179,26 +277,25 @@ const NewsComponent = () => {
     return () => clearInterval(t);
   }, [updatedAt]);
 
-  const handleRefresh = () => {
-    setRefreshing(true);
-    loadNews(true);
-  };
+  const handleRefresh = () => { setRefreshing(true); loadNews(true); };
 
-  // Départements disponibles dans les news
+  const filtered = (() => {
+    if (filter.type === 'all') return news;
+    if (filter.type === 'dept') return news.filter(i => i.code === (filter as any).code);
+    if (filter.type === 'media') return news.filter(i => i.dept === (filter as any).dept);
+    return news;
+  })();
+
   const availableDepts = Array.from(
-    new Map(news.map(item => [item.code, { code: item.code, dept: item.dept, color: item.color }])).values()
-  ).sort((a, b) => a.code.localeCompare(b.code));
-
-  const filtered = filterCode
-    ? news.filter(item => item.code === filterCode)
-    : news;
+    new Map(news.map(item => [item.dept, { code: item.code, dept: item.dept, color: item.color }])).values()
+  );
 
   return (
     <div className="pb-4 min-h-screen">
 
-      {/* Filtre par département — sticky sous le header du modal */}
+      {/* Barre sticky */}
       <div className="sticky top-16 z-40 bg-zinc-950/98 backdrop-blur-md border-b border-white/8">
-        <div className="max-w-5xl mx-auto px-4 py-2.5 flex items-center justify-between gap-2">
+        <div className="max-w-5xl mx-auto px-4 pt-2.5 pb-1 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             {!loading && (
               <span className="text-white/25 text-[10px]">
@@ -212,46 +309,18 @@ const NewsComponent = () => {
                 <Clock size={8} /> {updatedAtStr}
               </span>
             )}
-            <button
-              onClick={handleRefresh}
-              disabled={refreshing}
-              className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition-colors disabled:opacity-40"
-            >
+            <button onClick={handleRefresh} disabled={refreshing}
+              className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition-colors disabled:opacity-40">
               <RefreshCw size={12} className={`text-white/60 ${refreshing ? 'animate-spin' : ''}`} />
             </button>
           </div>
         </div>
-
-        {/* Filtre par département */}
-        {availableDepts.length > 1 && (
-          <div className="max-w-5xl mx-auto flex flex-wrap gap-1.5 px-4 pb-3 pt-1">
-            <button
-              onClick={() => setFilterCode(null)}
-              className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wide transition-all
-                ${!filterCode ? 'bg-white text-black' : 'bg-zinc-800 text-white/50 hover:text-white hover:bg-zinc-700'}`}
-            >
-              Tous
-            </button>
-            {availableDepts.map(d => (
-              <button
-                key={d.code}
-                onClick={() => setFilterCode(filterCode === d.code ? null : d.code)}
-                className="flex-shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wide transition-all"
-                style={filterCode === d.code
-                  ? { background: d.color, color: '#fff' }
-                  : { background: d.color + '20', color: d.color }}
-              >
-                {d.code === 'FR' ? 'FFPJP' : d.code}
-              </button>
-            ))}
-          </div>
-        )}
+        {news.length > 0 && <NewsFilter news={news} filter={filter} setFilter={setFilter} />}
       </div>
 
       {/* Contenu */}
       <div className="px-4 py-4 md:max-w-5xl md:mx-auto">
 
-        {/* Erreur réseau */}
         {error && news.length === 0 && (
           <div className="flex items-center gap-3 bg-red-600/10 border border-red-600/20 rounded-xl px-4 py-3 mb-4">
             <AlertCircle size={16} className="text-red-400 flex-shrink-0" />
@@ -262,7 +331,6 @@ const NewsComponent = () => {
           </div>
         )}
 
-        {/* Avertissement partiel */}
         {!loading && failedCount > 0 && news.length > 0 && (
           <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 rounded-xl px-3 py-2 mb-4">
             <AlertCircle size={12} className="text-amber-400 flex-shrink-0" />
@@ -272,12 +340,11 @@ const NewsComponent = () => {
           </div>
         )}
 
-        {/* Skeleton loading */}
         {loading && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             {[1, 2, 3, 4, 5, 6].map(i => (
               <div key={i} className="flex gap-3 p-3 rounded-xl border border-white/5 animate-pulse">
-                <div className="w-16 h-16 rounded-lg bg-zinc-800 flex-shrink-0" />
+                <div className="w-16 h-16 md:w-28 md:h-20 rounded-lg bg-zinc-800 flex-shrink-0" />
                 <div className="flex-1 space-y-2 py-1">
                   <div className="h-2 w-16 bg-zinc-800 rounded" />
                   <div className="h-3 w-full bg-zinc-800 rounded" />
@@ -288,47 +355,33 @@ const NewsComponent = () => {
           </div>
         )}
 
-        {/* Liste des articles */}
         {!loading && filtered.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {filtered.map(item => (
-              <NewsCard key={item.id} item={item} />
-            ))}
+            {filtered.map(item => <NewsCard key={item.id} item={item} />)}
           </div>
         )}
 
-        {/* Aucun article */}
         {!loading && filtered.length === 0 && !error && (
           <div className="flex flex-col items-center justify-center py-20 text-center px-8">
             <Newspaper size={40} className="text-white/10 mb-3" />
             <p className="text-white/40 text-sm font-bold">Aucune actualité disponible</p>
             <p className="text-white/20 text-xs mt-1">Les sources ne publient peut-être pas de flux RSS</p>
-            <button
-              onClick={handleRefresh}
-              className="mt-4 px-4 py-2 bg-white/10 rounded-xl text-white/60 text-xs hover:bg-white/15 transition-colors"
-            >
+            <button onClick={handleRefresh}
+              className="mt-4 px-4 py-2 bg-white/10 rounded-xl text-white/60 text-xs hover:bg-white/15 transition-colors">
               Réessayer
             </button>
           </div>
         )}
 
-        {/* Liens vers les sites */}
         {!loading && availableDepts.length > 0 && (
           <div className="mt-8 border-t border-white/8 pt-6">
-            <p className="text-white/30 text-[10px] uppercase tracking-wider font-bold mb-3 px-1">
-              Sites & sources
-            </p>
-            <div className="grid grid-cols-2 gap-2">
+            <p className="text-white/30 text-[10px] uppercase tracking-wider font-bold mb-3 px-1">Sites & sources</p>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
               {availableDepts.map(d => {
-                const item = news.find(n => n.code === d.code);
+                const item = news.find(n => n.dept === d.dept);
                 return (
-                  <a
-                    key={d.code}
-                    href={item?.siteUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl border border-white/8 hover:border-white/20 hover:bg-white/5 transition-all"
-                  >
+                  <a key={d.dept} href={item?.siteUrl} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl border border-white/8 hover:border-white/20 hover:bg-white/5 transition-all">
                     <div className="flex items-center gap-2 min-w-0">
                       <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: d.color }} />
                       <span className="text-white/60 text-[11px] font-bold truncate">{d.dept}</span>
@@ -341,8 +394,6 @@ const NewsComponent = () => {
           </div>
         )}
       </div>
-
-      <style dangerouslySetInnerHTML={{ __html: `.no-scrollbar::-webkit-scrollbar{display:none}.no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}` }} />
     </div>
   );
 };
