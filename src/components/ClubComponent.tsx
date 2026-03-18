@@ -101,9 +101,19 @@ const ClubComponent = ({ onTabChange }: { onTabChange: (tab: string) => void }) 
 
   const handleCheckout = async () => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
       const response = await fetch('/api/create-checkout-session', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user?.id || '',
+          userEmail: user?.email || '',
+        }),
       });
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text || `Erreur HTTP ${response.status}`);
+      }
       const { url, error } = await response.json();
       if (error) throw new Error(error);
       if (url) window.location.href = url;

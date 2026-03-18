@@ -93,7 +93,6 @@ const DEPT_OPTIONS: { key: EventSource | string; label: string; color: string; a
   { key: 'cantal',              label: 'Cantal (15)',              color: '#d97706', available: true  },
   { key: 'charente',            label: 'Charente (16)',            color: '#6b7280', available: false },
   { key: 'charente_maritime',   label: 'Charente-Maritime (17)',   color: '#0891b2', available: true  },
-  { key: 'jeunes',              label: 'Circuit National Jeunes',  color: '#10b981', available: true  },
   { key: 'nievre',  label: 'Nièvre (58)',         color: '#ea580c', available: true  },
 ];
 
@@ -129,7 +128,7 @@ interface AdvancedFilters {
 
 const FORMATIONS = ['Tête-à-Tête', 'Doublette', 'Triplette', 'Doublette mixte', 'Triplette mixte', 'En équipe (CDC, CRC, CNC)'];
 const JOUEURS    = ['Jeune', 'Benjamins', 'Minimes', 'Cadets', 'Juniors', 'Sénior', 'Vétéran', 'Masculin', 'Féminin', 'Promotion', 'Jeu Provençal'];
-const CAT_TYPES  = ['Départemental', 'Régional', 'National', 'Championnat', 'Autres (mondial, coupes, tir…)'];
+const CAT_TYPES  = ['Départemental', 'Régional', 'National', 'Championnat', 'Circuit National Jeunes', 'Autres (mondial, coupes, tir…)'];
 
 const makeDefaultFilters = (): AdvancedFilters => ({
   officiel: true, ouvert: true,
@@ -240,6 +239,7 @@ function applyFilters(events: UnifiedEvent[], f: AdvancedFilters): UnifiedEvent[
         (f.categories.has('Régional') && t === 'régional') ||
         (f.categories.has('National') && t === 'national') ||
         (f.categories.has('Championnat') && (t === 'championnat' || t === 'qualificatif')) ||
+        (f.categories.has('Circuit National Jeunes') && ev.source === 'jeunes') ||
         (f.categories.has('Autres (mondial, coupes, tir…)') && t === 'spécial');
       if (!ok) return false;
     }
@@ -700,9 +700,9 @@ const DeptAccordion = ({ sources, onChange }: {
 
       {open && (
         <>
-          {/* Overlay pour fermer */}
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)}/>
-          <div className="absolute left-0 top-full mt-2 z-50 bg-zinc-900 border border-white/15 rounded-2xl shadow-2xl overflow-hidden min-w-[240px]">
+          {/* Overlay pour fermer — z-[60] pour passer au dessus de la barre sticky z-40 */}
+          <div className="fixed inset-0 z-[60]" onClick={() => setOpen(false)}/>
+          <div className="absolute left-0 top-full mt-2 z-[61] bg-zinc-900 border border-white/15 rounded-2xl shadow-2xl overflow-hidden min-w-[240px]">
 
             {/* Tous */}
             <button

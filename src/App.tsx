@@ -694,28 +694,40 @@ export default function App() {
   const [showNews, setShowNews] = useState(false);
   const [showNewsPopup, setShowNewsPopup] = useState(false);
   const [popupNews, setPopupNews] = useState<any[]>([]);
+  const [paymentStatus, setPaymentStatus] = useState<'success' | 'cancelled' | null>(null);
+
+  // Détecter le retour depuis Stripe Checkout
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get('tab');
+    const payment = params.get('payment');
+    if (tab === 'club') {
+      setActiveTab('club');
+      if (payment === 'success') setPaymentStatus('success');
+      if (payment === 'cancelled') setPaymentStatus('cancelled');
+      // Nettoyer l'URL
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+  }, []);
 
   // Vérifie si le popup doit s'afficher aujourd'hui
   useEffect(() => {
     const today = new Date().toISOString().split('T')[0];
     const lastSeen = localStorage.getItem('ahrena_news_popup_date');
-    if (lastSeen === today) return; // Déjà vu aujourd'hui
+    if (lastSeen === today) return;
 
-    // Attendre la fin du splash screen (3s) + 1s de délai
     const timer = setTimeout(async () => {
       try {
-        // Essayer d'abord le cache local
         const cached = localStorage.getItem('ahrena_news_cache');
         let items = [];
         if (cached) {
           const { data } = JSON.parse(cached);
-          items = (data.items || []).slice(0, 3);
+          items = (data.items || []).slice(0, 5);
         } else {
-          // Fetch silencieux en arrière-plan
           const res = await fetch('/api/news');
           if (res.ok) {
             const data = await res.json();
-            items = (data.items || []).slice(0, 3);
+            items = (data.items || []).slice(0, 5);
             localStorage.setItem('ahrena_news_cache', JSON.stringify({ data, timestamp: Date.now() }));
           }
         }
@@ -1029,6 +1041,31 @@ export default function App() {
       </div>
 
       <Navbar activeTab={activeTab} onTabChange={setActiveTab} />
+
+      {/* Bannière retour paiement Stripe */}
+      <AnimatePresence>
+        {paymentStatus && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className={`fixed top-20 left-4 right-4 z-[80] md:max-w-md md:mx-auto rounded-xl px-4 py-3 flex items-center justify-between gap-3 shadow-xl border ${
+              paymentStatus === 'success'
+                ? 'bg-emerald-600/90 border-emerald-500 text-white'
+                : 'bg-zinc-800/90 border-white/15 text-white/70'
+            }`}
+          >
+            <span className="text-sm font-bold">
+              {paymentStatus === 'success'
+                ? '🎉 Bienvenue au Club AHRENA ! Votre accès VIP est activé.'
+                : '↩️ Paiement annulé. Vous pouvez réessayer quand vous voulez.'}
+            </span>
+            <button onClick={() => setPaymentStatus(null)} className="flex-shrink-0 opacity-70 hover:opacity-100">
+              <X size={16} />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
       
       {/* Panneau Plus d'infos */}
       <AnimatePresence>
@@ -1204,9 +1241,11 @@ export default function App() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 80 }}
             transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-            className="fixed bottom-24 left-4 right-4 z-[90] md:max-w-sm md:left-auto md:right-6"
+            className="fixed bottom-24 left-4 right-4 z-[90] md:max-w-md md:left-auto md:right-6"
           >
             <div className="bg-zinc-900 border border-white/15 rounded-2xl shadow-2xl overflow-hidden">
+
+              {/* Header */}
               <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-white/8">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
@@ -1222,6 +1261,7 @@ export default function App() {
                 </button>
               </div>
 
+              {/* Articles avec image à gauche */}
               <div className="divide-y divide-white/5">
                 {popupNews.map((item: any, i: number) => (
                   <a
@@ -1229,25 +1269,44 @@ export default function App() {
                     href={item.link}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-start gap-3 px-4 py-2.5 hover:bg-white/5 transition-colors"
+                    className="flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 transition-colors group"
                     onClick={() => setShowNewsPopup(false)}
                   >
-                    <div
-                      className="flex-shrink-0 w-1.5 h-1.5 rounded-full mt-1.5"
-                      style={{ background: item.color }}
-                    />
+                    {/* Image */}
+                    <div className="flex-shrink-0 w-16 h-14 rounded-lg overflow-hidden bg-zinc-800">
+                      {item.image ? (
+                        <img
+                          src={item.image}
+                          alt=""
+                          referrerPolicy="no-referrer"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center" style={{ background: item.color + '22' }}>
+                          <Newspaper size={16} style={{ color: item.color }} />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Texte */}
                     <div className="flex-1 min-w-0">
-                      <p className="text-white/80 text-[11px] font-semibold leading-snug line-clamp-2">
+                      <p className="text-white/90 text-[12px] font-bold leading-snug line-clamp-2 group-hover:text-white transition-colors">
                         {item.title}
                       </p>
-                      <p className="text-white/30 text-[9px] mt-0.5 uppercase tracking-wide">
+                      <p className="text-white/35 text-[9px] mt-1 uppercase tracking-wide font-medium">
                         {item.dept}
                       </p>
                     </div>
+
+                    <ChevronRight size={12} className="text-white/20 group-hover:text-white/50 flex-shrink-0 transition-colors" />
                   </a>
                 ))}
               </div>
 
+              {/* Bouton Voir tout */}
               <div className="px-4 py-3 border-t border-white/8">
                 <button
                   onClick={() => { setShowNewsPopup(false); setShowNews(true); }}
@@ -1257,6 +1316,7 @@ export default function App() {
                   Voir toutes les actualités
                 </button>
               </div>
+
             </div>
           </motion.div>
         )}
