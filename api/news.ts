@@ -55,7 +55,7 @@ const DEPT_SOURCES: DeptSource[] = [
   // ── MÉDIAS & SITES SPÉCIALISÉS ───────────────────────────────────────────
   { dept: 'Boulistenaute',    code: 'MEDIA', color: '#e11d48', active: true, siteUrl: 'https://www.boulistenaute.com',       rssUrls: ['https://www.boulistenaute.com/syndication/les-actualites-de-la-petanque-et-du-monde-bouliste/', 'https://www.boulistenaute.com/feed', 'https://www.boulistenaute.com/rss.xml'] },
   { dept: 'Sportmag',         code: 'MEDIA', color: '#7c3aed', active: true, siteUrl: 'https://www.sportmag.fr',              rssUrls: ['https://www.sportmag.fr/category/petanque/feed', 'https://www.sportmag.fr/category/petanque/rss.xml'] },
-  { dept: 'Boulé Provençal',  code: 'MEDIA', color: '#0369a1', active: true, siteUrl: 'https://bouleprovencal.org',           rssUrls: rss('https://bouleprovencal.org') },
+  { dept: 'Boule Provençal',  code: 'MEDIA', color: '#0369a1', active: true, siteUrl: 'https://bouleprovencal.org',           rssUrls: rss('https://bouleprovencal.org') },
   { dept: 'FFSB Sport-Boules',code: 'MEDIA', color: '#059669', active: true, siteUrl: 'https://www.ffsb.fr',                  rssUrls: rss('https://www.ffsb.fr') },
   { dept: 'France 3 Pétanque',code: 'MEDIA', color: '#1d4ed8', active: true, siteUrl: 'https://france3-regions.franceinfo.fr/sport/petanque', rssUrls: ['https://france3-regions.franceinfo.fr/sport/petanque/rss.xml', 'https://france3-regions.franceinfo.fr/sport/petanque/feed', 'https://france3-regions.franceinfo.fr/rss/sport.xml'] },
   { dept: 'PPF Tour',         code: 'MEDIA', color: '#b45309', active: true, siteUrl: 'https://www.petanquefrancaise.com',    rssUrls: rss('https://www.petanquefrancaise.com') },

@@ -734,13 +734,18 @@ export default function App() {
 
   const handleUpdate = () => {
     if (!('serviceWorker' in navigator)) return;
+    // Recharger dès que le nouveau SW prend le contrôle
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      window.location.reload();
+    }, { once: true });
     navigator.serviceWorker.ready.then(reg => {
       if (reg.waiting) {
         reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+      } else {
+        window.location.reload();
       }
     });
     setShowUpdateBanner(false);
-    window.location.reload();
   };
 
   // Détecter le retour depuis Stripe Checkout

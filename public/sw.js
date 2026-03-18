@@ -4,17 +4,43 @@ const CACHE_NAME = 'ahrena-v__APP_VERSION__';
 // Fichiers shell minimaux à précacher
 const STATIC_CACHE = ['/', '/index.html', '/manifest.json'];
 
-// ── Installation : skipWaiting immédiat ────────────────────────
+// ── Installation : précache SANS skipWaiting ────────────────────
+// On NE fait PAS skipWaiting ici — le nouveau SW reste en "waiting"
+// ce qui permet à App.tsx de détecter reg.waiting et d'afficher la bannière.
 self.addEventListener('install', (event) => {
-  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => cache.addAll(STATIC_CACHE))
   );
 });
 
-// ── Activation : nettoie les anciens caches et prend le contrôle
+// ── Activation : nettoie les anciens caches et prend le contrôle ─
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    Promise.all([
+      caches.keys().then(keys =>
+        Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+      ),
+      clients.claim(),
+    ]).then(() => {
+      // Notifie tous les onglets : une mise à jour vient d'être activée
+      clients.matchAll({ includeUncontrolled: true, type: 'window' }).then(clientList => {
+        clientList.forEach(client => {
+          client.postMessage({ type: 'SW_UPDATED' });
+        });
+      });
+    })
+  );
+});
 
-// ── Fetch : Network First pour HTML/JS/CSS, Cache First pour images
+// ── Message depuis l'app ─────────────────────────────────────────
+// L'app envoie SKIP_WAITING quand l'utilisateur clique "Mettre à jour"
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
+// ── Fetch : Network First pour HTML/JS/CSS, Cache First pour images ─
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   if (!event.request.url.startsWith(self.location.origin)) return;
@@ -52,32 +78,6 @@ self.addEventListener('fetch', (event) => {
         caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
         return res;
       }).catch(() => {});
-    })
-  );
-});
-
-// ── Message : SKIP_WAITING forcé depuis l'app ─────────────────
-self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
-});
-
-// ── Notifie tous les clients qu'une mise à jour est disponible ─
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    Promise.all([
-      caches.keys().then(keys =>
-        Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-      ),
-      clients.claim(),
-    ]).then(() => {
-      // Prévenir tous les onglets/fenêtres ouverts
-      clients.matchAll({ includeUncontrolled: true, type: 'window' }).then(clientList => {
-        clientList.forEach(client => {
-          client.postMessage({ type: 'SW_UPDATED' });
-        });
-      });
     })
   );
 });
