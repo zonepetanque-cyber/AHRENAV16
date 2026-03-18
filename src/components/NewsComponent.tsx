@@ -45,39 +45,39 @@ const NewsCard = ({ item }: { item: NewsItem }) => {
   const [imgError, setImgError] = useState(false);
   return (
     <a href={item.link} target="_blank" rel="noopener noreferrer" className="block group">
-      <div className="flex gap-3 p-3 md:p-4 rounded-xl border border-white/5 hover:border-white/15 hover:bg-white/5 transition-all active:scale-[0.98]">
-        <div className="flex-shrink-0 w-16 h-16 md:w-28 md:h-20 rounded-lg overflow-hidden bg-zinc-900">
+      <div className="flex gap-4 p-4 md:p-5 rounded-xl border border-white/5 hover:border-white/15 hover:bg-white/5 transition-all active:scale-[0.98]">
+        <div className="flex-shrink-0 w-24 h-24 md:w-32 md:h-24 rounded-xl overflow-hidden bg-zinc-900">
           {item.image && !imgError ? (
             <img src={item.image} alt="" referrerPolicy="no-referrer"
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
               onError={() => setImgError(true)} />
           ) : (
             <div className="w-full h-full flex items-center justify-center" style={{ background: item.color + '22' }}>
-              <Newspaper size={20} style={{ color: item.color }} />
+              <Newspaper size={24} style={{ color: item.color }} />
             </div>
           )}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5 mb-1.5">
-            <span className="text-[9px] md:text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded"
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-[10px] md:text-[11px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md"
               style={{ background: item.color + '22', color: item.color }}>
               {item.dept}
             </span>
-            <span className="flex items-center gap-0.5 text-white/25 text-[9px]">
-              <Clock size={8} />{formatDate(item.date)}
+            <span className="flex items-center gap-1 text-white/30 text-[10px]">
+              <Clock size={9} />{formatDate(item.date)}
             </span>
           </div>
-          <p className="text-white font-semibold text-[12px] md:text-sm leading-snug line-clamp-2 group-hover:text-white/90 mb-1">
+          <p className="text-white font-bold text-sm md:text-base leading-snug line-clamp-2 group-hover:text-white/90 mb-1.5">
             {item.title}
           </p>
           {item.excerpt && item.excerpt !== item.title && (
-            <p className="text-white/35 text-[10px] md:text-xs leading-snug line-clamp-2 md:line-clamp-3">
+            <p className="text-white/40 text-xs md:text-sm leading-relaxed line-clamp-2 md:line-clamp-3">
               {item.excerpt}
             </p>
           )}
         </div>
         <div className="flex-shrink-0 self-center">
-          <ChevronRight size={14} className="text-white/20 group-hover:text-white/50 transition-colors" />
+          <ChevronRight size={16} className="text-white/20 group-hover:text-white/50 transition-colors" />
         </div>
       </div>
     </a>
@@ -222,7 +222,6 @@ const NewsComponent = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
-  const [failedCount, setFailedCount] = useState(0);
   const [filter, setFilter] = useState<FilterValue>({ type: 'all' });
   const [updatedAtStr, setUpdatedAtStr] = useState('');
 
@@ -234,8 +233,7 @@ const NewsComponent = () => {
           const { data, timestamp } = JSON.parse(cached);
           if (Date.now() - timestamp < CACHE_DURATION) {
             setNews(data.items || []);
-            setFailedCount((data.failedDepts || []).length);
-            setUpdatedAt(data.updatedAt);
+                  setUpdatedAt(data.updatedAt);
             setLoading(false);
             return;
           }
@@ -247,7 +245,6 @@ const NewsComponent = () => {
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data: NewsResponse = await res.json();
       setNews(data.items || []);
-      setFailedCount((data.failedDepts || []).length);
       setUpdatedAt(data.updatedAt);
       setError(false);
       try { localStorage.setItem(CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() })); } catch {}
@@ -258,8 +255,7 @@ const NewsComponent = () => {
         if (cached) {
           const { data } = JSON.parse(cached);
           setNews(data.items || []);
-          setFailedCount((data.failedDepts || []).length);
-          setUpdatedAt(data.updatedAt);
+              setUpdatedAt(data.updatedAt);
         }
       } catch {}
     } finally {
@@ -331,20 +327,20 @@ const NewsComponent = () => {
           </div>
         )}
 
-        {!loading && failedCount > 0 && news.length > 0 && (
-          <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 rounded-xl px-3 py-2 mb-4">
-            <AlertCircle size={12} className="text-amber-400 flex-shrink-0" />
-            <p className="text-amber-400/80 text-[10px]">
-              {failedCount} site{failedCount > 1 ? 's' : ''} indisponible{failedCount > 1 ? 's' : ''} — affichage partiel
+        {!loading && news.length > 0 && (
+          <div className="flex items-start gap-2.5 bg-white/4 border border-white/8 rounded-xl px-3 py-2.5 mb-4">
+            <span className="text-base flex-shrink-0 mt-0.5">ℹ️</span>
+            <p className="text-white/40 text-[11px] leading-relaxed">
+              Les actualités proviennent des sites officiels des comités départementaux et des médias pétanque. Certains comités ne publient pas encore de flux d'actualités en ligne — leurs articles n'apparaissent pas ici, mais leur calendrier reste disponible dans l'onglet <span className="text-white/60 font-bold">Calendrier</span>.
             </p>
           </div>
         )}
 
         {loading && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {[1, 2, 3, 4, 5, 6].map(i => (
               <div key={i} className="flex gap-3 p-3 rounded-xl border border-white/5 animate-pulse">
-                <div className="w-16 h-16 md:w-28 md:h-20 rounded-lg bg-zinc-800 flex-shrink-0" />
+                <div className="w-24 h-24 md:w-32 md:h-24 rounded-xl bg-zinc-800 flex-shrink-0" />
                 <div className="flex-1 space-y-2 py-1">
                   <div className="h-2 w-16 bg-zinc-800 rounded" />
                   <div className="h-3 w-full bg-zinc-800 rounded" />
@@ -356,7 +352,7 @@ const NewsComponent = () => {
         )}
 
         {!loading && filtered.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {filtered.map(item => <NewsCard key={item.id} item={item} />)}
           </div>
         )}

@@ -20,6 +20,11 @@ import { CONCOURS_CALVADOS_2026, DEPT_CALVADOS } from '../data/calvados2026';
 import { CONCOURS_JEUNES_2026, SOURCE_JEUNES } from '../data/jeunes2026';
 import { CONCOURS_CANTAL_2026, DEPT_CANTAL } from '../data/cantal2026';
 import { CONCOURS_CHARENTE_MARITIME_2026, DEPT_CHARENTE_MARITIME } from '../data/charentemaritime2026';
+import { CONCOURS_CHER_2026, DEPT_CHER } from '../data/cher2026';
+import { CONCOURS_CORREZE_2026, DEPT_CORREZE } from '../data/correze2026';
+import { CONCOURS_CORSE2A_2026, DEPT_CORSE2A } from '../data/corse2a2026';
+import { CONCOURS_CORSE2B_2026, DEPT_CORSE2B } from '../data/corse2b2026';
+import { CONCOURS_COTEDOR_2026, DEPT_COTEDOR } from '../data/cotedor2026';
 import {
   Calendar as CalendarIcon, Clock,
   List, MapPin, SlidersHorizontal, X, RotateCcw, Check, Radio, ChevronDown
@@ -39,19 +44,19 @@ const MONTHS_SHORT = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','O
 const DAYS_FR   = ['L','M','M','J','V','S','D'];
 
 // ── Source meta ───────────────────────────────────────────────
-type EventSource = 'live' | 'national' | 'allier' | 'nievre' | 'ain' | 'aisne' | 'ahp' | 'am' | 'ardeche' | 'ariege' | 'aube' | 'aude' | 'aveyron' | 'bdr' | 'calvados' | 'cantal' | 'charente_maritime' | 'jeunes' | 'regional';
+type EventSource = 'live' | 'national' | 'allier' | 'nievre' | 'ain' | 'aisne' | 'ahp' | 'am' | 'ardeche' | 'ariege' | 'aube' | 'aude' | 'aveyron' | 'bdr' | 'calvados' | 'cantal' | 'charente_maritime' | 'cher' | 'correze' | 'corse2a' | 'corse2b' | 'cotedor' | 'jeunes' | 'regional';
 
 const SOURCE_COLOR: Record<EventSource, string> = {
   live: '#dc2626', national: '#3b82f6', allier: '#10b981',
   nievre: '#f97316', ain: '#8b5cf6', aisne: '#06b6d4',
   ahp: '#84cc16', am: '#0066CC', ardeche: '#f97316', ariege: '#e11d48',
-  aube: '#f43f5e', aude: '#a855f7', aveyron: '#f97316', bdr: '#ef4444', calvados: '#3b82f6', cantal: '#d97706', charente_maritime: '#0891b2', jeunes: '#10b981', regional: '#f59e0b',
+  aube: '#f43f5e', aude: '#a855f7', aveyron: '#f97316', bdr: '#ef4444', calvados: '#3b82f6', cantal: '#d97706', charente_maritime: '#0891b2', cher: '#dc2626', correze: '#7e22ce', corse2a: '#e8a020', corse2b: '#9333ea', cotedor: '#c2410c', jeunes: '#10b981', regional: '#f59e0b',
 };
 const SOURCE_LABEL: Record<EventSource, string> = {
   live: 'Direct', national: 'National', allier: 'Allier (03)',
   nievre: 'Nièvre (58)', ain: 'Ain (01)', aisne: 'Aisne (02)',
   ahp: 'AHP (04)', am: 'Alpes-Mar. (06)', ardeche: 'Ardèche (07)',
-  ariege: 'Ariège (09)', aube: 'Aube (10)', aude: 'Aude (11)', aveyron: 'Aveyron (12)', bdr: 'Bouches-du-Rhône (13)', calvados: 'Calvados (14)', cantal: 'Cantal (15)', charente_maritime: 'Charente-Maritime (17)', jeunes: 'Circuit National Jeunes', regional: 'Régionaux',
+  ariege: 'Ariège (09)', aube: 'Aube (10)', aude: 'Aude (11)', aveyron: 'Aveyron (12)', bdr: 'Bouches-du-Rhône (13)', calvados: 'Calvados (14)', cantal: 'Cantal (15)', charente_maritime: 'Charente-Maritime (17)', cher: 'Cher (18)', correze: 'Corrèze (19)', corse2a: 'Corse-du-Sud (2A)', corse2b: 'Haute-Corse (2B)', cotedor: 'Côte-d\'Or (21)', jeunes: 'Circuit National Jeunes', regional: 'Régionaux',
 };
 
 const DEPT_LINKS: Record<string, { facebook: string; site: string; code: string } | null> = {
@@ -71,30 +76,82 @@ const DEPT_LINKS: Record<string, { facebook: string; site: string; code: string 
   calvados: { facebook: DEPT_CALVADOS.facebook, site: DEPT_CALVADOS.site, code: '14' },
   cantal:             { facebook: DEPT_CANTAL.facebook,             site: DEPT_CANTAL.site,             code: '15' },
   charente_maritime:  { facebook: DEPT_CHARENTE_MARITIME.facebook,  site: DEPT_CHARENTE_MARITIME.site,  code: '17' },
+  cher:               { facebook: DEPT_CHER.facebook,              site: DEPT_CHER.site,              code: '18' },
+  correze:            { facebook: DEPT_CORREZE.facebook,           site: DEPT_CORREZE.site,           code: '19' },
+  corse2a:            { facebook: DEPT_CORSE2A.facebook,           site: DEPT_CORSE2A.site,           code: '2A' },
+  corse2b:            { facebook: DEPT_CORSE2B.facebook,           site: DEPT_CORSE2B.site,           code: '2B' },
+  cotedor:            { facebook: DEPT_COTEDOR.facebook,           site: DEPT_COTEDOR.site,           code: '21' },
   jeunes:             { facebook: SOURCE_JEUNES.facebook,            site: SOURCE_JEUNES.site,           code: 'FR' },
 };
 
 // ── Départements disponibles pour l'accordéon ─────────────────
-const DEPT_OPTIONS: { key: EventSource | string; label: string; color: string; available: boolean }[] = [
-  { key: 'ain',     label: 'Ain (01)',            color: '#8b5cf6', available: true  },
-  { key: 'aisne',   label: 'Aisne (02)',          color: '#06b6d4', available: true  },
-  { key: 'allier',  label: 'Allier (03)',         color: '#10b981', available: true  },
-  { key: 'ahp',     label: 'AHP (04)',            color: '#84cc16', available: true  },
-  { key: 'hpa',     label: 'Hautes-Alpes (05)',   color: '#6b7280', available: false },
-  { key: 'am',      label: 'Alpes-Mar. (06)',     color: '#0066CC', available: true  },
-  { key: 'ardeche', label: 'Ardèche (07)',        color: '#f97316', available: true  },
-  { key: 'ardennes',label: 'Ardennes (08)',       color: '#6b7280', available: false },
-  { key: 'ariege',  label: 'Ariège (09)',         color: '#e11d48', available: true  },
-  { key: 'aube',    label: 'Aube (10)',           color: '#f43f5e', available: true  },
-  { key: 'aude',    label: 'Aude (11)',           color: '#a855f7', available: true  },
-  { key: 'aveyron', label: 'Aveyron (12)',         color: '#f97316', available: true  },
-  { key: 'bdr',     label: 'Bouches-du-Rhône (13)', color: '#ef4444', available: true  },
-  { key: 'calvados', label: 'Calvados (14)',          color: '#3b82f6', available: true  },
-  { key: 'cantal',              label: 'Cantal (15)',              color: '#d97706', available: true  },
-  { key: 'charente',            label: 'Charente (16)',            color: '#6b7280', available: false },
-  { key: 'charente_maritime',   label: 'Charente-Maritime (17)',   color: '#0891b2', available: true  },
-  { key: 'nievre',  label: 'Nièvre (58)',         color: '#ea580c', available: true  },
+// Données brutes des départements — l'expiration est calculée dynamiquement
+const DEPT_DATA: { key: EventSource | string; label: string; color: string; lastDate?: string }[] = [
+  { key: 'ain',     label: 'Ain (01)',            color: '#8b5cf6' },
+  { key: 'aisne',   label: 'Aisne (02)',          color: '#06b6d4' },
+  { key: 'allier',  label: 'Allier (03)',         color: '#10b981' },
+  { key: 'ahp',     label: 'AHP (04)',            color: '#84cc16' },
+  { key: 'hpa',     label: 'Hautes-Alpes (05)',   color: '#6b7280' },
+  { key: 'am',      label: 'Alpes-Mar. (06)',     color: '#0066CC' },
+  { key: 'ardeche', label: 'Ardèche (07)',        color: '#f97316' },
+  { key: 'ardennes',label: 'Ardennes (08)',       color: '#6b7280' },
+  { key: 'ariege',  label: 'Ariège (09)',         color: '#e11d48' },
+  { key: 'aube',    label: 'Aube (10)',           color: '#f43f5e' },
+  { key: 'aude',    label: 'Aude (11)',           color: '#a855f7' },
+  { key: 'aveyron', label: 'Aveyron (12)',         color: '#f97316' },
+  { key: 'bdr',     label: 'Bouches-du-Rhône (13)', color: '#ef4444' },
+  { key: 'calvados', label: 'Calvados (14)',          color: '#3b82f6' },
+  { key: 'cantal',              label: 'Cantal (15)',              color: '#d97706' },
+  { key: 'charente',            label: 'Charente (16)',            color: '#6b7280' },
+  { key: 'charente_maritime',   label: 'Charente-Maritime (17)',   color: '#0891b2' },
+  { key: 'cher',                label: 'Cher (18)',                color: '#dc2626' },
+  { key: 'correze',             label: 'Corrèze (19)',             color: '#7e22ce' },
+  { key: 'corse2a',             label: 'Corse-du-Sud (2A)',        color: '#e8a020' },
+  { key: 'corse2b',             label: 'Haute-Corse (2B)',         color: '#9333ea' },
+  { key: 'cotedor',             label: 'Côte-d\'Or (21)',          color: '#c2410c' },
+  { key: 'nievre',  label: 'Nièvre (58)',         color: '#ea580c' },
 ];
+
+// Dernière date connue par département (mise à jour automatiquement à chaque nouveau calendrier)
+const DEPT_LAST_DATE: Record<string, string> = {
+  ain:               '2027-01-01', // calendrier 2026-2027
+  aisne:             '2026-12-31',
+  allier:            '2027-02-28',
+  ahp:               '2026-11-30',
+  am:                '2026-12-31',
+  ardeche:           '2026-12-31',
+  ariege:            '2026-12-31',
+  aube:              '2026-12-31',
+  aude:              '2026-12-31',
+  aveyron:           '2026-12-31',
+  bdr:               '2026-12-31',
+  calvados:          '2026-12-31',
+  cantal:            '2026-12-31',
+  charente_maritime: '2026-12-31',
+  cher:              '2027-02-21',
+  correze:           '2026-12-19',
+  corse2a:           '2026-11-22',
+  corse2b:           '2026-11-08',
+  cotedor:           '2026-12-20',
+  nievre:            '2026-12-31',
+  national:          '2027-12-31',
+  regional:          '2027-12-31',
+  jeunes:            '2027-12-31',
+};
+
+// Calcule dynamiquement si un département a encore des événements à venir
+// Un département devient grisé+barré automatiquement si sa dernière date est passée
+const getDeptOptions = () => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return DEPT_DATA.map(d => {
+    const lastDate = DEPT_LAST_DATE[d.key];
+    const available = !lastDate || new Date(lastDate) >= today;
+    return { ...d, available };
+  });
+};
+
+const DEPT_OPTIONS = getDeptOptions();
 
 // ── Type unifié ───────────────────────────────────────────────
 interface UnifiedEvent {
@@ -180,6 +237,11 @@ function buildEvents(videos: Video[]): UnifiedEvent[] {
   addDept(CONCOURS_CALVADOS_2026 as any[], 'calvados');
   addDept(CONCOURS_CANTAL_2026            as any[], 'cantal');
   addDept(CONCOURS_CHARENTE_MARITIME_2026 as any[], 'charente_maritime');
+    addDept(CONCOURS_CHER_2026 as any[], 'cher');
+    addDept(CONCOURS_CORREZE_2026 as any[], 'correze');
+    addDept(CONCOURS_CORSE2A_2026 as any[], 'corse2a');
+    addDept(CONCOURS_CORSE2B_2026 as any[], 'corse2b');
+    addDept(CONCOURS_COTEDOR_2026 as any[], 'cotedor');
   addDept(CONCOURS_JEUNES_2026            as any[], 'jeunes');
 
   CONCOURS_REGIONAUX_2026.forEach(c => events.push({
@@ -259,24 +321,231 @@ const Checkbox = ({ checked, onChange, label }: { checked: boolean; onChange: ()
   </button>
 );
 
+// ── EventDetailSheet ──────────────────────────────────────────
+const TYPE_LABEL: Record<string, string> = {
+  CONCOURS:    'Concours',
+  CHAMPIONNAT: 'Championnat',
+  RÉGIONAL:    'Régional',
+  NATIONAL:    'National',
+  SPÉCIAL:     'Spécial',
+};
+
+const TYPE_COLOR: Record<string, string> = {
+  CONCOURS:    '#6b7280',
+  CHAMPIONNAT: '#2563eb',
+  RÉGIONAL:    '#7c3aed',
+  NATIONAL:    '#dc2626',
+  SPÉCIAL:     '#d97706',
+};
+
+const FORMAT_LABEL: Record<string, { icon: string; label: string }> = {
+  'TRIPLETTE':   { icon: '⚽⚽⚽', label: 'Triplette' },
+  'DOUBLETTE':   { icon: '⚽⚽',   label: 'Doublette' },
+  'TÊTE À TÊTE': { icon: '⚽',    label: 'Tête à Tête' },
+  'INDIVIDUEL':  { icon: '⚽',    label: 'Individuel' },
+  'ENDURO':      { icon: '⚡',    label: 'Enduro' },
+  'AUTRE':       { icon: '🎯',    label: 'Autre' },
+};
+
+const EventDetailSheet = ({ ev, onClose, onVideoSelect }: {
+  ev: UnifiedEvent | null;
+  onClose: () => void;
+  onVideoSelect: (v: Video) => void;
+}) => {
+  useEffect(() => {
+    if (ev) document.body.style.overflow = 'hidden';
+    else document.body.style.overflow = '';
+    return () => { document.body.style.overflow = ''; };
+  }, [ev]);
+
+  if (!ev) return null;
+
+  const color = SOURCE_COLOR[ev.source] || '#dc2626';
+  const typeColor = TYPE_COLOR[ev.typeEvent || 'CONCOURS'] || '#6b7280';
+  const fmt = FORMAT_LABEL[ev.format || 'AUTRE'] || FORMAT_LABEL['AUTRE'];
+  const dept = DEPT_LINKS[ev.source];
+  const past = isPast(ev.date, ev.dateFin);
+  const multiDay = ev.dateFin && ev.dateFin !== ev.date;
+
+  // Construire les joueurs selon le format
+  const players = ev.format === 'TRIPLETTE' ? 3 : ev.format === 'DOUBLETTE' ? 2 : 1;
+
+  return ReactDOM.createPortal(
+    <AnimatePresence>
+      {ev && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[300] flex items-end justify-center"
+          onClick={onClose}
+        >
+          <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" />
+
+          <motion.div
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
+            transition={{ type: 'spring', damping: 32, stiffness: 320 }}
+            className="relative w-full max-w-lg mx-3 mb-3 bg-zinc-950 border border-white/10 rounded-3xl overflow-hidden shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* ── Header coloré ── */}
+            <div className="relative px-5 pt-5 pb-4" style={{ background: `linear-gradient(135deg, ${color}22 0%, transparent 60%)`, borderBottom: `1px solid ${color}30` }}>
+              {/* Handle */}
+              <div className="flex justify-center mb-3">
+                <div className="w-10 h-1 rounded-full bg-white/20" />
+              </div>
+
+              {/* Type badge + fermer */}
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full"
+                  style={{ background: typeColor + '25', color: typeColor, border: `1px solid ${typeColor}40` }}>
+                  {TYPE_LABEL[ev.typeEvent || 'CONCOURS']}
+                </span>
+                <button onClick={onClose}
+                  className="w-7 h-7 rounded-full bg-white/8 flex items-center justify-center hover:bg-white/15 transition-colors">
+                  <X size={13} className="text-white/60" />
+                </button>
+              </div>
+
+              {/* Icônes joueurs + Format */}
+              <div className="flex items-center gap-3 mb-2">
+                <div className="flex items-center gap-0.5">
+                  {Array.from({ length: players }).map((_, i) => (
+                    <div key={i} className="w-8 h-8 rounded-full flex items-center justify-center"
+                      style={{ background: color + '30', border: `2px solid ${color}50` }}>
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill={color}>
+                        <circle cx="12" cy="7" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+                      </svg>
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <p className="text-white font-black text-base uppercase tracking-wide leading-tight">
+                    {fmt.label}
+                  </p>
+                  <p className="text-white/40 text-[10px] uppercase tracking-wider">
+                    {SOURCE_LABEL[ev.source]}
+                  </p>
+                </div>
+              </div>
+
+              {/* Titre catégorie */}
+              <p className="text-white font-bold text-sm leading-snug">{ev.title}</p>
+            </div>
+
+            {/* ── Corps ── */}
+            <div className="px-5 py-4 space-y-3">
+
+              {/* Ville + Lieu */}
+              <div className="flex items-start gap-3 bg-white/4 rounded-2xl px-4 py-3">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: color + '20' }}>
+                  <MapPin size={16} style={{ color }} />
+                </div>
+                <div>
+                  <p className="text-white font-black text-sm">{ev.ville}</p>
+                  {ev.lieu && <p className="text-white/40 text-[11px] mt-0.5">{ev.lieu}</p>}
+                  {ev.club && ev.club !== ev.ville && (
+                    <p className="text-white/30 text-[10px] mt-0.5">🏟 {ev.club}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Date + Heure */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="flex items-center gap-2.5 bg-white/4 rounded-2xl px-3.5 py-3">
+                  <CalendarIcon size={15} className="text-white/40 flex-shrink-0" />
+                  <div>
+                    <p className="text-white/40 text-[9px] uppercase font-bold tracking-wider">Date</p>
+                    <p className="text-white font-bold text-[12px]">
+                      {formatShort(ev.date)}
+                      {multiDay && <span className="text-white/40"> → {formatShort(ev.dateFin!)}</span>}
+                    </p>
+                    <p className="text-white/30 text-[10px] capitalize">
+                      {new Date(ev.date).toLocaleDateString('fr-FR', { weekday: 'long' })}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2.5 bg-white/4 rounded-2xl px-3.5 py-3">
+                  <Clock size={15} className="text-white/40 flex-shrink-0" />
+                  <div>
+                    <p className="text-white/40 text-[9px] uppercase font-bold tracking-wider">Heure</p>
+                    <p className="text-white font-bold text-[12px]">
+                      {ev.heure || 'Non précisée'}
+                    </p>
+                    {multiDay && <p className="text-white/30 text-[10px]">{ev.dateFin ? Math.ceil((new Date(ev.dateFin).getTime() - new Date(ev.date).getTime()) / 86400000) + ' jour(s)' : ''}</p>}
+                  </div>
+                </div>
+              </div>
+
+              {/* Info complémentaire */}
+              {ev.info && (
+                <div className="flex items-start gap-2.5 bg-amber-500/8 border border-amber-500/20 rounded-2xl px-4 py-3">
+                  <span className="text-amber-400 text-base flex-shrink-0 mt-0.5">ℹ️</span>
+                  <p className="text-amber-300/80 text-[11px] leading-relaxed">{ev.info}</p>
+                </div>
+              )}
+
+              {/* Avertissement annulation */}
+              {!past && dept && (
+                <div className="flex items-center gap-2 bg-red-600/8 border border-red-600/20 rounded-2xl px-4 py-2.5">
+                  <span className="text-[13px]">⚠️</span>
+                  <p className="text-white/40 text-[10px] flex-1">Vérifier les annulations auprès du comité</p>
+                </div>
+              )}
+
+              {/* Liens comité */}
+              {dept && (
+                <div className="grid grid-cols-2 gap-2">
+                  <a href={dept.facebook} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 bg-blue-600/15 border border-blue-600/25 rounded-2xl py-3 text-blue-400 font-bold text-[11px] hover:bg-blue-600/25 transition-colors active:scale-95">
+                    <span className="text-base">📘</span>
+                    Facebook CD{dept.code}
+                  </a>
+                  <a href={dept.site} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 bg-emerald-600/15 border border-emerald-600/25 rounded-2xl py-3 text-emerald-400 font-bold text-[11px] hover:bg-emerald-600/25 transition-colors active:scale-95">
+                    <span className="text-base">🌐</span>
+                    Site officiel
+                  </a>
+                </div>
+              )}
+
+              {/* Bouton live si vidéo */}
+              {ev.video && (
+                <button
+                  onClick={() => { onClose(); onVideoSelect(ev.video!); }}
+                  className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-black text-sm uppercase tracking-wider text-white transition-colors"
+                  style={{ background: color }}>
+                  <Radio size={14} className="animate-pulse" />
+                  Regarder le Direct
+                </button>
+              )}
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>,
+    document.body
+  );
+};
+
 // ── EventCard ─────────────────────────────────────────────────
 const FORMAT_ICON: Record<string, string> = {
   'TRIPLETTE': '3️⃣', 'DOUBLETTE': '2️⃣', 'TÊTE À TÊTE': '1️⃣',
   'INDIVIDUEL': '1️⃣', 'ENDURO': '⚡', 'AUTRE': '🎯',
 };
 
-const EventCard = ({ ev, onVideoSelect }: { ev: UnifiedEvent; onVideoSelect: (v: Video) => void }) => {
+const EventCard = ({ ev, onVideoSelect, onSelect }: { ev: UnifiedEvent; onVideoSelect: (v: Video) => void; onSelect?: (ev: UnifiedEvent) => void }) => {
   const color = SOURCE_COLOR[ev.source];
   const past  = isPast(ev.date, ev.dateFin);
   const icon  = ev.format ? (FORMAT_ICON[ev.format] || '🎯') : (ev.source === 'live' ? '📺' : '🎯');
 
   return (
     <div
-      className={`rounded-xl border border-white/5 overflow-hidden transition-all
-        hover:border-white/15
-        ${ev.video ? 'cursor-pointer active:scale-[0.98]' : ''}`}
+      className="rounded-xl border border-white/5 overflow-hidden transition-all hover:border-white/15 cursor-pointer active:scale-[0.98]"
       style={{ borderLeft: `3px solid ${color}` }}
-      onClick={() => ev.video && onVideoSelect(ev.video)}
+      onClick={() => onSelect ? onSelect(ev) : ev.video && onVideoSelect(ev.video)}
     >
       <div className="flex gap-3 p-3">
         <div className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center text-base"
@@ -329,13 +598,11 @@ const EventCard = ({ ev, onVideoSelect }: { ev: UnifiedEvent; onVideoSelect: (v:
           </div>
         </div>
 
-        {ev.video && (
-          <div className="flex-shrink-0 self-center">
-            <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background: color }}>
-              <svg width="9" height="9" viewBox="0 0 8 8" fill="white"><polygon points="2,1 7,4 2,7"/></svg>
-            </div>
+        <div className="flex-shrink-0 self-center">
+          <div className="w-6 h-6 rounded-full flex items-center justify-center bg-white/8">
+            <svg width="7" height="7" viewBox="0 0 8 8" fill="rgba(255,255,255,0.4)"><polygon points="2,1 7,4 2,7"/></svg>
           </div>
-        )}
+        </div>
       </div>
 
       {DEPT_LINKS[ev.source] && !past && (
@@ -357,6 +624,7 @@ const EventCard = ({ ev, onVideoSelect }: { ev: UnifiedEvent; onVideoSelect: (v:
 
 // ── ListView ──────────────────────────────────────────────────
 const ListView = ({ events, onVideoSelect }: { events: UnifiedEvent[]; onVideoSelect: (v: Video) => void }) => {
+  const [detailEv, setDetailEv] = useState<UnifiedEvent | null>(null);
   const grouped = useMemo(() => {
     const map = new Map<string, UnifiedEvent[]>();
     [...events].sort((a, b) => a.date.localeCompare(b.date))
@@ -373,6 +641,8 @@ const ListView = ({ events, onVideoSelect }: { events: UnifiedEvent[]; onVideoSe
   );
 
   return (
+    <>
+    <EventDetailSheet ev={detailEv} onClose={() => setDetailEv(null)} onVideoSelect={onVideoSelect} />
     <div className="space-y-6 px-4 pb-6">
       {grouped.map(([date, evs]) => {
         const d = new Date(date);
@@ -393,12 +663,13 @@ const ListView = ({ events, onVideoSelect }: { events: UnifiedEvent[]; onVideoSe
               </div>
             </div>
             <div className="space-y-2">
-              {evs.map(ev => <EventCard key={ev.id} ev={ev} onVideoSelect={onVideoSelect}/>)}
+              {evs.map(ev => <EventCard key={ev.id} ev={ev} onVideoSelect={onVideoSelect} onSelect={setDetailEv}/>)}
             </div>
           </div>
         );
       })}
     </div>
+    </>
   );
 };
 
@@ -488,6 +759,7 @@ const MonthView = ({ events, allEvents, onVideoSelect, forcedMonth }: {
 
   const [idx, setIdx]       = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
+  const [detailEv, setDetailEv] = useState<UnifiedEvent | null>(null);
   const scrollRef   = React.useRef<HTMLDivElement>(null);
   const isScrolling = React.useRef(false);
 
@@ -642,7 +914,7 @@ const MonthView = ({ events, allEvents, onVideoSelect, forcedMonth }: {
               {/* Liste scrollable */}
               <div className="overflow-y-auto px-4 pb-6 space-y-2 flex-1">
                 {selectedEvents.map(ev => (
-                  <EventCard key={ev.id} ev={ev} onVideoSelect={(v) => { setSelected(null); onVideoSelect(v); }} />
+                  <EventCard key={ev.id} ev={ev} onVideoSelect={(v) => { setSelected(null); onVideoSelect(v); }} onSelect={(e) => { setSelected(null); setDetailEv(e); }} />
                 ))}
               </div>
             </motion.div>
@@ -653,7 +925,7 @@ const MonthView = ({ events, allEvents, onVideoSelect, forcedMonth }: {
   );
 };
 
-// ── DeptAccordion ─────────────────────────────────────────────
+// ── DeptBottomSheet ───────────────────────────────────────────
 const DeptAccordion = ({ sources, onChange }: {
   sources: Set<string>;
   onChange: (sources: Set<string>) => void;
@@ -669,9 +941,10 @@ const DeptAccordion = ({ sources, onChange }: {
     onChange(next);
   };
 
+  const reset = () => onChange(new Set(['all']));
+
   const isAll = sources.has('all');
   const activeCount = isAll ? 0 : sources.size;
-
   const availableDepts = DEPT_OPTIONS.filter(d => d.available);
   const activeLabel = isAll
     ? 'Tous les départements'
@@ -679,13 +952,21 @@ const DeptAccordion = ({ sources, onChange }: {
       ? availableDepts.find(d => sources.has(d.key))?.label || '1 département'
       : `${activeCount} départements`;
 
+  // Bloquer le scroll du body quand le sheet est ouvert
+  useEffect(() => {
+    if (open) document.body.style.overflow = 'hidden';
+    else document.body.style.overflow = '';
+    return () => { document.body.style.overflow = ''; };
+  }, [open]);
+
   return (
-    <div className="relative">
+    <>
+      {/* Bouton déclencheur */}
       <button
-        onClick={() => setOpen(o => !o)}
-        className={`flex items-center gap-2 px-3 py-2 rounded-xl border transition-all text-left
+        onClick={() => setOpen(true)}
+        className={`flex items-center gap-2 px-3 py-2 rounded-xl border transition-all
           ${activeCount > 0
-            ? 'bg-red-600/15 border-red-500/40 text-white'
+            ? 'bg-red-600/20 border-red-500/60 text-white'
             : 'bg-zinc-800 border-white/15 text-white/70 hover:border-white/30 hover:text-white'}`}
       >
         <MapPin size={13} className="flex-shrink-0"/>
@@ -695,45 +976,92 @@ const DeptAccordion = ({ sources, onChange }: {
             {activeCount}
           </span>
         )}
-        <ChevronDown size={12} className={`flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}/>
+        <ChevronDown size={12} className="flex-shrink-0"/>
       </button>
 
-      {open && (
-        <>
-          {/* Overlay pour fermer — z-[60] pour passer au dessus de la barre sticky z-40 */}
-          <div className="fixed inset-0 z-[60]" onClick={() => setOpen(false)}/>
-          <div className="absolute left-0 top-full mt-2 z-[61] bg-zinc-900 border border-white/15 rounded-2xl shadow-2xl overflow-hidden min-w-[240px]">
+      {/* Bottom Sheet Portal */}
+      {open && ReactDOM.createPortal(
+        <div className="fixed inset-0 z-[200] flex flex-col justify-end">
 
-            {/* Tous */}
-            <button
-              onClick={() => { toggleSource('all'); setOpen(false); }}
-              className={`w-full flex items-center gap-3 px-4 py-3 transition-colors border-b border-white/8
-                ${isAll ? 'bg-white/10 text-white' : 'text-white/50 hover:text-white hover:bg-white/5'}`}
-            >
-              <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0
-                ${isAll ? 'border-white bg-white' : 'border-white/30'}`}>
-                {isAll && <div className="w-2 h-2 rounded-full bg-zinc-900"/>}
+          {/* Backdrop flouté */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            onClick={() => setOpen(false)}
+          />
+
+          {/* Sheet */}
+          <motion.div
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
+            transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+            className="relative z-10 mx-3 mb-3 bg-zinc-950 border border-white/10 rounded-3xl overflow-hidden flex flex-col"
+            style={{ maxHeight: 'calc(100vh - 80px)' }}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-white/8 flex-shrink-0">
+              <div>
+                <h3 className="text-white font-black text-base uppercase tracking-wider">Départements</h3>
+                <p className="text-white/30 text-[11px] mt-0.5">
+                  {activeCount === 0 ? 'Tous affichés' : `${activeCount} sélectionné${activeCount > 1 ? 's' : ''}`}
+                </p>
               </div>
-              <span className="text-[12px] font-black uppercase tracking-wide">Tous les départements</span>
+              <div className="flex items-center gap-2">
+                {/* Reset */}
+                {activeCount > 0 && (
+                  <button
+                    onClick={reset}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/8 border border-white/10 text-white/60 hover:text-white hover:bg-white/15 transition-all"
+                  >
+                    <RotateCcw size={11}/>
+                    <span className="text-[10px] font-black uppercase tracking-wide">Réinitialiser</span>
+                  </button>
+                )}
+                <button
+                  onClick={() => setOpen(false)}
+                  className="w-8 h-8 rounded-full bg-white/8 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/15 transition-all"
+                >
+                  <X size={14}/>
+                </button>
+              </div>
+            </div>
+
+            {/* Option "Tous" */}
+            <button
+              onClick={() => { reset(); setOpen(false); }}
+              className={`w-full flex items-center gap-4 px-5 py-4 border-b border-white/5 flex-shrink-0 transition-all
+                ${isAll ? 'bg-red-600/10' : 'hover:bg-white/4'}`}
+            >
+              {/* Checkbox style */}
+              <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all
+                ${isAll ? 'bg-red-600 border-red-600' : 'border-white/25'}`}>
+                {isAll && <Check size={12} className="text-white" strokeWidth={3}/>}
+              </div>
+              <div className="flex items-center gap-2 flex-1">
+                <div className="w-3 h-3 rounded-full bg-white/40"/>
+                <span className={`text-sm font-black uppercase tracking-wide ${isAll ? 'text-white' : 'text-white/50'}`}>
+                  Tous les départements
+                </span>
+              </div>
+              {isAll && <span className="text-red-500 text-[10px] font-black uppercase tracking-wider">Actif</span>}
             </button>
 
-            {/* Liste départements */}
-            <div className="py-1 max-h-80 overflow-y-auto">
+            {/* Liste scrollable */}
+            <div className="overflow-y-auto flex-1 py-2">
               {DEPT_OPTIONS.map(dept => {
                 const active = !isAll && sources.has(dept.key);
 
                 if (!dept.available) {
                   return (
-                    <div
-                      key={dept.key}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 opacity-40 cursor-not-allowed"
-                      title="Calendrier pas encore disponible"
-                    >
-                      <div className="w-2.5 h-2.5 rounded-full flex-shrink-0 bg-zinc-600"/>
-                      <span className="text-[12px] font-bold flex-1 text-left text-white/30 line-through">
-                        {dept.label}
-                      </span>
-                      <span className="text-[9px] font-black uppercase tracking-wider text-white/25 bg-white/8 px-1.5 py-0.5 rounded-full border border-white/10 flex-shrink-0">
+                    <div key={dept.key}
+                      className="flex items-center gap-4 px-5 py-3.5 opacity-35 cursor-not-allowed">
+                      <div className="w-5 h-5 rounded-md border-2 border-white/15 flex-shrink-0"/>
+                      <div className="w-3 h-3 rounded-full bg-zinc-600 flex-shrink-0"/>
+                      <span className="text-sm font-bold flex-1 text-white/25 line-through">{dept.label}</span>
+                      <span className="text-[9px] font-black uppercase text-white/20 bg-white/5 px-2 py-0.5 rounded-full border border-white/8">
                         Bientôt
                       </span>
                     </div>
@@ -744,26 +1072,55 @@ const DeptAccordion = ({ sources, onChange }: {
                   <button
                     key={dept.key}
                     onClick={() => toggleSource(dept.key)}
-                    className={`w-full flex items-center gap-3 px-4 py-2.5 transition-colors
-                      ${active ? 'text-white bg-white/5' : 'text-white/50 hover:text-white hover:bg-white/5'}`}
+                    className={`w-full flex items-center gap-4 px-5 py-3.5 transition-all
+                      ${active ? 'bg-red-600/8' : 'hover:bg-white/4'}`}
                   >
-                    <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: dept.color }}/>
-                    <span className="text-[12px] font-bold flex-1 text-left">{dept.label}</span>
-                    {active && <Check size={12} className="text-white flex-shrink-0"/>}
+                    {/* Checkbox */}
+                    <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all
+                      ${active ? 'bg-red-600 border-red-600' : 'border-white/25'}`}>
+                      {active && <Check size={12} className="text-white" strokeWidth={3}/>}
+                    </div>
+                    {/* Dot couleur */}
+                    <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: dept.color }}/>
+                    {/* Label */}
+                    <span className={`text-sm font-bold flex-1 text-left transition-colors
+                      ${active ? 'text-white' : 'text-white/55'}`}>
+                      {dept.label}
+                    </span>
+                    {active && (
+                      <span className="text-red-500 text-[10px] font-black uppercase tracking-wider">✓</span>
+                    )}
                   </button>
                 );
               })}
+
+              {/* Légende bas */}
+              <div className="flex items-center gap-2 px-5 py-3 mt-1 border-t border-white/5">
+                <div className="w-3 h-3 rounded-full bg-zinc-600 opacity-30 flex-shrink-0"/>
+                <span className="text-[10px] text-white/20 italic">Calendrier non encore intégré</span>
+              </div>
             </div>
 
-            {/* Légende bas */}
-            <div className="px-4 py-2.5 border-t border-white/8 flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-zinc-600 opacity-40"/>
-              <span className="text-[10px] text-white/25 italic">Calendrier non encore intégré</span>
+            {/* Bouton Appliquer */}
+            <div className="px-5 pt-3 pb-5 border-t border-white/8 flex-shrink-0">
+              <button
+                onClick={() => setOpen(false)}
+                className="w-full bg-red-600 hover:bg-red-700 text-white font-black text-sm uppercase tracking-widest py-4 rounded-2xl transition-colors shadow-lg shadow-red-900/30"
+              >
+                Voir les résultats
+                {activeCount > 0 && (
+                  <span className="ml-2 bg-white/20 text-white text-[11px] px-2 py-0.5 rounded-full">
+                    {activeCount} filtre{activeCount > 1 ? 's' : ''}
+                  </span>
+                )}
+              </button>
             </div>
-          </div>
-        </>
+
+          </motion.div>
+        </div>,
+        document.body
       )}
-    </div>
+    </>
   );
 };
 
@@ -987,10 +1344,10 @@ const CalendarComponent = ({ videos, onVideoSelect }: { videos: Video[]; onVideo
   }, [allEvents]);
 
   return (
-    <div className="pt-28 pb-4 min-h-screen">
+    <div className="pt-36 pb-4 min-h-screen">
 
       {/* Barre de contrôle sticky */}
-      <div className="sticky top-28 z-40 bg-zinc-950/98 backdrop-blur-md border-b border-white/8">
+      <div className="sticky top-36 z-40 bg-zinc-950/98 backdrop-blur-md border-b border-white/8">
 
         {/* Ligne 1 : vue + dept + filtres */}
         <div className="px-4 py-2.5 flex items-center justify-between gap-2">

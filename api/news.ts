@@ -9,6 +9,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 interface DeptSource {
+  filterKeywords?: string[];
   dept: string;
   code: string;
   color: string;
@@ -60,6 +61,9 @@ const DEPT_SOURCES: DeptSource[] = [
   { dept: 'France 3 Pétanque',code: 'MEDIA', color: '#1d4ed8', active: true, siteUrl: 'https://france3-regions.franceinfo.fr/sport/petanque', rssUrls: ['https://france3-regions.franceinfo.fr/sport/petanque/rss.xml', 'https://france3-regions.franceinfo.fr/sport/petanque/feed', 'https://france3-regions.franceinfo.fr/rss/sport.xml'] },
   { dept: 'PPF Tour',         code: 'MEDIA', color: '#b45309', active: true, siteUrl: 'https://www.petanquefrancaise.com',    rssUrls: rss('https://www.petanquefrancaise.com') },
   { dept: 'Trophée des Villes',code:'MEDIA', color: '#6d28d9', active: true, siteUrl: 'https://www.tropheedesvilles.fr',      rssUrls: rss('https://www.tropheedesvilles.fr') },
+  { dept: 'Ouest-France',     code: 'MEDIA', color: '#0f4c8a', active: true, siteUrl: 'https://www.ouest-france.fr/sport/petanque', rssUrls: ['https://www.ouest-france.fr/sport/petanque/rss', 'https://www.ouest-france.fr/sport/rss', 'https://www.ouest-france.fr/rss/sport.xml'], filterKeywords: ['pétanque','petanque','boules','bouliste'] },
+  { dept: 'Midi Libre',       code: 'MEDIA', color: '#e8520a', active: true, siteUrl: 'https://www.midilibre.fr/sport', rssUrls: ['https://www.midilibre.fr/sport/petanque/rss.xml', 'https://www.midilibre.fr/sport/rss.xml', 'https://www.midilibre.fr/rss.xml'], filterKeywords: ['pétanque','petanque','boules','bouliste'] },
+  { dept: 'La Montagne',      code: 'MEDIA', color: '#2d7d46', active: true, siteUrl: 'https://www.lamontagne.fr/sport', rssUrls: ['https://www.lamontagne.fr/sport/petanque/rss.xml', 'https://www.lamontagne.fr/sport/rss.xml', 'https://www.lamontagne.fr/rss.xml'], filterKeywords: ['pétanque','petanque','boules','bouliste'] },
 
   // ── FUTURS (active: false → mettre true quand ajouté au calendrier) ──────
   { dept: 'Charente (16)',          code: '16', color: '#6b7280', active: false, siteUrl: 'https://www.petanque16.fr',                 rssUrls: rss('https://www.petanque16.fr') },
@@ -148,15 +152,30 @@ function parseRSS(xml: string, source: DeptSource): NewsItem[] {
     return undefined;
   };
 
-  let match, count = 0;
-  while ((match = itemRegex.exec(xml)) !== null && count < 5) {
+  const keywords = source.filterKeywords;
+  // Pour les flux filtrés, on scanne plus d'articles pour en trouver assez
+  const maxScan = keywords ? 60 : 5;
+  const maxKeep = 5;
+
+  let match, scanned = 0, count = 0;
+  while ((match = itemRegex.exec(xml)) !== null && scanned < maxScan && count < maxKeep) {
+    scanned++;
     const block = match[1];
     const title = stripHtml(getTag(block, 'title'));
     if (!title) continue;
-    const link = getTag(block, 'link') || getTag(block, 'guid');
     const dateRaw = getTag(block, 'pubDate') || getTag(block, 'published') || getTag(block, 'updated');
     const descRaw = getTag(block, 'description') || getTag(block, 'summary') || getTag(block, 'content');
     const excerpt = stripHtml(descRaw).slice(0, 200).trim();
+
+    // Filtre par mots-clés si défini
+    if (keywords) {
+      const haystack = (title + ' ' + excerpt).toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const needles = keywords.map(k => k.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
+      if (!needles.some(k => haystack.includes(k))) continue;
+    }
+
+    const link = getTag(block, 'link') || getTag(block, 'guid');
     const image = extractImage(block);
     let date = new Date().toISOString();
     try { if (dateRaw) date = new Date(dateRaw).toISOString(); } catch {}
