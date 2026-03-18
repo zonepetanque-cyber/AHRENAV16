@@ -264,6 +264,23 @@ interface VideoCarouselProps {
   hideTitleBar?: boolean;
 }
 
+const formatNewsDate = (iso?: string): string => {
+  if (!iso) return '';
+  try {
+    const d = new Date(iso);
+    const now = new Date();
+    const diff = now.getTime() - d.getTime();
+    const mins = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+    if (mins < 60) return `Il y a ${mins} min`;
+    if (hours < 24) return `Il y a ${hours}h`;
+    if (days === 1) return `Hier à ${d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
+    if (days < 7) return d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  } catch { return ''; }
+};
+
 const formatLiveDate = (dateStr?: string) => {
   if (!dateStr) return '';
   const date = new Date(dateStr);
@@ -1381,9 +1398,19 @@ export default function App() {
                       <p className="text-white/90 text-[12px] font-bold leading-snug line-clamp-2 group-hover:text-white transition-colors">
                         {item.title}
                       </p>
-                      <p className="text-white/35 text-[9px] mt-1 uppercase tracking-wide font-medium">
-                        {item.dept}
-                      </p>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <p className="text-white/35 text-[9px] uppercase tracking-wide font-medium">
+                          {item.dept}
+                        </p>
+                        {item.date && (
+                          <>
+                            <span className="text-white/15 text-[9px]">·</span>
+                            <p className="text-white/30 text-[9px]">
+                              {formatNewsDate(item.date)}
+                            </p>
+                          </>
+                        )}
+                      </div>
                     </div>
 
                     <ChevronRight size={12} className="text-white/20 group-hover:text-white/50 flex-shrink-0 transition-colors" />
