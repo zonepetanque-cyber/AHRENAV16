@@ -123,7 +123,9 @@ async function getAllChannelVideos() {
 
 // ── Handler principal ─────────────────────────────────────────────────────────
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Protection assurée par Vercel nativement — les crons ne sont pas accessibles depuis l'extérieur
+  const token = req.headers['x-filter-token'] || req.query.token;
+  const expectedToken = process.env.FILTER_SECRET_TOKEN || 'ahrena-filter-2026';
+  if (token !== expectedToken) return res.status(401).json({ error: 'Non autorisé' });
   if (!SUPABASE_URL || !SUPABASE_KEY) return res.status(500).json({ error: 'Supabase non configuré' });
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);

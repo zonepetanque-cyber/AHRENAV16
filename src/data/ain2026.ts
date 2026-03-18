@@ -60,6 +60,7 @@ const COORDS: Record<string, [number, number]> = {
   "St Denis Pouilly":   [46.1569, 5.2200],
   "St Genis Pouilly":   [46.2447, 6.0239],
   "St Trivier sur Moignans": [46.1853, 4.9597],
+  "Oyonnax":            [46.2569, 5.6544],
 };
 
 const c = (ville: string): [number, number] => COORDS[ville] || [46.2050, 5.2290];

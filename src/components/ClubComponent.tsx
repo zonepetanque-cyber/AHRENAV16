@@ -8,6 +8,9 @@ import {
   toggleChannelSubscription, getChannelSubscriptions
 } from '../services/notificationService';
 
+const FAQ_ITEMS = [
+  // ... same items
+];
 
 const ClubComponent = ({ onTabChange }: { onTabChange: (tab: string) => void }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -180,11 +183,7 @@ const ClubComponent = ({ onTabChange }: { onTabChange: (tab: string) => void }) 
               <ShieldAlert size={20} />
             </button>
           )}
-          <button
-            className="p-2 bg-zinc-900 rounded-lg text-white/60 hover:text-white transition-colors"
-            title="Paramètres notifications"
-            onClick={() => document.getElementById('notifications-section')?.scrollIntoView({ behavior: 'smooth' })}
-          >
+          <button className="p-2 bg-zinc-900 rounded-lg text-white/60 hover:text-white transition-colors">
             <Settings size={20} />
           </button>
           <button onClick={handleLogout} className="p-2 bg-zinc-900 rounded-lg text-red-500/60 hover:text-red-500 transition-colors">
@@ -227,7 +226,7 @@ const ClubComponent = ({ onTabChange }: { onTabChange: (tab: string) => void }) 
       </div>
 
       {/* Notifications Settings */}
-      <div id="notifications-section" className="bg-zinc-900 p-8 rounded-2xl border border-white/5 mb-12">
+      <div className="bg-zinc-900 p-8 rounded-2xl border border-white/5 mb-12">
         <h2 className="text-sm font-black text-white uppercase italic mb-6 flex items-center gap-2">
           <Settings size={18} className="text-red-600" />
           Notifications Push

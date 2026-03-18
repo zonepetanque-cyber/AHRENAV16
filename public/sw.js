@@ -1,58 +1,64 @@
-// ── Version du cache — Vite remplace __APP_VERSION__ au build ──
-const CACHE_NAME = 'ahrena-v__APP_VERSION__';
+// ── Version du cache — changer ce numéro force la mise à jour ──
+const CACHE_VERSION = 'ahrena-v' + Date.now();
+const CACHE_NAME = CACHE_VERSION;
 
-// Fichiers shell minimaux à précacher
+// Fichiers à mettre en cache minimal (shell de l'app)
 const STATIC_CACHE = ['/', '/index.html', '/manifest.json'];
 
-// ── Installation : skipWaiting immédiat ────────────────────────
+// ── Installation ───────────────────────────────────────────────
 self.addEventListener('install', (event) => {
+  // skipWaiting : le nouveau SW prend le contrôle immédiatement
   self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => cache.addAll(STATIC_CACHE))
   );
 });
 
-// ── Activation : nettoie les anciens caches et prend le contrôle
+// ── Activation : supprime tous les anciens caches ──────────────
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     Promise.all([
+      // Supprime TOUS les anciens caches
       caches.keys().then(keys =>
         Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
       ),
+      // Prend le contrôle de tous les clients immédiatement
       clients.claim(),
     ])
   );
 });
 
-// ── Fetch : Network First pour HTML/JS/CSS, Cache First pour images
+// ── Fetch : Network First pour JS/CSS, Cache First pour images ─
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   if (!event.request.url.startsWith(self.location.origin)) return;
 
   const url = new URL(event.request.url);
 
-  // Network First : HTML, JS, CSS (toujours la dernière version)
+  // Toujours aller chercher sur le réseau pour les fichiers JS/CSS/HTML
+  // (les fichiers buildés par Vite ont des hashes dans leur nom)
   if (
-    url.pathname === '/' ||
-    url.pathname.endsWith('.html') ||
     url.pathname.endsWith('.js') ||
-    url.pathname.endsWith('.css')
+    url.pathname.endsWith('.css') ||
+    url.pathname === '/' ||
+    url.pathname.endsWith('.html')
   ) {
     event.respondWith(
       fetch(event.request)
         .then(res => {
+          // Met en cache la nouvelle version
           if (res && res.status === 200) {
             const clone = res.clone();
             caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
           }
           return res;
         })
-        .catch(() => caches.match(event.request))
+        .catch(() => caches.match(event.request)) // Fallback cache si hors ligne
     );
     return;
   }
 
-  // Cache First : images et autres ressources statiques
+  // Pour les images et autres ressources statiques : Cache First
   event.respondWith(
     caches.match(event.request).then(cached => {
       if (cached) return cached;
@@ -66,7 +72,7 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// ── Message : SKIP_WAITING forcé depuis l'app ─────────────────
+// ── Message : forcer la mise à jour depuis l'app ───────────────
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
@@ -92,7 +98,7 @@ self.addEventListener('push', (event) => {
   );
 });
 
-// ── Clic notification → ouvre l'app ───────────────────────────
+// ── Clic sur notification → ouvre l'app ───────────────────────
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const url = event.notification.data?.url || '/';

@@ -80,6 +80,8 @@ const COORDS: Record<string, [number, number]> = {
   "Crussol":               [44.9344,  4.8386],
   "Jossol":                [45.0500,  4.6000],
   "Saint-Sauveur-de-Cruzières":[44.3272, 4.2247],
+  "Bourg-Argental":        [45.2997,  4.5539],
+  "Saint-Alban-Auriolles": [44.4678,  4.2203],
 };
 
 function ll(ville: string): [number, number] {

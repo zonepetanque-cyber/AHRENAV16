@@ -1,4 +1,7 @@
-// Les chaînes YouTube suivies par AHRENA
+// Clé API YouTube — définie dans les variables d'environnement Vercel
+// Ne jamais mettre la vraie clé ici
+export const YOUTUBE_API_KEY = "";
+
 export const CHANNELS = [
   { id: "UCZeAfPeaRc_es11c0YSOhGg", name: "Boulistenaute", url: "https://youtube.com/@boulistenautepetanque", avatar: "https://yt3.googleusercontent.com/ytc/AIdro_kCzBm7w9-vZ5ZFAFLRiHcEBMr4S4xHqRNVVPxF6w=s88-c-k-c0x00ffffff-no-rj" },
   { id: "UCHVNyFEDNOq6q4OkG2YzIQQ", name: "Sportmag", url: "https://youtube.com/@tvsportmag", avatar: "https://yt3.googleusercontent.com/ytc/AIdro_lQnCXGQqAEFbJBCIWMxMTHVV_1sJPJMqxlGdnN=s88-c-k-c0x00ffffff-no-rj" },
@@ -11,3 +14,4 @@ export const CHANNELS = [
   { id: "UCs5dyTykvpzwSyL5EsjcXNg", name: "FFSB", url: "https://youtube.com/@ffboules", avatar: "https://yt3.googleusercontent.com/ytc/AIdro_kV8OhPjGQQUyiQn0f0aFDU6tqB7V5i7c8Q-Jqv=s88-c-k-c0x00ffffff-no-rj" },
 ];
 
+export const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
