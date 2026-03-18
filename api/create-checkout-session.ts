@@ -14,7 +14,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
   apiVersion: '2024-06-20',
 });
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://ahrena.vercel.app';
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://ahrenav-16.vercel.app';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {

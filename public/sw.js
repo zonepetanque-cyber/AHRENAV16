@@ -13,16 +13,6 @@ self.addEventListener('install', (event) => {
 });
 
 // ── Activation : nettoie les anciens caches et prend le contrôle
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    Promise.all([
-      caches.keys().then(keys =>
-        Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-      ),
-      clients.claim(),
-    ])
-  );
-});
 
 // ── Fetch : Network First pour HTML/JS/CSS, Cache First pour images
 self.addEventListener('fetch', (event) => {
@@ -71,6 +61,25 @@ self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
+});
+
+// ── Notifie tous les clients qu'une mise à jour est disponible ─
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    Promise.all([
+      caches.keys().then(keys =>
+        Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+      ),
+      clients.claim(),
+    ]).then(() => {
+      // Prévenir tous les onglets/fenêtres ouverts
+      clients.matchAll({ includeUncontrolled: true, type: 'window' }).then(clientList => {
+        clientList.forEach(client => {
+          client.postMessage({ type: 'SW_UPDATED' });
+        });
+      });
+    })
+  );
 });
 
 // ── Push Notifications ─────────────────────────────────────────

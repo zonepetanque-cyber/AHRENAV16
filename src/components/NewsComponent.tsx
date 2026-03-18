@@ -198,7 +198,7 @@ const NewsComponent = () => {
 
       {/* Filtre par département — sticky sous le header du modal */}
       <div className="sticky top-[65px] z-40 bg-zinc-950/98 backdrop-blur-md border-b border-white/8">
-        <div className="px-4 py-2.5 flex items-center justify-between gap-2">
+        <div className="max-w-5xl mx-auto px-4 py-2.5 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             {!loading && (
               <span className="text-white/25 text-[10px]">
@@ -224,7 +224,7 @@ const NewsComponent = () => {
 
         {/* Filtre par département */}
         {availableDepts.length > 1 && (
-          <div className="flex gap-1.5 overflow-x-auto no-scrollbar px-4 pb-3 pt-1">
+          <div className="max-w-5xl mx-auto flex gap-1.5 overflow-x-auto no-scrollbar px-4 pb-3 pt-1">
             <button
               onClick={() => setFilterCode(null)}
               className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wide transition-all
@@ -249,7 +249,7 @@ const NewsComponent = () => {
       </div>
 
       {/* Contenu */}
-      <div className="px-4 py-4 md:max-w-2xl md:mx-auto">
+      <div className="px-4 py-4 md:max-w-5xl md:mx-auto">
 
         {/* Erreur réseau */}
         {error && news.length === 0 && (
@@ -274,7 +274,7 @@ const NewsComponent = () => {
 
         {/* Skeleton loading */}
         {loading && (
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             {[1, 2, 3, 4, 5, 6].map(i => (
               <div key={i} className="flex gap-3 p-3 rounded-xl border border-white/5 animate-pulse">
                 <div className="w-16 h-16 rounded-lg bg-zinc-800 flex-shrink-0" />
@@ -290,7 +290,7 @@ const NewsComponent = () => {
 
         {/* Liste des articles */}
         {!loading && filtered.length > 0 && (
-          <div className="space-y-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             {filtered.map(item => (
               <NewsCard key={item.id} item={item} />
             ))}
@@ -302,7 +302,7 @@ const NewsComponent = () => {
           <div className="flex flex-col items-center justify-center py-20 text-center px-8">
             <Newspaper size={40} className="text-white/10 mb-3" />
             <p className="text-white/40 text-sm font-bold">Aucune actualité disponible</p>
-            <p className="text-white/20 text-xs mt-1">Les sites des comités ne publient peut-être pas de flux RSS</p>
+            <p className="text-white/20 text-xs mt-1">Les sources ne publient peut-être pas de flux RSS</p>
             <button
               onClick={handleRefresh}
               className="mt-4 px-4 py-2 bg-white/10 rounded-xl text-white/60 text-xs hover:bg-white/15 transition-colors"
@@ -316,7 +316,7 @@ const NewsComponent = () => {
         {!loading && availableDepts.length > 0 && (
           <div className="mt-8 border-t border-white/8 pt-6">
             <p className="text-white/30 text-[10px] uppercase tracking-wider font-bold mb-3 px-1">
-              Sites des comités
+              Sites & sources
             </p>
             <div className="grid grid-cols-2 gap-2">
               {availableDepts.map(d => {

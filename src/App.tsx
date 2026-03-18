@@ -344,9 +344,10 @@ const VideoCarousel = ({ title, videos, onVideoSelect, large = false, channelUrl
           onClick={() => scroll('left')}
           className={`
             hidden sm:flex
-            absolute left-0 top-0 bottom-0 z-20
+            absolute left-0 top-0 z-20
             items-center justify-center
-            w-12 bg-gradient-to-r from-black via-black/80 to-transparent
+            w-12 aspect-video
+            bg-gradient-to-r from-black via-black/80 to-transparent
             text-white transition-all duration-200
             ${showLeft ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}
           `}
@@ -362,9 +363,10 @@ const VideoCarousel = ({ title, videos, onVideoSelect, large = false, channelUrl
           onClick={() => scroll('right')}
           className={`
             hidden sm:flex
-            absolute right-0 top-0 bottom-0 z-20
+            absolute right-0 top-0 z-20
             items-center justify-center
-            w-12 bg-gradient-to-l from-black via-black/80 to-transparent
+            w-12 aspect-video
+            bg-gradient-to-l from-black via-black/80 to-transparent
             text-white transition-all duration-200
             ${showRight ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}
           `}
@@ -378,7 +380,7 @@ const VideoCarousel = ({ title, videos, onVideoSelect, large = false, channelUrl
         <div
           ref={scrollRef}
           onScroll={onScroll}
-          className="flex gap-4 overflow-x-auto px-6 no-scrollbar snap-x snap-mandatory scroll-smooth"
+          className="flex gap-4 overflow-x-auto px-6 pb-10 no-scrollbar snap-x snap-mandatory scroll-smooth"
         >
         {videos.map((video) => (
           <div 
@@ -695,6 +697,51 @@ export default function App() {
   const [showNewsPopup, setShowNewsPopup] = useState(false);
   const [popupNews, setPopupNews] = useState<any[]>([]);
   const [paymentStatus, setPaymentStatus] = useState<'success' | 'cancelled' | null>(null);
+  const [showUpdateBanner, setShowUpdateBanner] = useState(false);
+
+  // Détection mise à jour Service Worker
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return;
+
+    // Écouter le message SW_UPDATED envoyé par le SW lors de l'activation
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'SW_UPDATED') {
+        setShowUpdateBanner(true);
+      }
+    };
+    navigator.serviceWorker.addEventListener('message', handleMessage);
+
+    // Vérifier aussi si un nouveau SW est en attente au chargement
+    navigator.serviceWorker.ready.then(reg => {
+      if (reg.waiting) {
+        setShowUpdateBanner(true);
+      }
+      reg.addEventListener('updatefound', () => {
+        const newWorker = reg.installing;
+        if (!newWorker) return;
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            setShowUpdateBanner(true);
+          }
+        });
+      });
+    });
+
+    return () => {
+      navigator.serviceWorker.removeEventListener('message', handleMessage);
+    };
+  }, []);
+
+  const handleUpdate = () => {
+    if (!('serviceWorker' in navigator)) return;
+    navigator.serviceWorker.ready.then(reg => {
+      if (reg.waiting) {
+        reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+      }
+    });
+    setShowUpdateBanner(false);
+    window.location.reload();
+  };
 
   // Détecter le retour depuis Stripe Checkout
   useEffect(() => {
@@ -1027,6 +1074,37 @@ export default function App() {
       </AnimatePresence>
 
       <Header onProfileClick={() => setActiveTab('club')} onSearchClick={() => {}} onNewsClick={() => setShowNews(true)} />
+
+      {/* Bannière mise à jour disponible */}
+      <AnimatePresence>
+        {showUpdateBanner && (
+          <motion.div
+            initial={{ opacity: 0, y: -60 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -60 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            className="fixed top-0 left-0 right-0 z-[200] flex items-center justify-between gap-3 px-4 py-3 bg-[#D4AF37] shadow-lg"
+          >
+            <p className="text-black font-bold text-xs flex items-center gap-2">
+              🆕 Nouvelle version disponible !
+            </p>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button
+                onClick={handleUpdate}
+                className="bg-black text-[#D4AF37] font-black text-[11px] uppercase tracking-wider px-3 py-1.5 rounded-lg hover:bg-zinc-900 transition-colors"
+              >
+                Mettre à jour
+              </button>
+              <button
+                onClick={() => setShowUpdateBanner(false)}
+                className="p-1 text-black/50 hover:text-black transition-colors"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       
       {refreshing && (
         <div className="fixed top-20 left-0 right-0 z-[60] flex justify-center">
@@ -1172,17 +1250,19 @@ export default function App() {
             className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-sm overflow-y-auto"
           >
             {/* Header du modal */}
-            <div className="sticky top-0 z-10 bg-black/90 backdrop-blur-md border-b border-white/10 px-4 py-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Newspaper size={18} className="text-white/60" />
-                <h2 className="text-white font-black text-sm uppercase tracking-[0.2em]">Actualités des comités</h2>
+            <div className="sticky top-0 z-10 bg-black/90 backdrop-blur-md border-b border-white/10">
+              <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Newspaper size={18} className="text-white/60" />
+                  <h2 className="text-white font-black text-sm uppercase tracking-[0.2em]">Actualités Pétanque</h2>
+                </div>
+                <button
+                  onClick={() => setShowNews(false)}
+                  className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
+                >
+                  <X size={18} className="text-white" />
+                </button>
               </div>
-              <button
-                onClick={() => setShowNews(false)}
-                className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
-              >
-                <X size={18} className="text-white" />
-              </button>
             </div>
 
             <NewsComponent />
