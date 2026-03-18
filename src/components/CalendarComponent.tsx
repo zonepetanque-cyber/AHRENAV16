@@ -1057,16 +1057,23 @@ const DeptAccordion = ({ sources, onChange }: {
                 if (!dept.available) {
                   return (
                     <div key={dept.key}
-                      className="relative flex items-center gap-4 px-5 py-3.5 cursor-not-allowed overflow-hidden">
-                      {/* Fond gris clair hachuré bien visible */}
-                      <div className="absolute inset-0" style={{
-                        backgroundColor: 'rgba(255,255,255,0.04)',
-                        backgroundImage: 'repeating-linear-gradient(45deg, rgba(255,255,255,0.06) 0px, rgba(255,255,255,0.06) 2px, transparent 2px, transparent 10px)',
+                      className="relative flex items-center gap-3 px-4 py-3 cursor-not-allowed overflow-hidden mx-2 my-0.5 rounded-lg">
+                      {/* Fond zinc-800 + hachures noires — visible sur fond sombre */}
+                      <div className="absolute inset-0 rounded-lg" style={{
+                        backgroundColor: '#27272a',
+                        backgroundImage: 'repeating-linear-gradient(135deg, #000 0px, #000 1px, transparent 1px, transparent 6px)',
+                        opacity: 0.9,
                       }}/>
-                      <div className="w-5 h-5 rounded-md border border-white/15 flex-shrink-0 relative z-10"/>
-                      <div className="w-3 h-3 rounded-full flex-shrink-0 relative z-10 bg-zinc-600"/>
-                      <span className="text-sm font-bold flex-1 text-white/30 line-through relative z-10">{dept.label}</span>
-                      <span className="text-[9px] font-black uppercase text-white/30 bg-white/8 px-2 py-1 rounded-full border border-white/15 flex-shrink-0 relative z-10">
+                      {/* Icône cadenas */}
+                      <div className="w-5 h-5 flex items-center justify-center flex-shrink-0 relative z-10 opacity-40">
+                        <svg width="11" height="13" viewBox="0 0 11 13" fill="none">
+                          <rect x="1.5" y="5.5" width="8" height="7" rx="1.5" stroke="#9ca3af" strokeWidth="1.5"/>
+                          <path d="M3.5 5.5V4a2 2 0 0 1 4 0v1.5" stroke="#9ca3af" strokeWidth="1.5" strokeLinecap="round"/>
+                        </svg>
+                      </div>
+                      <div className="w-2.5 h-2.5 rounded-full flex-shrink-0 relative z-10 bg-zinc-600"/>
+                      <span className="text-[13px] font-bold flex-1 text-white/25 line-through relative z-10 truncate">{dept.label}</span>
+                      <span className="text-[8px] font-black uppercase text-zinc-500 bg-zinc-700 px-2 py-0.5 rounded flex-shrink-0 relative z-10 tracking-wider">
                         Bientôt
                       </span>
                     </div>
@@ -1107,7 +1114,7 @@ const DeptAccordion = ({ sources, onChange }: {
             </div>
 
             {/* Bouton Appliquer */}
-            <div className="px-5 pt-3 pb-5 border-t border-white/8 flex-shrink-0">
+            <div className="px-5 pt-3 pb-5 border-t border-white/8 flex-shrink-0 space-y-2.5">
               <button
                 onClick={() => setOpen(false)}
                 className="w-full bg-red-600 hover:bg-red-700 text-white font-black text-sm uppercase tracking-widest py-4 rounded-2xl transition-colors shadow-lg shadow-red-900/30"
@@ -1119,6 +1126,22 @@ const DeptAccordion = ({ sources, onChange }: {
                   </span>
                 )}
               </button>
+
+              {/* Bouton envoi calendrier */}
+              <a
+                href="mailto:support@ahrena.com?subject=Calendrier%20p%C3%A9tanque%20d%C3%A9partemental&body=Bonjour%2C%0A%0AJe%20souhaite%20vous%20envoyer%20le%20calendrier%20p%C3%A9tanque%20de%20mon%20d%C3%A9partement%20pour%20qu%27il%20soit%20int%C3%A9gr%C3%A9%20dans%20AHRENA.%0A%0AD%C3%A9partement%20%3A%20%0ASource%20(site%2C%20PDF%2C%20Facebook)%20%3A%20%0A%0AMerci%20!"
+                className="w-full flex items-center justify-center gap-2.5 bg-zinc-800/80 hover:bg-zinc-700/80 border border-white/10 hover:border-white/20 text-white/60 hover:text-white/90 font-bold text-[11px] uppercase tracking-wider py-3 rounded-2xl transition-all"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="17 8 12 3 7 8"/>
+                  <line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+                📅 Envoyer le calendrier de mon département
+              </a>
+              <p className="text-center text-white/20 text-[9px]">
+                Votre calendrier sera intégré dans la prochaine mise à jour
+              </p>
             </div>
 
           </motion.div>
@@ -1348,8 +1371,21 @@ const CalendarComponent = ({ videos, onVideoSelect }: { videos: Video[]; onVideo
     return result;
   }, [allEvents]);
 
+  // Mesure dynamique de la hauteur du header pour s'y coller exactement
+  const [headerH, setHeaderH] = React.useState(128);
+  React.useEffect(() => {
+    const measure = () => {
+      const h = document.querySelector('header');
+      if (h) setHeaderH(h.getBoundingClientRect().height);
+    };
+    measure();
+    // Re-mesure si le header change de taille (orientation, resize)
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, []);
+
   return (
-    <div className="flex flex-col" style={{ paddingTop: '128px', height: '100dvh', overflow: 'hidden' }}>
+    <div className="flex flex-col" style={{ paddingTop: `${headerH}px`, height: '100dvh', overflow: 'hidden' }}>
 
       {/* Barre de contrôle — fixe sous le header */}
       <div className="flex-shrink-0 bg-zinc-950/98 backdrop-blur-md border-b border-white/8 z-40">

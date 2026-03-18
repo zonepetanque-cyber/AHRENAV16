@@ -122,11 +122,22 @@ const ClubComponent = ({ onTabChange }: { onTabChange: (tab: string) => void }) 
     }
   };
 
+  const [headerH, setHeaderH] = useState(128);
+  useEffect(() => {
+    const measure = () => {
+      const h = document.querySelector('header');
+      if (h) setHeaderH(h.getBoundingClientRect().height);
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, []);
+
   if (loading) return null;
 
   if (!user) {
     return (
-      <div className="pt-32 pb-12 px-6 max-w-2xl mx-auto">
+      <div style={{ paddingTop: `${headerH}px` }} className=" pb-12 px-6 max-w-2xl mx-auto">
         <div className="text-center mb-12">
           <h1 className="text-3xl font-black text-white uppercase italic mb-2">Rejoindre le Club</h1>
           <p className="text-white/40 text-sm">Accédez à l'expérience ultime AHRENA pour seulement 2€/mois.</p>
@@ -167,7 +178,7 @@ const ClubComponent = ({ onTabChange }: { onTabChange: (tab: string) => void }) 
   }
 
   return (
-    <div className="pt-32 pb-12 px-6 max-w-2xl mx-auto">
+    <div style={{ paddingTop: `${headerH}px` }} className=" pb-12 px-6 max-w-2xl mx-auto">
       <div className="flex items-center justify-between mb-12">
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 bg-zinc-800 rounded-full flex items-center justify-center text-white border border-white/10">
@@ -286,6 +297,9 @@ const ClubComponent = ({ onTabChange }: { onTabChange: (tab: string) => void }) 
               "FFSB"
             ].map((channel) => {
               const isSubbed = channelSubs.includes(channel);
+
+
+
               return (
                 <div key={channel} className="flex items-center justify-between">
                   <span className="text-xs text-white/80">{channel}</span>

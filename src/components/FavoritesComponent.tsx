@@ -4,12 +4,21 @@ import { Heart, Play } from 'lucide-react';
 
 const FavoritesComponent = ({ onVideoSelect }: { onVideoSelect: (v: Video) => void }) => {
   const [favorites, setFavorites] = useState<Video[]>([]);
+  const [headerH, setHeaderH] = useState(128);
 
   useEffect(() => {
     const saved = localStorage.getItem('ahrena_favorites');
-    if (saved) {
-      setFavorites(JSON.parse(saved));
-    }
+    if (saved) setFavorites(JSON.parse(saved));
+  }, []);
+
+  useEffect(() => {
+    const measure = () => {
+      const h = document.querySelector('header');
+      if (h) setHeaderH(h.getBoundingClientRect().height);
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
   }, []);
 
   if (favorites.length === 0) {
@@ -23,7 +32,7 @@ const FavoritesComponent = ({ onVideoSelect }: { onVideoSelect: (v: Video) => vo
   }
 
   return (
-    <div className="pt-32 pb-12 px-6">
+    <div style={{ paddingTop: `${headerH}px` }} className=" pb-12 px-6">
       <h1 className="text-3xl font-black text-white uppercase italic mb-8">Mes Favoris</h1>
       
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">

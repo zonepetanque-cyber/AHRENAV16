@@ -87,11 +87,22 @@ const ProgrammeComponent = ({ videos, onVideoSelect }: ProgrammeComponentProps) 
       new Date(a.scheduledStartTime!).getTime() - new Date(b.scheduledStartTime!).getTime()
     );
 
+  const [headerH, setHeaderH] = useState(128);
+  useEffect(() => {
+    const measure = () => {
+      const h = document.querySelector('header');
+      if (h) setHeaderH(h.getBoundingClientRect().height);
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, []);
+
   const grouped = groupByDay(upcoming);
   const sortedDays = Object.keys(grouped).sort();
 
   return (
-    <div className="min-h-screen bg-black text-white pb-28 pt-32">
+    <div style={{ paddingTop: `${headerH}px` }} className="min-h-screen bg-black text-white pb-28">
 
       {/* Header */}
       <div className="px-5 pt-4 pb-2">
@@ -191,6 +202,7 @@ const ProgrammeComponent = ({ videos, onVideoSelect }: ProgrammeComponentProps) 
             const date = new Date(day);
             const todayFlag = isToday(day + 'T12:00:00');
             const tomorrowFlag = isTomorrow(day + 'T12:00:00');
+
 
             return (
               <div key={day}>
