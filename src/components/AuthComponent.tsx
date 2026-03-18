@@ -41,19 +41,25 @@ const AuthComponent = () => {
       // et Supabase détecte le token dans le hash (#access_token=...)
       const redirectTo = window.location.origin + '/';
 
-      const { error } = await supabase.auth.signInWithOAuth({
+      // skipBrowserRedirect: true → Supabase retourne l'URL sans ouvrir de Chrome Tab
+      // On ouvre nous-mêmes dans la fenêtre courante (window.location.href)
+      // Cela maintient le mode PWA standalone sur Android
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo,
-          // PKCE est activé côté supabase.ts (flowType: 'pkce')
-          // skipBrowserRedirect: false → laisse Supabase ouvrir Google
+          skipBrowserRedirect: true,
           queryParams: {
             access_type: 'offline',
-            prompt: 'consent',
+            prompt: 'select_account',
           },
         }
       });
       if (error) throw error;
+      // Redirection dans la fenêtre courante = reste dans la PWA
+      if (data?.url) {
+        window.location.href = data.url;
+      }
     } catch (err: any) {
       setError(err.message);
     } finally {

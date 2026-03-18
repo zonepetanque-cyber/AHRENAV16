@@ -1058,14 +1058,15 @@ const DeptAccordion = ({ sources, onChange }: {
                   return (
                     <div key={dept.key}
                       className="relative flex items-center gap-4 px-5 py-3.5 cursor-not-allowed overflow-hidden">
-                      {/* Hachures diagonales sur toute la largeur */}
-                      <div className="absolute inset-0 opacity-[0.07]" style={{
-                        backgroundImage: 'repeating-linear-gradient(45deg, #ffffff 0px, #ffffff 1px, transparent 1px, transparent 8px)',
+                      {/* Fond gris clair hachuré bien visible */}
+                      <div className="absolute inset-0" style={{
+                        backgroundColor: 'rgba(255,255,255,0.04)',
+                        backgroundImage: 'repeating-linear-gradient(45deg, rgba(255,255,255,0.06) 0px, rgba(255,255,255,0.06) 2px, transparent 2px, transparent 10px)',
                       }}/>
-                      <div className="w-5 h-5 rounded-md border-2 border-white/10 flex-shrink-0 opacity-40"/>
-                      <div className="w-3 h-3 rounded-full flex-shrink-0 opacity-30" style={{ background: dept.color }}/>
-                      <span className="text-sm font-bold flex-1 text-white/25 line-through">{dept.label}</span>
-                      <span className="text-[9px] font-black uppercase text-white/20 bg-white/5 px-2 py-0.5 rounded-full border border-white/8 flex-shrink-0">
+                      <div className="w-5 h-5 rounded-md border border-white/15 flex-shrink-0 relative z-10"/>
+                      <div className="w-3 h-3 rounded-full flex-shrink-0 relative z-10 bg-zinc-600"/>
+                      <span className="text-sm font-bold flex-1 text-white/30 line-through relative z-10">{dept.label}</span>
+                      <span className="text-[9px] font-black uppercase text-white/30 bg-white/8 px-2 py-1 rounded-full border border-white/15 flex-shrink-0 relative z-10">
                         Bientôt
                       </span>
                     </div>
@@ -1348,10 +1349,10 @@ const CalendarComponent = ({ videos, onVideoSelect }: { videos: Video[]; onVideo
   }, [allEvents]);
 
   return (
-    <div className="pt-32 pb-4 min-h-screen">
+    <div className="flex flex-col" style={{ paddingTop: '128px', height: '100dvh', overflow: 'hidden' }}>
 
-      {/* Barre de contrôle sticky */}
-      <div className="sticky top-32 z-40 bg-zinc-950/98 backdrop-blur-md border-b border-white/8">
+      {/* Barre de contrôle — fixe sous le header */}
+      <div className="flex-shrink-0 bg-zinc-950/98 backdrop-blur-md border-b border-white/8 z-40">
 
         {/* Ligne 1 : vue + dept + filtres */}
         <div className="px-4 py-2.5 flex items-center justify-between gap-2">
@@ -1407,10 +1408,13 @@ const CalendarComponent = ({ videos, onVideoSelect }: { videos: Video[]; onVideo
         </div>
       </div>
 
-      {view === 'month'
-        ? <MonthView events={filteredEvents} allEvents={allEvents} onVideoSelect={onVideoSelect} forcedMonth={filters.month}/>
-        : <ListView  events={filteredEvents} onVideoSelect={onVideoSelect}/>
-      }
+      {/* Zone scrollable — prend tout l'espace restant */}
+      <div className="flex-1 overflow-y-auto overscroll-contain pb-36">
+        {view === 'month'
+          ? <MonthView events={filteredEvents} allEvents={allEvents} onVideoSelect={onVideoSelect} forcedMonth={filters.month}/>
+          : <ListView  events={filteredEvents} onVideoSelect={onVideoSelect}/>
+        }
+      </div>
 
       {showFilters && (
         <FilterPanel filters={filters} onChange={setFilters} onClose={() => setShowFilters(false)}/>
