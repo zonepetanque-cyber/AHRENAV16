@@ -153,6 +153,47 @@ const getDeptOptions = () => {
 
 const DEPT_OPTIONS = getDeptOptions();
 
+// ── Carte des départements limitrophes ────────────────────────
+// Pour chaque dept disponible, liste ses voisins (clés de DEPT_DATA)
+const LIMITROPHES: Record<string, string[]> = {
+  ain:               ['isere', 'savoie', 'hte_savoie', 'jura', 'bresse', 'rhone', 'am'],
+  aisne:             ['ardennes', 'marne', 'seine_marne', 'oise', 'somme', 'nord', 'pas_calais'],
+  allier:            ['nievre', 'cher', 'creuse', 'puy_dome', 'loire', 'saone_loire'],
+  ahp:               ['hpa', 'am', 'var', 'vaucluse', 'hte_alpes', 'bdr'],
+  am:                ['ahp', 'var', 'bdr'],
+  ardeche:           ['loire', 'hte_loire', 'lozere', 'gard', 'herault', 'drome', 'isere'],
+  ariege:            ['hte_garonne', 'hte_pyrenees', 'aude', 'pyrenees_orientales'],
+  aube:              ['marne', 'haute_marne', 'cote_or', 'yonne', 'seine_marne'],
+  aude:              ['ariege', 'herault', 'gard', 'pyrenees_orientales', 'tarn', 'hte_garonne'],
+  aveyron:           ['lozere', 'gard', 'herault', 'hte_garonne', 'tarn', 'tarn_garonne', 'lot', 'cantal'],
+  bdr:               ['ahp', 'am', 'var', 'vaucluse'],
+  calvados:          ['manche', 'orne', 'eure'],
+  cantal:            ['aveyron', 'lozere', 'hte_loire', 'puy_dome', 'allier', 'creuse', 'correze'],
+  charente_maritime: ['charente', 'deux_sevres', 'vendee', 'gironde'],
+  cher:              ['allier', 'nievre', 'yonne', 'loiret', 'loir_cher', 'indre', 'creuse'],
+  correze:           ['cantal', 'aveyron', 'lot', 'dordogne', 'creuse', 'hte_vienne'],
+  corse2a:           ['corse2b'],
+  corse2b:           ['corse2a'],
+  cotedor:           ['aube', 'yonne', 'nievre', 'saone_loire', 'jura', 'hte_saone'],
+  nievre:            ['cher', 'allier', 'saone_loire', 'cotedor', 'yonne', 'loiret'],
+};
+
+// Retourne les clés des limitrophes disponibles dans l'appli
+const getLimitrophes = (activeSources: Set<string>): string[] => {
+  const available = new Set(DEPT_OPTIONS.filter(d => d.available).map(d => d.key));
+  const result = new Set<string>();
+  activeSources.forEach(src => {
+    (LIMITROPHES[src] || []).forEach(neighbor => {
+      if (available.has(neighbor) && !activeSources.has(neighbor)) {
+        result.add(neighbor);
+      }
+    });
+  });
+  return Array.from(result);
+};
+
+
+
 // ── Type unifié ───────────────────────────────────────────────
 interface UnifiedEvent {
   id: string;
@@ -1057,23 +1098,30 @@ const DeptAccordion = ({ sources, onChange }: {
                 if (!dept.available) {
                   return (
                     <div key={dept.key}
-                      className="relative flex items-center gap-3 px-4 py-3 cursor-not-allowed overflow-hidden mx-2 my-0.5 rounded-lg">
-                      {/* Fond zinc-800 + hachures noires — visible sur fond sombre */}
-                      <div className="absolute inset-0 rounded-lg" style={{
-                        backgroundColor: '#27272a',
-                        backgroundImage: 'repeating-linear-gradient(135deg, #000 0px, #000 1px, transparent 1px, transparent 6px)',
-                        opacity: 0.9,
-                      }}/>
-                      {/* Icône cadenas */}
-                      <div className="w-5 h-5 flex items-center justify-center flex-shrink-0 relative z-10 opacity-40">
-                        <svg width="11" height="13" viewBox="0 0 11 13" fill="none">
-                          <rect x="1.5" y="5.5" width="8" height="7" rx="1.5" stroke="#9ca3af" strokeWidth="1.5"/>
-                          <path d="M3.5 5.5V4a2 2 0 0 1 4 0v1.5" stroke="#9ca3af" strokeWidth="1.5" strokeLinecap="round"/>
+                      className="relative flex items-center gap-3 px-4 py-3 cursor-not-allowed overflow-hidden mx-2 my-0.5 rounded-lg"
+                      style={{
+                        background: `repeating-linear-gradient(
+                          135deg,
+                          #3f3f46 0px, #3f3f46 1px,
+                          #27272a 1px, #27272a 9px
+                        )`,
+                      }}>
+                      {/* Checkbox barrée non cochable */}
+                      <div className="w-5 h-5 rounded-md border-2 border-zinc-600 flex items-center justify-center flex-shrink-0 bg-zinc-800 relative z-10">
+                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                          <line x1="1" y1="1" x2="9" y2="9" stroke="#71717a" strokeWidth="2" strokeLinecap="round"/>
+                          <line x1="9" y1="1" x2="1" y2="9" stroke="#71717a" strokeWidth="2" strokeLinecap="round"/>
                         </svg>
                       </div>
-                      <div className="w-2.5 h-2.5 rounded-full flex-shrink-0 relative z-10 bg-zinc-600"/>
-                      <span className="text-[13px] font-bold flex-1 text-white/25 line-through relative z-10 truncate">{dept.label}</span>
-                      <span className="text-[8px] font-black uppercase text-zinc-500 bg-zinc-700 px-2 py-0.5 rounded flex-shrink-0 relative z-10 tracking-wider">
+                      <div className="w-2.5 h-2.5 rounded-full flex-shrink-0 relative z-10" style={{ background: dept.color, opacity: 0.4 }}/>
+                      {/* Texte barré avec ligne rouge */}
+                      <div className="flex-1 relative z-10 min-w-0">
+                        <span className="text-[13px] font-bold text-zinc-500 relative">
+                          {dept.label}
+                          <span className="absolute inset-x-0" style={{ top: '50%', height: '2px', background: '#ef4444', opacity: 0.7 }}/>
+                        </span>
+                      </div>
+                      <span className="text-[8px] font-black uppercase text-zinc-500 border border-zinc-600 px-2 py-0.5 rounded flex-shrink-0 relative z-10 tracking-wider bg-zinc-800">
                         Bientôt
                       </span>
                     </div>
@@ -1115,6 +1163,37 @@ const DeptAccordion = ({ sources, onChange }: {
 
             {/* Bouton Appliquer */}
             <div className="px-5 pt-3 pb-5 border-t border-white/8 flex-shrink-0 space-y-2.5">
+
+              {/* Bouton INCLURE LES LIMITROPHES — visible seulement si des depts sont sélectionnés */}
+              {activeCount > 0 && (() => {
+                const limitrophes = getLimitrophes(sources);
+                if (limitrophes.length === 0) return null;
+                return (
+                  <button
+                    onClick={() => {
+                      const next = new Set(sources);
+                      limitrophes.forEach(k => next.add(k));
+                      onChange(next);
+                    }}
+                    className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-black text-[11px] uppercase tracking-widest transition-all border"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(251,191,36,0.12) 0%, rgba(245,158,11,0.08) 100%)',
+                      borderColor: 'rgba(251,191,36,0.35)',
+                      color: '#fbbf24',
+                    }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="3"/>
+                      <path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/>
+                    </svg>
+                    Inclure les limitrophes
+                    <span className="ml-1 bg-amber-400/20 text-amber-300 text-[9px] px-2 py-0.5 rounded-full font-black">
+                      +{limitrophes.length} dept{limitrophes.length > 1 ? 's' : ''}
+                    </span>
+                  </button>
+                );
+              })()}
+
               <button
                 onClick={() => setOpen(false)}
                 className="w-full bg-red-600 hover:bg-red-700 text-white font-black text-sm uppercase tracking-widest py-4 rounded-2xl transition-colors shadow-lg shadow-red-900/30"
