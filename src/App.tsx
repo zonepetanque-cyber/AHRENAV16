@@ -498,27 +498,6 @@ const VideoModal = ({ video, onClose, isPremium, onMinimize, onAddToMultiplex, o
     localStorage.setItem('ahrena_pip_dismissed', '1');
   };
 
-  // ── Écouter le changement du switch alerte live ─────────────
-  useEffect(() => {
-    const handler = () => {
-      setLiveAlertEnabled(localStorage.getItem('ahrena_live_alert') !== 'false');
-    };
-    window.addEventListener('ahrena_live_alert_changed', handler);
-    return () => window.removeEventListener('ahrena_live_alert_changed', handler);
-  }, []);
-
-  // ── Détection live qui démarre (VIP + switch activé uniquement) ──
-  useEffect(() => {
-    if (!isPremium || !liveAlertEnabled) return;
-    if (liveVideos.length === 0) return;
-    const currentLives = liveVideos.filter(v => v.isLive);
-    if (currentLives.length === 0) return;
-    const newest = currentLives[0];
-    if (!liveAlertDismissed.has(newest.id)) {
-      setLiveAlert(newest);
-    }
-  }, [liveVideos, isPremium, liveAlertEnabled]);
-
   // ── Bloquer le scroll de la page en arrière-plan quand la modal est ouverte
   useEffect(() => {
     if (video) {
@@ -859,6 +838,27 @@ export default function App() {
     () => localStorage.getItem('ahrena_live_alert') !== 'false'
   );
   const [infoVideo, setInfoVideo] = useState<Video | null>(null);
+
+  // ── Écouter le changement du switch alerte live ─────────────
+  useEffect(() => {
+    const handler = () => {
+      setLiveAlertEnabled(localStorage.getItem('ahrena_live_alert') !== 'false');
+    };
+    window.addEventListener('ahrena_live_alert_changed', handler);
+    return () => window.removeEventListener('ahrena_live_alert_changed', handler);
+  }, []);
+
+  // ── Détection live qui démarre (VIP + switch activé uniquement) ──
+  useEffect(() => {
+    if (!isPremium || !liveAlertEnabled) return;
+    if (liveVideos.length === 0) return;
+    const currentLives = liveVideos.filter(v => v.isLive);
+    if (currentLives.length === 0) return;
+    const newest = currentLives[0];
+    if (!liveAlertDismissed.has(newest.id)) {
+      setLiveAlert(newest);
+    }
+  }, [liveVideos, isPremium, liveAlertEnabled]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [user, setUser] = useState<SupabaseUser | null>(null);
