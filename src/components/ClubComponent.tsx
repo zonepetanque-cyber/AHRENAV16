@@ -137,7 +137,7 @@ const ClubComponent = ({ onTabChange }: { onTabChange: (tab: string) => void }) 
 
   if (!user) {
     return (
-      <div style={{ paddingTop: `${headerH}px` }} className=" pb-12 px-6 max-w-2xl mx-auto">
+      <div style={{ paddingTop: `${headerH}px`, height: '100%', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }} className="pb-12 px-6 max-w-2xl mx-auto">
         <div className="text-center mb-12">
           <h1 className="text-3xl font-black text-white uppercase italic mb-2">Rejoindre le Club</h1>
           <p className="text-white/40 text-sm">Accédez à l'expérience ultime AHRENA pour seulement 2€/mois.</p>
@@ -178,7 +178,7 @@ const ClubComponent = ({ onTabChange }: { onTabChange: (tab: string) => void }) 
   }
 
   return (
-    <div style={{ paddingTop: `${headerH}px` }} className=" pb-12 px-6 max-w-2xl mx-auto">
+    <div style={{ paddingTop: `${headerH}px`, height: '100%', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }} className="pb-12 px-6 max-w-2xl mx-auto">
       <div className="flex items-center justify-between mb-12">
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 bg-zinc-800 rounded-full flex items-center justify-center text-white border border-white/10">
@@ -271,6 +271,31 @@ const ClubComponent = ({ onTabChange }: { onTabChange: (tab: string) => void }) 
               className={`w-12 h-6 rounded-full relative transition-colors duration-200 ${pushEnabled ? 'bg-red-600' : 'bg-zinc-700'}`}
             >
               <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-md transition-all duration-200 ${pushEnabled ? 'right-1' : 'left-1'}`} />
+            </button>
+          </div>
+
+          {/* Switch Alerte Live — VIP uniquement */}
+          <div className={`flex items-center justify-between ${!isPremium ? 'opacity-40 pointer-events-none' : ''}`}>
+            <div className="flex items-center gap-2">
+              <span className="text-base">🔴</span>
+              <div>
+                <p className="text-sm font-bold text-white">Alerte Live</p>
+                <p className="text-[10px] text-white/40 uppercase tracking-widest">Bannière quand un live démarre</p>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                const current = localStorage.getItem('ahrena_live_alert') !== 'false';
+                localStorage.setItem('ahrena_live_alert', current ? 'false' : 'true');
+                window.dispatchEvent(new Event('ahrena_live_alert_changed'));
+              }}
+              className={`w-12 h-6 rounded-full relative transition-colors duration-200 ${
+                localStorage.getItem('ahrena_live_alert') !== 'false' ? 'bg-red-600' : 'bg-zinc-700'
+              }`}
+            >
+              <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-md transition-all duration-200 ${
+                localStorage.getItem('ahrena_live_alert') !== 'false' ? 'right-1' : 'left-1'
+              }`} />
             </button>
           </div>
 

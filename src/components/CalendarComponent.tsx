@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { isFav, toggleFav, FavConcours } from '../services/favoritesService';
 import ReactDOM from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Video } from '../services/youtubeService';
@@ -25,6 +26,9 @@ import { CONCOURS_CORREZE_2026, DEPT_CORREZE } from '../data/correze2026';
 import { CONCOURS_CORSE2A_2026, DEPT_CORSE2A } from '../data/corse2a2026';
 import { CONCOURS_CORSE2B_2026, DEPT_CORSE2B } from '../data/corse2b2026';
 import { CONCOURS_COTEDOR_2026, DEPT_COTEDOR } from '../data/cotedor2026';
+import { CONCOURS_COTESDARMOR_2026, DEPT_COTESDARMOR } from '../data/cotesdarmor2026';
+import { CONCOURS_CREUSE_2026, DEPT_CREUSE } from '../data/creuse2026';
+import { CONCOURS_DORDOGNE_2026, DEPT_DORDOGNE } from '../data/dordogne2026';
 import {
   Calendar as CalendarIcon, Clock,
   List, MapPin, SlidersHorizontal, X, RotateCcw, Check, Radio, ChevronDown
@@ -44,19 +48,19 @@ const MONTHS_SHORT = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','O
 const DAYS_FR   = ['L','M','M','J','V','S','D'];
 
 // ── Source meta ───────────────────────────────────────────────
-type EventSource = 'live' | 'national' | 'allier' | 'nievre' | 'ain' | 'aisne' | 'ahp' | 'am' | 'ardeche' | 'ariege' | 'aube' | 'aude' | 'aveyron' | 'bdr' | 'calvados' | 'cantal' | 'charente_maritime' | 'cher' | 'correze' | 'corse2a' | 'corse2b' | 'cotedor' | 'jeunes' | 'regional';
+type EventSource = 'live' | 'national' | 'allier' | 'nievre' | 'ain' | 'aisne' | 'ahp' | 'am' | 'ardeche' | 'ariege' | 'aube' | 'aude' | 'aveyron' | 'bdr' | 'calvados' | 'cantal' | 'charente_maritime' | 'cher' | 'correze' | 'corse2a' | 'corse2b' | 'cotedor' | 'cotesdarmor' | 'creuse' | 'dordogne' | 'jeunes' | 'regional';
 
 const SOURCE_COLOR: Record<EventSource, string> = {
   live: '#dc2626', national: '#3b82f6', allier: '#10b981',
   nievre: '#f97316', ain: '#8b5cf6', aisne: '#06b6d4',
   ahp: '#84cc16', am: '#0066CC', ardeche: '#f97316', ariege: '#e11d48',
-  aube: '#f43f5e', aude: '#a855f7', aveyron: '#f97316', bdr: '#ef4444', calvados: '#3b82f6', cantal: '#d97706', charente_maritime: '#0891b2', cher: '#dc2626', correze: '#7e22ce', corse2a: '#e8a020', corse2b: '#9333ea', cotedor: '#c2410c', jeunes: '#10b981', regional: '#f59e0b',
+  aube: '#f43f5e', aude: '#a855f7', aveyron: '#f97316', bdr: '#ef4444', calvados: '#3b82f6', cantal: '#d97706', charente_maritime: '#0891b2', cher: '#dc2626', correze: '#7e22ce', corse2a: '#e8a020', corse2b: '#9333ea', cotedor: '#c2410c', cotesdarmor: '#0369a1', creuse: '#7e22ce', dordogne: '#16a34a', jeunes: '#10b981', regional: '#f59e0b',
 };
 const SOURCE_LABEL: Record<EventSource, string> = {
   live: 'Direct', national: 'National', allier: 'Allier (03)',
   nievre: 'Nièvre (58)', ain: 'Ain (01)', aisne: 'Aisne (02)',
   ahp: 'Alpes-de-Haute-Provence (04)', am: 'Alpes-Mar. (06)', ardeche: 'Ardèche (07)',
-  ariege: 'Ariège (09)', aube: 'Aube (10)', aude: 'Aude (11)', aveyron: 'Aveyron (12)', bdr: 'Bouches-du-Rhône (13)', calvados: 'Calvados (14)', cantal: 'Cantal (15)', charente_maritime: 'Charente-Maritime (17)', cher: 'Cher (18)', correze: 'Corrèze (19)', corse2a: 'Corse-du-Sud (2A)', corse2b: 'Haute-Corse (2B)', cotedor: 'Côte-d\'Or (21)', jeunes: 'Circuit National Jeunes', regional: 'Régionaux',
+  ariege: 'Ariège (09)', aube: 'Aube (10)', aude: 'Aude (11)', aveyron: 'Aveyron (12)', bdr: 'Bouches-du-Rhône (13)', calvados: 'Calvados (14)', cantal: 'Cantal (15)', charente_maritime: 'Charente-Maritime (17)', cher: 'Cher (18)', correze: 'Corrèze (19)', corse2a: 'Corse-du-Sud (2A)', corse2b: 'Haute-Corse (2B)', cotedor: 'Côte-d\'Or (21)', cotesdarmor: 'Côtes-d\'Armor (22)', creuse: 'Creuse (23)', dordogne: 'Dordogne (24)', jeunes: 'Circuit National Jeunes', regional: 'Régionaux',
 };
 
 const DEPT_LINKS: Record<string, { facebook: string; site: string; code: string } | null> = {
@@ -81,6 +85,9 @@ const DEPT_LINKS: Record<string, { facebook: string; site: string; code: string 
   corse2a:            { facebook: DEPT_CORSE2A.facebook,           site: DEPT_CORSE2A.site,           code: '2A' },
   corse2b:            { facebook: DEPT_CORSE2B.facebook,           site: DEPT_CORSE2B.site,           code: '2B' },
   cotedor:            { facebook: DEPT_COTEDOR.facebook,           site: DEPT_COTEDOR.site,           code: '21' },
+  cotesdarmor:        { facebook: DEPT_COTESDARMOR.facebook,       site: DEPT_COTESDARMOR.site,       code: '22' },
+  creuse:             { facebook: null,                              site: DEPT_CREUSE.site,             code: '23' },
+  dordogne:           { facebook: DEPT_DORDOGNE.facebook,           site: null,                         code: '24' },
   jeunes:             { facebook: SOURCE_JEUNES.facebook,            site: SOURCE_JEUNES.site,           code: 'FR' },
 };
 
@@ -109,6 +116,9 @@ const DEPT_DATA: { key: EventSource | string; label: string; color: string; last
   { key: 'corse2a',             label: 'Corse-du-Sud (2A)',        color: '#e8a020' },
   { key: 'corse2b',             label: 'Haute-Corse (2B)',         color: '#9333ea' },
   { key: 'cotedor',             label: 'Côte-d\'Or (21)',          color: '#c2410c' },
+  { key: 'cotesdarmor',         label: 'Côtes-d\'Armor (22)',      color: '#0369a1' },
+  { key: 'creuse',              label: 'Creuse (23)',               color: '#7e22ce' },
+  { key: 'dordogne',            label: 'Dordogne (24)',              color: '#16a34a' },
   { key: 'nievre',  label: 'Nièvre (58)',         color: '#ea580c' },
 ];
 
@@ -133,6 +143,9 @@ const DEPT_LAST_DATE: Record<string, string> = {
   corse2a:           '2026-11-22',
   corse2b:           '2026-11-08',
   cotedor:           '2026-12-20',
+  cotesdarmor:       '2026-12-13',
+  creuse:            '2026-12-20',
+  dordogne:          '2026-09-24',
   nievre:            '2026-12-31',
   national:          '2027-12-31',
   regional:          '2027-12-31',
@@ -153,6 +166,46 @@ const getDeptOptions = () => {
 
 const DEPT_OPTIONS = getDeptOptions();
 
+// ── Géolocalisation — bounding boxes des départements disponibles ─
+// [latMin, latMax, lngMin, lngMax]
+const DEPT_BBOX: Record<string, [number, number, number, number]> = {
+  ain:               [45.61, 46.53, 4.77,  5.92],
+  aisne:             [49.17, 50.07, 3.07,  4.26],
+  allier:            [45.97, 46.80, 2.52,  3.99],
+  ahp:               [43.71, 44.69, 5.67,  6.94],
+  am:                [43.47, 44.36, 6.62,  7.72],
+  ardeche:           [44.24, 45.37, 3.86,  4.89],
+  ariege:            [42.57, 43.30, 0.91,  2.07],
+  aube:              [47.81, 48.78, 3.41,  4.82],
+  aude:              [42.65, 43.60, 1.68,  3.24],
+  aveyron:           [43.55, 44.92, 1.85,  3.40],
+  bdr:               [43.16, 43.97, 4.63,  5.81],
+  calvados:          [48.73, 49.37, -0.86, 0.48],
+  cantal:            [44.63, 45.50, 2.07,  3.36],
+  charente_maritime: [45.08, 46.36, -1.49, 0.07],
+  cher:              [46.53, 47.62, 1.78,  3.07],
+  correze:           [44.87, 45.77, 1.37,  2.60],
+  corse2a:           [41.33, 42.38, 8.53,  9.41],
+  corse2b:           [41.90, 43.03, 8.54,  9.57],
+  cotedor:           [46.90, 48.01, 4.05,  5.54],
+  cotesdarmor:       [48.10, 48.90, -3.70, -1.90],
+  creuse:            [45.70, 46.50, 1.40,  2.50],
+  dordogne:          [44.62, 45.65, 0.21,  1.47],
+  nievre:            [46.56, 47.58, 3.07,  4.10],
+};
+
+// Retourne la clé du département qui contient la position GPS (disponible ou non)
+const getDeptFromCoords = (lat: number, lng: number): { key: string; available: boolean } | null => {
+  for (const [key, [latMin, latMax, lngMin, lngMax]] of Object.entries(DEPT_BBOX)) {
+    if (lat >= latMin && lat <= latMax && lng >= lngMin && lng <= lngMax) {
+      const dept = DEPT_OPTIONS.find(d => d.key === key);
+      if (dept) return { key, available: dept.available };
+    }
+  }
+  return null;
+};
+
+
 // ── Carte des départements limitrophes ────────────────────────
 // Pour chaque dept disponible, liste ses voisins (clés de DEPT_DATA)
 const LIMITROPHES: Record<string, string[]> = {
@@ -172,6 +225,7 @@ const LIMITROPHES: Record<string, string[]> = {
   charente_maritime: ['charente', 'deux_sevres', 'vendee', 'gironde'],
   cher:              ['allier', 'nievre', 'yonne', 'loiret', 'loir_cher', 'indre', 'creuse'],
   correze:           ['cantal', 'aveyron', 'lot', 'dordogne', 'creuse', 'hte_vienne'],
+  dordogne:          ['correze', 'charente_maritime', 'charente', 'lot_et_garonne', 'lot', 'creuse', 'hte_vienne'],
   corse2a:           ['corse2b'],
   corse2b:           ['corse2a'],
   cotedor:           ['aube', 'yonne', 'nievre', 'saone_loire', 'jura', 'hte_saone'],
@@ -283,6 +337,9 @@ function buildEvents(videos: Video[]): UnifiedEvent[] {
     addDept(CONCOURS_CORSE2A_2026 as any[], 'corse2a');
     addDept(CONCOURS_CORSE2B_2026 as any[], 'corse2b');
     addDept(CONCOURS_COTEDOR_2026 as any[], 'cotedor');
+    addDept(CONCOURS_COTESDARMOR_2026 as any[], 'cotesdarmor');
+    addDept(CONCOURS_CREUSE_2026 as any[], 'creuse');
+    addDept(CONCOURS_DORDOGNE_2026 as any[], 'dordogne');
   addDept(CONCOURS_JEUNES_2026            as any[], 'jeunes');
 
   CONCOURS_REGIONAUX_2026.forEach(c => events.push({
@@ -298,7 +355,14 @@ function buildEvents(videos: Video[]): UnifiedEvent[] {
 function applyFilters(events: UnifiedEvent[], f: AdvancedFilters): UnifiedEvent[] {
   return events.filter(ev => {
     // Filtre source/département
-    if (!f.sources.has('all') && !f.sources.has(ev.source)) return false;
+    // Sources vides = aucun dept sélectionné → afficher quand même national/régional/live
+    if (f.sources.size > 0) {
+      const alwaysOn = new Set(['national', 'regional', 'jeunes', 'live']);
+      if (!alwaysOn.has(ev.source) && !f.sources.has(ev.source)) return false;
+    } else {
+      // Aucun dept sélectionné → rien du tout
+      return false;
+    }
 
     // Filtre mois
     if (f.month !== null) {
@@ -362,6 +426,180 @@ const Checkbox = ({ checked, onChange, label }: { checked: boolean; onChange: ()
   </button>
 );
 
+
+// ── GeoPrompt — popup de détection département ────────────────
+const MAX_DEPTS = 7; // limite max de départements sélectionnables simultanément
+
+const GeoPrompt = ({ deptKey, deptAvailable = true, onConfirm, onDecline }: {
+  deptKey: string | null;
+  deptAvailable?: boolean;
+  onConfirm: () => void;
+  onDecline: () => void;
+}) => {
+  const dept = deptKey ? DEPT_OPTIONS.find(d => d.key === deptKey) : null;
+  const color = (!deptKey || !dept) ? '#dc2626' : !deptAvailable ? '#6b7280' : (SOURCE_COLOR[deptKey] || '#dc2626');
+  const limitrophes = (deptKey && deptAvailable) ? getLimitrophes(new Set([deptKey])) : [];
+  const limitropheLabels = limitrophes
+    .map(k => DEPT_OPTIONS.find(d => d.key === k)?.label?.split(' (')[0])
+    .filter(Boolean).slice(0, 3);
+
+  const isManualMode = !deptKey || !dept;
+  const isUnavailable = deptKey && dept && !deptAvailable; // dept détecté mais pas dans l'app
+
+  return ReactDOM.createPortal(
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[400] flex items-center justify-center px-5"
+      >
+        <div className="absolute inset-0 bg-black/80 backdrop-blur-md" />
+        <motion.div
+          initial={{ opacity: 0, scale: 0.88, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.88, y: 20 }}
+          transition={{ type: 'spring', damping: 26, stiffness: 280 }}
+          className="relative w-full max-w-sm bg-zinc-950 border border-white/12 rounded-3xl overflow-hidden shadow-2xl"
+        >
+          {/* Bande colorée en haut */}
+          <div className="h-1 w-full" style={{ background: color }} />
+
+          <div className="px-6 pt-6 pb-5">
+            {/* Icône */}
+            <div className="flex justify-center mb-4">
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
+                style={{ background: color + '20', border: `2px solid ${color}40` }}>
+                {isManualMode ? (
+                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 6h18M3 12h18M3 18h18"/>
+                  </svg>
+                ) : (
+                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+                    <circle cx="12" cy="9" r="2.5"/>
+                  </svg>
+                )}
+              </div>
+            </div>
+
+            {isManualMode ? (
+              /* ── Mode sélection manuelle ── */
+              <>
+                <p className="text-white/50 text-[11px] uppercase tracking-widest font-bold text-center mb-2">
+                  Bienvenue sur AHRENA
+                </p>
+                <h2 className="text-white font-black text-lg text-center mb-2">
+                  Choisissez votre département
+                </h2>
+                <p className="text-white/35 text-[12px] text-center mb-5 leading-relaxed">
+                  Sélectionnez jusqu'à <span className="text-white/60 font-bold">{MAX_DEPTS} départements</span> pour afficher les concours près de chez vous.
+                </p>
+                <button
+                  onClick={onDecline}
+                  className="w-full py-4 rounded-2xl font-black text-[13px] uppercase tracking-wider text-white transition-colors"
+                  style={{ background: color }}
+                >
+                  Choisir mon département
+                </button>
+              </>
+
+            ) : isUnavailable ? (
+              /* ── Mode département détecté mais non disponible ── */
+              <>
+                <p className="text-white/50 text-[11px] uppercase tracking-widest font-bold text-center mb-1">
+                  Votre position détectée
+                </p>
+                <h2 className="text-white font-black text-xl text-center mb-2">
+                  {dept!.label.split(' (')[0]}
+                </h2>
+
+                {/* Message indisponible */}
+                <div className="bg-zinc-800 border border-white/10 rounded-2xl px-4 py-4 mb-5">
+                  <p className="text-white/70 text-[12px] text-center leading-relaxed mb-1">
+                    😕 Désolé, le calendrier de ce département n'est pas encore disponible dans AHRENA.
+                  </p>
+                  <p className="text-white/35 text-[11px] text-center leading-relaxed">
+                    Vous pouvez nous l'envoyer pour qu'il soit intégré dans la prochaine mise à jour !
+                  </p>
+                </div>
+
+                {/* Bouton envoyer le calendrier */}
+                <a
+                  href={`mailto:support@ahrena.com?subject=Calendrier%20p%C3%A9tanque%20${encodeURIComponent(dept!.label)}&body=Bonjour%2C%0A%0AJe%20souhaite%20vous%20envoyer%20le%20calendrier%20p%C3%A9tanque%20du%20d%C3%A9partement%20${encodeURIComponent(dept!.label)}.%0A%0ALien%20URL%20du%20calendrier%20%3A%20%0APDF%20ou%20images%20en%20pi%C3%A8ce%20jointe%0ASource%20(site%2C%20Facebook%2C%20autre)%20%3A%20%0A%0AMerci%20!`}
+                  className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-2xl font-black text-[12px] uppercase tracking-wider text-white mb-3 transition-colors"
+                  style={{ background: '#dc2626' }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="17 8 12 3 7 8"/>
+                    <line x1="12" y1="3" x2="12" y2="15"/>
+                  </svg>
+                  📅 Envoyer notre calendrier
+                </a>
+
+                <p className="text-white/20 text-[9px] text-center mb-4">
+                  Envoyez-nous le lien URL, le PDF ou des captures d'écran du calendrier de votre comité départemental. Merci !
+                </p>
+
+                <button
+                  onClick={onDecline}
+                  className="w-full py-3 rounded-2xl border border-white/10 text-white/40 font-bold text-[11px] uppercase tracking-wider hover:bg-white/5 transition-colors"
+                >
+                  Choisir un autre département
+                </button>
+              </>
+
+            ) : (
+              /* ── Mode confirmation géo ── */
+              <>
+                <p className="text-white/50 text-[11px] uppercase tracking-widest font-bold text-center mb-1">
+                  Votre position détectée
+                </p>
+                <h2 className="text-white font-black text-xl text-center mb-1">
+                  {dept!.label.split(' (')[0]}
+                </h2>
+                <p className="text-white/30 text-xs text-center mb-5">
+                  Êtes-vous bien dans ce département ?
+                </p>
+
+                {limitropheLabels.length > 0 && (
+                  <div className="bg-amber-400/8 border border-amber-400/20 rounded-xl px-3 py-2.5 mb-5 flex items-center gap-2">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" strokeWidth="2.5">
+                      <circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+                    </svg>
+                    <p className="text-amber-300/70 text-[10px] flex-1">
+                      Les limitrophes seront aussi inclus :
+                      <span className="font-bold text-amber-300/90"> {limitropheLabels.join(', ')}{limitrophes.length > 3 ? '…' : ''}</span>
+                    </p>
+                  </div>
+                )}
+
+                <div className="flex gap-2.5">
+                  <button
+                    onClick={onDecline}
+                    className="flex-1 py-3.5 rounded-2xl border border-white/12 text-white/50 font-bold text-[12px] uppercase tracking-wider hover:bg-white/5 transition-colors"
+                  >
+                    Non
+                  </button>
+                  <button
+                    onClick={onConfirm}
+                    className="flex-[2] py-3.5 rounded-2xl font-black text-[13px] uppercase tracking-wider text-white transition-colors"
+                    style={{ background: color }}
+                  >
+                    Oui, c'est le mien
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>,
+    document.body
+  );
+};
+
 // ── EventDetailSheet ──────────────────────────────────────────
 const TYPE_LABEL: Record<string, string> = {
   CONCOURS:    'Concours',
@@ -388,14 +626,22 @@ const FORMAT_LABEL: Record<string, { icon: string; label: string }> = {
   'AUTRE':       { icon: '🎯',    label: 'Autre' },
 };
 
-const EventDetailSheet = ({ ev, onClose, onVideoSelect }: {
+const EventDetailSheet = ({ ev, onClose, onVideoSelect, user, onAuthRequired }: {
   ev: UnifiedEvent | null;
   onClose: () => void;
   onVideoSelect: (v: Video) => void;
+  user?: any;
+  onAuthRequired?: () => void;
 }) => {
+  const [faved, setFaved] = useState(false);
+
   useEffect(() => {
-    if (ev) document.body.style.overflow = 'hidden';
-    else document.body.style.overflow = '';
+    if (ev) {
+      document.body.style.overflow = 'hidden';
+      setFaved(isFav('concours-' + ev.id));
+    } else {
+      document.body.style.overflow = '';
+    }
     return () => { document.body.style.overflow = ''; };
   }, [ev]);
 
@@ -418,17 +664,17 @@ const EventDetailSheet = ({ ev, onClose, onVideoSelect }: {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[300] flex items-end justify-center"
+          className="fixed inset-0 z-[300] flex items-center justify-center px-4"
           onClick={onClose}
         >
-          <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" />
+          <div className="absolute inset-0 bg-black/75 backdrop-blur-md" />
 
           <motion.div
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 32, stiffness: 320 }}
-            className="relative w-full max-w-lg mx-3 mb-3 bg-zinc-950 border border-white/10 rounded-3xl overflow-hidden shadow-2xl"
+            initial={{ opacity: 0, scale: 0.92, y: 16 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.92, y: 16 }}
+            transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+            className="relative w-full max-w-lg bg-zinc-950 border border-white/10 rounded-3xl overflow-hidden shadow-2xl"
             onClick={e => e.stopPropagation()}
           >
             {/* ── Header coloré ── */}
@@ -444,10 +690,42 @@ const EventDetailSheet = ({ ev, onClose, onVideoSelect }: {
                   style={{ background: typeColor + '25', color: typeColor, border: `1px solid ${typeColor}40` }}>
                   {TYPE_LABEL[ev.typeEvent || 'CONCOURS']}
                 </span>
-                <button onClick={onClose}
-                  className="w-7 h-7 rounded-full bg-white/8 flex items-center justify-center hover:bg-white/15 transition-colors">
-                  <X size={13} className="text-white/60" />
-                </button>
+                <div className="flex items-center gap-2">
+                  {/* Bouton favori */}
+                  <button
+                    onClick={() => {
+                      if (!user) { onAuthRequired?.(); return; }
+                      const favItem: FavConcours = {
+                        id: 'concours-' + ev.id,
+                        category: 'concours',
+                        title: ev.title,
+                        ville: ev.ville || '',
+                        date: ev.date,
+                        dateFin: ev.dateFin,
+                        format: ev.format,
+                        heure: ev.heure,
+                        info: ev.info,
+                        dept: SOURCE_LABEL[ev.source],
+                        deptCode: dept?.code,
+                        deptColor: color,
+                        facebook: dept?.facebook,
+                        site: dept?.site,
+                        addedAt: new Date().toISOString(),
+                      };
+                      const added = toggleFav(favItem);
+                      setFaved(added);
+                      window.dispatchEvent(new Event('ahrena_fav_changed'));
+                    }}
+                    className="w-7 h-7 rounded-full flex items-center justify-center transition-all"
+                    style={faved ? { background: '#dc2626' } : { background: 'rgba(255,255,255,0.08)' }}
+                  >
+                    <Heart size={12} fill={faved ? 'white' : 'none'} stroke={faved ? 'white' : 'rgba(255,255,255,0.6)'} strokeWidth={2}/>
+                  </button>
+                  <button onClick={onClose}
+                    className="w-7 h-7 rounded-full bg-white/8 flex items-center justify-center hover:bg-white/15 transition-colors">
+                    <X size={13} className="text-white/60" />
+                  </button>
+                </div>
               </div>
 
               {/* Icônes joueurs + Format */}
@@ -650,12 +928,16 @@ const EventCard = ({ ev, onVideoSelect, onSelect }: { ev: UnifiedEvent; onVideoS
         <div className="px-3 pb-2.5 flex items-center gap-2 flex-wrap border-t border-white/5">
           <span className="text-amber-400/60 text-[9px] font-bold">⚠️ Vérifier annulation</span>
           <div className="flex gap-1.5 ml-auto">
-            <a href={DEPT_LINKS[ev.source]!.facebook} target="_blank" rel="noopener noreferrer"
-              className="bg-blue-600/15 text-blue-400 text-[9px] font-bold px-2 py-0.5 rounded border border-blue-600/20"
-              onClick={e => e.stopPropagation()}>📘 FB CD{DEPT_LINKS[ev.source]!.code}</a>
-            <a href={DEPT_LINKS[ev.source]!.site} target="_blank" rel="noopener noreferrer"
-              className="bg-emerald-600/15 text-emerald-400 text-[9px] font-bold px-2 py-0.5 rounded border border-emerald-600/20"
-              onClick={e => e.stopPropagation()}>🌐 Site</a>
+            {DEPT_LINKS[ev.source]!.facebook && (
+              <a href={DEPT_LINKS[ev.source]!.facebook} target="_blank" rel="noopener noreferrer"
+                className="bg-blue-600/15 text-blue-400 text-[9px] font-bold px-2 py-0.5 rounded border border-blue-600/20"
+                onClick={e => e.stopPropagation()}>📘 FB CD{DEPT_LINKS[ev.source]!.code}</a>
+            )}
+            {DEPT_LINKS[ev.source]!.site && (
+              <a href={DEPT_LINKS[ev.source]!.site} target="_blank" rel="noopener noreferrer"
+                className="bg-emerald-600/15 text-emerald-400 text-[9px] font-bold px-2 py-0.5 rounded border border-emerald-600/20"
+                onClick={e => e.stopPropagation()}>🌐 Site</a>
+            )}
           </div>
         </div>
       )}
@@ -673,17 +955,30 @@ const ListView = ({ events, onVideoSelect }: { events: UnifiedEvent[]; onVideoSe
     return Array.from(map.entries());
   }, [events]);
 
+  const noSources = events.length === 0 && Array.from(events).length === 0;
+
   if (grouped.length === 0) return (
     <div className="flex flex-col items-center justify-center py-20 text-center px-8">
-      <CalendarIcon size={40} className="text-white/10 mb-3"/>
-      <p className="text-white/40 text-sm font-bold">Aucun événement trouvé</p>
-      <p className="text-white/20 text-xs mt-1">Modifie les filtres pour voir plus de résultats</p>
+      <div className="w-16 h-16 rounded-2xl bg-zinc-800 flex items-center justify-center mb-4">
+        <MapPin size={28} className="text-white/20"/>
+      </div>
+      <p className="text-white font-black text-base mb-1">Choisissez votre département</p>
+      <p className="text-white/35 text-xs leading-relaxed mb-5">
+        Sélectionnez jusqu'à 7 départements pour afficher les concours près de chez vous.
+      </p>
+      <button
+        onClick={() => document.getElementById('dept-selector-btn')?.click()}
+        className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-black text-[12px] uppercase tracking-widest px-5 py-3 rounded-2xl transition-colors"
+      >
+        <MapPin size={14}/>
+        Choisir un département
+      </button>
     </div>
   );
 
   return (
     <>
-    <EventDetailSheet ev={detailEv} onClose={() => setDetailEv(null)} onVideoSelect={onVideoSelect} />
+    <EventDetailSheet ev={detailEv} onClose={() => setDetailEv(null)} onVideoSelect={onVideoSelect} user={user} onAuthRequired={onAuthRequired} />
     <div className="space-y-6 px-4 pb-6">
       {grouped.map(([date, evs]) => {
         const d = new Date(date);
@@ -914,19 +1209,19 @@ const MonthView = ({ events, allEvents, onVideoSelect, forcedMonth }: {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] flex items-end"
+            className="fixed inset-0 z-[200] flex items-center justify-center px-4"
             onClick={() => setSelected(null)}
           >
             {/* Fond semi-transparent */}
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
 
             {/* Panel */}
             <motion.div
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className="relative w-full max-w-2xl mx-auto bg-zinc-950 border-t border-white/10 rounded-t-2xl shadow-2xl max-h-[70vh] flex flex-col"
+              initial={{ opacity: 0, scale: 0.92, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.92, y: 16 }}
+              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+              className="relative w-full max-w-2xl bg-zinc-950 border border-white/10 rounded-2xl shadow-2xl max-h-[80vh] flex flex-col"
               onClick={e => e.stopPropagation()}
             >
               {/* Handle */}
@@ -973,25 +1268,34 @@ const DeptAccordion = ({ sources, onChange }: {
 }) => {
   const [open, setOpen] = useState(false);
 
+  const MAX_DEPTS = 7;
+  const ALWAYS_ON = new Set(['national', 'regional', 'jeunes', 'live']); // ne comptent pas dans la limite
+
   const toggleSource = (key: string) => {
-    if (key === 'all') { onChange(new Set(['all'])); return; }
+    if (key === 'all') { onChange(new Set()); return; }
     const next = new Set(sources);
-    next.delete('all');
-    if (next.has(key)) next.delete(key); else next.add(key);
-    if (next.size === 0) next.add('all');
+    if (next.has(key)) {
+      next.delete(key);
+    } else {
+      // Compter seulement les vrais depts (pas les sources permanentes)
+      const deptCount = Array.from(next).filter(k => !ALWAYS_ON.has(k)).length;
+      if (!ALWAYS_ON.has(key) && deptCount >= MAX_DEPTS) return; // limite atteinte
+      next.add(key);
+    }
     onChange(next);
   };
 
-  const reset = () => onChange(new Set(['all']));
+  const reset = () => onChange(new Set());
 
-  const isAll = sources.has('all');
-  const activeCount = isAll ? 0 : sources.size;
+  const isAll = sources.size === 0;
+  const activeCount = isAll ? 0 : Array.from(sources).filter(k => !ALWAYS_ON.has(k)).length;
   const availableDepts = DEPT_OPTIONS.filter(d => d.available);
+  const limitReached = activeCount >= MAX_DEPTS;
   const activeLabel = isAll
-    ? 'Tous les départements'
+    ? 'Choisir un département'
     : activeCount === 1
-      ? availableDepts.find(d => sources.has(d.key))?.label || '1 département'
-      : `${activeCount} départements`;
+      ? availableDepts.find(d => sources.has(d.key))?.label?.split(' (')[0] || '1 département'
+      : `${activeCount}/${MAX_DEPTS} départements`;
 
   // Bloquer le scroll du body quand le sheet est ouvert
   useEffect(() => {
@@ -1004,6 +1308,7 @@ const DeptAccordion = ({ sources, onChange }: {
     <>
       {/* Bouton déclencheur */}
       <button
+        id="dept-selector-btn"
         onClick={() => setOpen(true)}
         className={`flex items-center gap-2 px-3 py-2 rounded-xl border transition-all
           ${activeCount > 0
@@ -1035,10 +1340,10 @@ const DeptAccordion = ({ sources, onChange }: {
 
           {/* Sheet */}
           <motion.div
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+            initial={{ opacity: 0, scale: 0.92, y: 16 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.92, y: 16 }}
+            transition={{ type: 'spring', damping: 28, stiffness: 300 }}
             className="relative z-10 mx-3 mb-3 bg-zinc-950 border border-white/10 rounded-3xl overflow-hidden flex flex-col"
             style={{ maxHeight: 'calc(100vh - 80px)' }}
           >
@@ -1114,11 +1419,11 @@ const DeptAccordion = ({ sources, onChange }: {
                         </svg>
                       </div>
                       <div className="w-2.5 h-2.5 rounded-full flex-shrink-0 relative z-10" style={{ background: dept.color, opacity: 0.4 }}/>
-                      {/* Texte barré avec ligne rouge */}
+                      {/* Texte barré avec line-through natif + couleur rouge */}
                       <div className="flex-1 relative z-10 min-w-0">
-                        <span className="text-[13px] font-bold text-zinc-500 relative">
+                        <span className="text-[13px] font-bold text-zinc-500"
+                          style={{ textDecoration: 'line-through', textDecorationColor: '#ef4444', textDecorationThickness: '2px' }}>
                           {dept.label}
-                          <span className="absolute inset-x-0" style={{ top: '50%', height: '2px', background: '#ef4444', opacity: 0.7 }}/>
                         </span>
                       </div>
                       <span className="text-[8px] font-black uppercase text-zinc-500 border border-zinc-600 px-2 py-0.5 rounded flex-shrink-0 relative z-10 tracking-wider bg-zinc-800">
@@ -1132,8 +1437,9 @@ const DeptAccordion = ({ sources, onChange }: {
                   <button
                     key={dept.key}
                     onClick={() => toggleSource(dept.key)}
+                    disabled={limitReached && !active}
                     className={`w-full flex items-center gap-4 px-5 py-3.5 transition-all
-                      ${active ? 'bg-red-600/8' : 'hover:bg-white/4'}`}
+                      ${active ? 'bg-red-600/8' : limitReached ? 'opacity-35 cursor-not-allowed' : 'hover:bg-white/4'}`}
                   >
                     {/* Checkbox */}
                     <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all
@@ -1194,6 +1500,16 @@ const DeptAccordion = ({ sources, onChange }: {
                 );
               })()}
 
+              {/* Indicateur limite */}
+              {limitReached && (
+                <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/25 rounded-xl px-3 py-2.5">
+                  <span className="text-amber-400 text-sm">⚠️</span>
+                  <p className="text-amber-300/80 text-[10px] flex-1">
+                    Limite de <span className="font-black">{MAX_DEPTS} départements</span> atteinte. Décochez-en un pour en ajouter un autre.
+                  </p>
+                </div>
+              )}
+
               <button
                 onClick={() => setOpen(false)}
                 className="w-full bg-red-600 hover:bg-red-700 text-white font-black text-sm uppercase tracking-widest py-4 rounded-2xl transition-colors shadow-lg shadow-red-900/30"
@@ -1201,7 +1517,7 @@ const DeptAccordion = ({ sources, onChange }: {
                 Voir les résultats
                 {activeCount > 0 && (
                   <span className="ml-2 bg-white/20 text-white text-[11px] px-2 py-0.5 rounded-full">
-                    {activeCount} filtre{activeCount > 1 ? 's' : ''}
+                    {activeCount}/{MAX_DEPTS}
                   </span>
                 )}
               </button>
@@ -1317,9 +1633,9 @@ const FilterPanel = ({ filters, onChange, onClose }: {
   );
 
   return ReactDOM.createPortal(
-    <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex items-end md:items-center md:justify-center" onClick={onClose}>
+    <div className="fixed inset-0 z-[9999] bg-black/75 backdrop-blur-md flex items-center justify-center px-4" onClick={onClose}>
       <div
-        className="w-full md:max-w-lg bg-zinc-950 border border-white/10 rounded-t-2xl md:rounded-2xl overflow-hidden shadow-2xl max-h-[85vh] flex flex-col"
+        className="w-full max-w-lg bg-zinc-950 border border-white/10 rounded-2xl overflow-hidden shadow-2xl max-h-[85vh] flex flex-col"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
@@ -1395,11 +1711,85 @@ const FilterPanel = ({ filters, onChange, onClose }: {
 };
 
 // ── Composant principal ───────────────────────────────────────
-const CalendarComponent = ({ videos, onVideoSelect }: { videos: Video[]; onVideoSelect: (v: Video) => void }) => {
+const CalendarComponent = ({ videos, onVideoSelect, user, onAuthRequired }: { videos: Video[]; onVideoSelect: (v: Video) => void; user?: any; onAuthRequired?: () => void }) => {
   const [view, setView]           = useState<'month' | 'list'>('month');
   const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters]     = useState<AdvancedFilters>(makeDefaultFilters());
+  // Par défaut : aucun département sélectionné — l'utilisateur doit choisir
+  const [filters, setFilters]     = useState<AdvancedFilters>({
+    ...makeDefaultFilters(),
+    sources: new Set(), // vide = aucun dept sélectionné
+  });
   const [todayKey, setTodayKey]   = useState(isoDate(new Date()));
+
+  // ── Géolocalisation ──
+  const [geoDeptKey, setGeoDeptKey]         = useState<string | null>(null);
+  const [geoDeptAvailable, setGeoDeptAvailable] = useState(true);
+  const [geoPrompt, setGeoPrompt]           = useState(false);
+
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      // Pas de géoloc dispo → demander une seule fois manuellement
+      const asked = localStorage.getItem('ahrena_geo_asked');
+      if (!asked) {
+        setGeoPrompt(true);
+        setGeoDeptKey(null);
+        localStorage.setItem('ahrena_geo_asked', '1');
+      }
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const result = getDeptFromCoords(pos.coords.latitude, pos.coords.longitude);
+        const currentKey = result?.key ?? null;
+        const lastKey = localStorage.getItem('ahrena_last_dept');
+
+        if (!lastKey) {
+          // Premier lancement — toujours afficher le popup
+          setGeoDeptKey(currentKey);
+          setGeoDeptAvailable(result?.available ?? false);
+          setGeoPrompt(true);
+          if (currentKey) localStorage.setItem('ahrena_last_dept', currentKey);
+        } else if (currentKey && currentKey !== lastKey) {
+          // Changement de département détecté
+          setGeoDeptKey(currentKey);
+          setGeoDeptAvailable(result?.available ?? false);
+          setGeoPrompt(true);
+          localStorage.setItem('ahrena_last_dept', currentKey);
+        }
+        // Même département qu'avant → rien, pas de popup
+      },
+      () => {
+        // Refus géoloc → demander manuellement une seule fois
+        const asked = localStorage.getItem('ahrena_geo_asked');
+        if (!asked) {
+          setGeoPrompt(true);
+          setGeoDeptKey(null);
+          setGeoDeptAvailable(false);
+          localStorage.setItem('ahrena_geo_asked', '1');
+        }
+      },
+      { timeout: 6000, maximumAge: 300000 }
+    );
+  }, []);
+
+  const handleGeoConfirm = () => {
+    if (!geoDeptKey) return;
+    // Activer le département détecté + ses limitrophes
+    const next = new Set([geoDeptKey, ...getLimitrophes(new Set([geoDeptKey]))]);
+    setFilters(f => ({ ...f, sources: next }));
+    // Mémoriser ce dept comme "connu" pour ne plus redemander
+    localStorage.setItem('ahrena_last_dept', geoDeptKey);
+    setGeoPrompt(false);
+  };
+
+  const handleGeoDecline = () => {
+    setGeoPrompt(false);
+    // Ouvrir directement le sélecteur de département
+    setTimeout(() => {
+      document.getElementById('dept-selector-btn')?.click();
+    }, 300);
+  };
 
   useEffect(() => {
     const msUntilMidnight = () => {
@@ -1464,7 +1854,7 @@ const CalendarComponent = ({ videos, onVideoSelect }: { videos: Video[]; onVideo
   }, []);
 
   return (
-    <div className="flex flex-col" style={{ paddingTop: `${headerH}px`, height: '100dvh', overflow: 'hidden' }}>
+    <div className="flex flex-col" style={{ paddingTop: `${headerH}px`, height: '100%', overflow: 'hidden' }}>
 
       {/* Barre de contrôle — fixe sous le header */}
       <div className="flex-shrink-0 bg-zinc-950/98 backdrop-blur-md border-b border-white/8 z-40">
@@ -1522,6 +1912,16 @@ const CalendarComponent = ({ videos, onVideoSelect }: { videos: Video[]; onVideo
           <span className="text-white/25 text-[10px]">{filteredEvents.length} événements</span>
         </div>
       </div>
+
+      {/* Popup géolocalisation */}
+      {geoPrompt && (
+        <GeoPrompt
+          deptKey={geoDeptKey}
+          deptAvailable={geoDeptAvailable}
+          onConfirm={handleGeoConfirm}
+          onDecline={handleGeoDecline}
+        />
+      )}
 
       {/* Zone scrollable — prend tout l'espace restant */}
       <div className="flex-1 overflow-y-auto overscroll-contain pb-36">

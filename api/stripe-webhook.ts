@@ -47,6 +47,8 @@ async function getRawBody(req: VercelRequest): Promise<Buffer> {
 async function setUserPremium(userId: string, userEmail: string, isPremium: boolean) {
   if (!userId && !userEmail) return;
 
+  let resolvedUserId = userId;
+
   // Chercher l'utilisateur par userId d'abord, puis par email
   let query = supabase.from('profiles').update({ is_premium: isPremium });
 
@@ -55,9 +57,37 @@ async function setUserPremium(userId: string, userEmail: string, isPremium: bool
   } else if (userEmail) {
     // Chercher l'id via auth.users si on n'a que l'email
     const { data: users } = await supabase.auth.admin.listUsers();
-    const user = users?.users?.find(u => u.email === userEmail);
+    const user = users?.users?.find((u: any) => u.email === userEmail);
     if (user) {
+      resolvedUserId = user.id;
       await supabase.from('profiles').update({ is_premium: isPremium }).eq('id', user.id);
+    }
+  }
+
+  // ── Mettre à jour le tag OneSignal via leur API REST ────────
+  // OneSignal REST API : update user tags par External ID (= Supabase user ID)
+  if (resolvedUserId && process.env.ONESIGNAL_APP_ID && process.env.ONESIGNAL_REST_API_KEY) {
+    try {
+      await fetch(
+        `https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/external_id/${resolvedUserId}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Key ${process.env.ONESIGNAL_REST_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            properties: {
+              tags: {
+                is_premium: isPremium ? 'true' : null, // null = supprimer le tag
+                plan: isPremium ? 'vip' : null,
+              }
+            }
+          }),
+        }
+      );
+    } catch (err) {
+      console.error('[OneSignal] Tag update failed:', err);
     }
   }
 }

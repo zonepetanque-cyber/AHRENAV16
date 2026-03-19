@@ -20,8 +20,14 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { CHANNELS } from './constants';
+// OneSignal App ID — à remplacer par le vrai ID depuis OneSignal Dashboard > Settings > Keys & IDs
+const ONESIGNAL_APP_ID = 'b4998b21-f64b-4c50-af5a-743c1173176c';
+import { NATIONAUX_2026 } from './data/nationaux2026';
+import { CONCOURS_REGIONAUX_2026 } from './data/regionaux2026';
 import { fetchAllVideos, Video } from './services/youtubeService';
 import { supabase } from './lib/supabase';
+import { isFav, toggleFav, FavVideo, syncLocalToSupabase } from './services/favoritesService';
+import { linkUserToOneSignal, unlinkUserFromOneSignal, setVIPTag } from './services/notificationService';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import ProgrammeComponent from './components/ProgrammeComponent';
 import CalendarComponent from './components/CalendarComponent';
@@ -54,7 +60,7 @@ const Header = ({ onProfileClick, onSearchClick, onNewsClick }: { onProfileClick
     </div>
     <div className="flex items-center gap-4">
       <button onClick={onNewsClick} className="p-2 text-white/70 hover:text-white transition-colors">
-        <Newspaper size={22} />
+        <Heart size={22} />
       </button>
       <button onClick={onSearchClick} className="p-2 text-white/70 hover:text-white transition-colors">
         <Search size={22} />
@@ -95,7 +101,7 @@ const Navbar = ({ activeTab, onTabChange }: { activeTab: string, onTabChange: (t
       onClick={() => onTabChange('club')}
     />
     <NavItem 
-      icon={<Heart size={24} />} 
+      icon={<Newspaper size={24} />} 
       label="Favoris" 
       active={activeTab === 'favorites'} 
       onClick={() => onTabChange('favorites')}
@@ -492,7 +498,28 @@ const VideoModal = ({ video, onClose, isPremium, onMinimize, onAddToMultiplex, o
     localStorage.setItem('ahrena_pip_dismissed', '1');
   };
 
-  // Bloquer le scroll de la page en arrière-plan quand la modal est ouverte
+  // ── Écouter le changement du switch alerte live ─────────────
+  useEffect(() => {
+    const handler = () => {
+      setLiveAlertEnabled(localStorage.getItem('ahrena_live_alert') !== 'false');
+    };
+    window.addEventListener('ahrena_live_alert_changed', handler);
+    return () => window.removeEventListener('ahrena_live_alert_changed', handler);
+  }, []);
+
+  // ── Détection live qui démarre (VIP + switch activé uniquement) ──
+  useEffect(() => {
+    if (!isPremium || !liveAlertEnabled) return;
+    if (liveVideos.length === 0) return;
+    const currentLives = liveVideos.filter(v => v.isLive);
+    if (currentLives.length === 0) return;
+    const newest = currentLives[0];
+    if (!liveAlertDismissed.has(newest.id)) {
+      setLiveAlert(newest);
+    }
+  }, [liveVideos, isPremium, liveAlertEnabled]);
+
+  // ── Bloquer le scroll de la page en arrière-plan quand la modal est ouverte
   useEffect(() => {
     if (video) {
       document.body.style.overflow = 'hidden';
@@ -826,6 +853,11 @@ export default function App() {
     loadBlacklist();
   }, []);
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
+  const [liveAlert, setLiveAlert]           = useState<Video | null>(null);
+  const [liveAlertDismissed, setLiveAlertDismissed] = useState<Set<string>>(new Set());
+  const [liveAlertEnabled, setLiveAlertEnabled] = useState(
+    () => localStorage.getItem('ahrena_live_alert') !== 'false'
+  );
   const [infoVideo, setInfoVideo] = useState<Video | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -858,6 +890,9 @@ export default function App() {
       // Récupère la session courante (gère aussi le retour OAuth via hash #access_token)
       supabase.auth.getSession().then(({ data: { session } }) => {
         setUser(session?.user ?? null);
+        if (event === 'SIGNED_OUT') {
+          unlinkUserFromOneSignal();
+        }
 
         // Nettoie le hash OAuth de l'URL après que Supabase l'a traité
         // Évite que Chrome garde une URL avec #access_token visible
@@ -875,6 +910,17 @@ export default function App() {
         if (event === 'SIGNED_IN') {
           if (window.location.hash) {
             window.history.replaceState(null, '', window.location.pathname);
+          }
+          // Fusionner les favoris locaux dans Supabase (sans perte)
+          syncLocalToSupabase();
+          // Lier l'utilisateur à OneSignal avec son ID Supabase
+          if (session?.user) {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('is_premium')
+              .eq('id', session.user.id)
+              .single();
+            linkUserToOneSignal(session.user.id, profile?.is_premium || false);
           }
         }
       });
@@ -1041,29 +1087,270 @@ export default function App() {
                   <Skeleton />
                   <Skeleton />
                 </>
-              ) : (
-                CHANNELS.map((channel) => (
-                  <VideoCarousel 
-                    key={channel.id}
-                    title={channel.name}
-                    videos={(channelVideos[channel.id] || []).filter(v => !blacklistedIds.has(v.id)).slice(0, 10)}
-                    onVideoSelect={setSelectedVideo}
-                    channelUrl={channel.url}
-                    channelAvatar={channel.avatar}
-                  />
-                ))
-              )}
+              ) : (() => {
+                const allVids = Object.entries(channelVideos)
+                  .flatMap(([, vids]) => vids)
+                  .filter(v => !blacklistedIds.has(v.id));
+
+                // ── Carousel "Dernières Vidéos" ──
+                // 1 vidéo par chaîne (la plus récente), triées globalement par date
+                const latestPerChannel = CHANNELS
+                  .map(ch => {
+                    const vids = (channelVideos[ch.id] || []).filter(v => !blacklistedIds.has(v.id));
+                    const latest = vids.sort((a, b) =>
+                      new Date(b.publishedAt || 0).getTime() - new Date(a.publishedAt || 0).getTime()
+                    )[0];
+                    return latest ? { ...latest, _channelAvatar: ch.avatar, _channelUrl: ch.url } : null;
+                  })
+                  .filter(Boolean)
+                  .sort((a, b) =>
+                    new Date((b as any).publishedAt || 0).getTime() - new Date((a as any).publishedAt || 0).getTime()
+                  ) as any[];
+
+                // ── Carousels thématiques ──
+                const keywords: Record<string, string[]> = {
+                  '🏆 Championnats & Compétitions': ['championnat', 'champion', 'finale', 'final', 'coupe', 'tournoi', 'compétition', 'competition', 'open', 'masters', 'world', 'mondial', 'national', 'international', 'ffpjp', 'ffsb'],
+                  '🎯 Technique & Apprentissage':   ['technique', 'tir', 'pointé', 'pointer', 'apprendre', 'tutoriel', 'cours', 'conseil', 'débutant', 'perfectionnement', 'entraînement', 'training', 'school', 'academy'],
+                  '🎬 Replays & Highlights':         ['replay', 'highlight', 'best of', 'résumé', 'top', 'moment', 'partie', 'match'],
+                  '🌍 Événements & Spectacle':       ['festival', 'exhibition', 'show', 'gala', 'fête', 'fete', 'initiation', 'découverte', 'reportage', 'portrait', 'interview'],
+                };
+
+                const themed: Record<string, any[]> = {};
+                Object.keys(keywords).forEach(theme => { themed[theme] = []; });
+
+                allVids.forEach(v => {
+                  const txt = (v.title + ' ' + (v.description || '')).toLowerCase();
+                  for (const [theme, kws] of Object.entries(keywords)) {
+                    if (kws.some(kw => txt.includes(kw))) {
+                      if (!themed[theme].find((x: any) => x.id === v.id)) {
+                        themed[theme].push(v);
+                      }
+                      break; // Une seule catégorie par vidéo
+                    }
+                  }
+                });
+
+                return (
+                  <>
+                    {/* ══ PROCHAIN GRAND ÉVÉNEMENT — Compte à rebours ══ */}
+                    {(() => {
+                      const today = new Date(); today.setHours(0,0,0,0);
+                      const next = NATIONAUX_2026
+                        .filter(n => new Date(n.dateDebut) >= today)
+                        .sort((a,b) => new Date(a.dateDebut).getTime() - new Date(b.dateDebut).getTime())[0];
+                      if (!next) return null;
+                      const daysLeft = Math.ceil((new Date(next.dateDebut).getTime() - today.getTime()) / 86400000);
+                      const isThisWeekend = daysLeft <= 3;
+                      return (
+                        <div className="mx-6 mb-2 mt-2">
+                          <div
+                            className="relative rounded-2xl overflow-hidden px-5 py-4 flex items-center gap-4"
+                            style={{ background: isThisWeekend
+                              ? 'linear-gradient(135deg, rgba(220,38,38,0.25) 0%, rgba(220,38,38,0.08) 100%)'
+                              : 'linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)',
+                              border: `1px solid ${isThisWeekend ? 'rgba(220,38,38,0.4)' : 'rgba(255,255,255,0.08)'}` }}
+                          >
+                            {/* Compte à rebours */}
+                            <div className="flex-shrink-0 text-center w-14">
+                              <div className="text-3xl font-black" style={{ color: isThisWeekend ? '#ef4444' : 'white' }}>{daysLeft}</div>
+                              <div className="text-[9px] uppercase font-bold text-white/40">jour{daysLeft > 1 ? 's' : ''}</div>
+                            </div>
+                            <div className="w-px h-10 bg-white/10 flex-shrink-0"/>
+                            {/* Infos */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-0.5">
+                                <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full"
+                                  style={{ background: isThisWeekend ? 'rgba(220,38,38,0.2)' : 'rgba(255,255,255,0.08)', color: isThisWeekend ? '#ef4444' : 'rgba(255,255,255,0.5)' }}>
+                                  {isThisWeekend ? '🔥 Ce weekend !' : '🗓 Prochain National'}
+                                </span>
+                              </div>
+                              <p className="text-white font-black text-sm leading-tight truncate">{next.categorie} — {next.format}</p>
+                              <p className="text-white/50 text-[11px] mt-0.5">📍 {next.ville} · {new Date(next.dateDebut).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}</p>
+                            </div>
+                            <div className="flex-shrink-0 text-2xl">{isThisWeekend ? '🏆' : '📅'}</div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* ══ CONCOURS DU WEEKEND ══ */}
+                    {(() => {
+                      const today = new Date();
+                      const dayOfWeek = today.getDay();
+                      // Trouver le prochain samedi et dimanche
+                      const daysToSat = (6 - dayOfWeek + 7) % 7 || 7;
+                      const sat = new Date(today); sat.setDate(today.getDate() + (dayOfWeek === 6 ? 0 : daysToSat)); sat.setHours(0,0,0,0);
+                      const sun = new Date(sat); sun.setDate(sat.getDate() + 1);
+                      const isoSat = sat.toISOString().split('T')[0];
+                      const isoSun = sun.toISOString().split('T')[0];
+
+                      const weekendNat = NATIONAUX_2026.filter(n => n.dateDebut === isoSat || n.dateDebut === isoSun || n.dateFin === isoSat || n.dateFin === isoSun);
+                      const weekendReg = CONCOURS_REGIONAUX_2026.filter(c => c.date === isoSat || c.date === isoSun);
+                      const total = weekendNat.length + weekendReg.length;
+                      if (total === 0) return null;
+
+                      return (
+                        <div className="px-6 mb-2">
+                          <h2 className="text-xl font-black text-white mb-3 flex items-center gap-2">
+                            🏆 Ce weekend
+                            <span className="text-[10px] font-black bg-red-600 text-white px-2 py-0.5 rounded-full">{total} événement{total > 1 ? 's' : ''}</span>
+                          </h2>
+                          <div className="space-y-2">
+                            {weekendNat.slice(0,3).map(n => (
+                              <div key={n.id} className="flex items-center gap-3 bg-white/4 border border-white/8 rounded-xl px-4 py-3">
+                                <div className="w-8 h-8 rounded-lg bg-red-600/20 flex items-center justify-center flex-shrink-0">
+                                  <span className="text-sm">🥇</span>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-white font-bold text-[12px] truncate">{n.categorie} — {n.format}</p>
+                                  <p className="text-white/40 text-[10px]">📍 {n.ville} · National</p>
+                                </div>
+                                <span className="text-[9px] font-black text-red-400 bg-red-400/10 px-2 py-0.5 rounded-full flex-shrink-0">
+                                  {n.dateDebut === isoSat ? 'Sam' : 'Dim'}
+                                </span>
+                              </div>
+                            ))}
+                            {weekendReg.slice(0,3).map(c => (
+                              <div key={c.id} className="flex items-center gap-3 bg-white/4 border border-white/8 rounded-xl px-4 py-3">
+                                <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+                                  <span className="text-sm">🎯</span>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-white font-bold text-[12px] truncate">{c.categorie}</p>
+                                  <p className="text-white/40 text-[10px]">📍 {c.ville} · Régional</p>
+                                </div>
+                                <span className="text-[9px] font-black text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full flex-shrink-0">
+                                  {c.date === isoSat ? 'Sam' : 'Dim'}
+                                </span>
+                              </div>
+                            ))}
+                            {total > 6 && (
+                              <p className="text-white/30 text-[10px] text-center pt-1">+{total - 6} autres événements dans le Calendrier</p>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* ── Carousel Dernières Vidéos ── */}
+                    {latestPerChannel.length > 0 && (
+                      <VideoCarousel
+                        title="Dernières Vidéos"
+                        videos={latestPerChannel}
+                        onVideoSelect={setSelectedVideo}
+                        large={false}
+                      />
+                    )}
+
+                    {/* ── Carousels thématiques ── */}
+                    {Object.entries(themed).map(([theme, vids]) =>
+                      vids.length >= 3 ? (
+                        <VideoCarousel
+                          key={theme}
+                          title={theme}
+                          videos={vids.slice(0, 15)}
+                          onVideoSelect={setSelectedVideo}
+                        />
+                      ) : null
+                    )}
+
+                    {/* ══ CONTINUER À REGARDER ══ */}
+                    {(() => {
+                      try {
+                        const history: {id: string; title: string; thumbnail: string; channelName: string; progress: number; timestamp: number}[] =
+                          JSON.parse(localStorage.getItem('ahrena_watch_history') || '[]');
+                        const recent = history.filter(h => h.progress > 5 && h.progress < 95)
+                          .sort((a,b) => b.timestamp - a.timestamp).slice(0, 8);
+                        if (recent.length === 0) return null;
+                        const videos = recent.map(h => ({
+                          id: h.id, title: h.title, thumbnail: h.thumbnail,
+                          channelName: h.channelName, publishedAt: '', isLive: false,
+                          _progress: h.progress
+                        })) as any[];
+                        return (
+                          <VideoCarousel
+                            title="▶ Continuer à regarder"
+                            videos={videos}
+                            onVideoSelect={setSelectedVideo}
+                          />
+                        );
+                      } catch { return null; }
+                    })()}
+
+                    {/* ══ TENDANCES — Top 10 ══ */}
+                    {(() => {
+                      const allVids = Object.values(channelVideos).flat().filter(v => !blacklistedIds.has(v.id));
+                      // Trier par viewCount si dispo, sinon par date récente des 30 derniers jours
+                      const thirtyDaysAgo = Date.now() - 30 * 86400000;
+                      const trending = allVids
+                        .filter(v => v.publishedAt && new Date(v.publishedAt).getTime() > thirtyDaysAgo)
+                        .sort((a,b) => {
+                          const va = (a as any).viewCount || 0;
+                          const vb = (b as any).viewCount || 0;
+                          if (va !== vb) return vb - va;
+                          return new Date(b.publishedAt||0).getTime() - new Date(a.publishedAt||0).getTime();
+                        })
+                        .slice(0, 10);
+                      if (trending.length < 3) return null;
+                      return (
+                        <VideoCarousel
+                          title="🔥 Tendances"
+                          videos={trending}
+                          onVideoSelect={setSelectedVideo}
+                        />
+                      );
+                    })()}
+
+                    {/* ══ RECOMMANDÉS POUR VOUS ══ */}
+                    {(() => {
+                      try {
+                        const favs = JSON.parse(localStorage.getItem('ahrena_favorites') || '[]');
+                        const favVideos = favs.filter((f: any) => f.category === 'video');
+                        if (favVideos.length === 0) return null;
+                        // Chaînes préférées basées sur les favoris
+                        const favChannels = new Set(favVideos.map((f: any) => f.channelName));
+                        const allVids = Object.values(channelVideos).flat().filter(v => !blacklistedIds.has(v.id));
+                        const favVideoIds = new Set(favVideos.map((f: any) => f.videoId));
+                        const recommended = allVids
+                          .filter(v => favChannels.has(v.channelName) && !favVideoIds.has(v.id))
+                          .sort((a,b) => new Date(b.publishedAt||0).getTime() - new Date(a.publishedAt||0).getTime())
+                          .slice(0, 10);
+                        if (recommended.length < 3) return null;
+                        return (
+                          <VideoCarousel
+                            title="⭐ Recommandés pour vous"
+                            videos={recommended}
+                            onVideoSelect={setSelectedVideo}
+                          />
+                        );
+                      } catch { return null; }
+                    })()}
+
+                    {/* ── Carousels par chaîne ── */}
+                    {CHANNELS.map((channel) => (
+                      <VideoCarousel
+                        key={channel.id}
+                        title={channel.name}
+                        videos={(channelVideos[channel.id] || []).filter(v => !blacklistedIds.has(v.id)).slice(0, 10)}
+                        onVideoSelect={setSelectedVideo}
+                        channelUrl={channel.url}
+                        channelAvatar={channel.avatar}
+                      />
+                    ))}
+                  </>
+                );
+              })()}
             </main>
           </>
         );
       case 'programme':
         return <ProgrammeComponent videos={liveVideos} onVideoSelect={setSelectedVideo} />;
       case 'calendar':
-        return <CalendarComponent videos={liveVideos} onVideoSelect={setSelectedVideo} />;
+        return <CalendarComponent videos={liveVideos} onVideoSelect={setSelectedVideo} user={user} onAuthRequired={() => setActiveTab('club')} />;
       case 'club':
         return <ClubComponent onTabChange={setActiveTab} />;
       case 'favorites':
-        return <FavoritesComponent onVideoSelect={setSelectedVideo} />;
+        return <FavoritesComponent onVideoSelect={setSelectedVideo} user={user} onAuthRequired={() => setActiveTab('club')} />;
       case 'admin_disabled':
         return null;
       case 'legal':
@@ -1082,9 +1369,11 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-black font-sans selection:bg-white selection:text-black">
+    <div className="bg-black font-sans selection:bg-white selection:text-black"
+      style={{ height: '100dvh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       <div
-        className="relative w-full bg-black text-white pb-36"
+        className="relative w-full bg-black text-white flex-1 overflow-hidden"
+        style={{ display: 'flex', flexDirection: 'column' }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -1136,9 +1425,48 @@ export default function App() {
         </div>
       )}
 
-      <div className={activeTab !== 'live' ? 'md:max-w-[1400px] md:mx-auto' : ''}>
+      {/* Zone de contenu — scroll isolé par onglet */}
+      <div
+        className={activeTab !== 'live' ? 'md:max-w-[1400px] md:mx-auto' : ''}
+        style={{
+          flex: 1,
+          overflowY: activeTab === 'live' ? 'auto' : 'hidden',
+          overflowX: 'hidden',
+          WebkitOverflowScrolling: 'touch',
+          // Clé unique par onglet = reset du scroll à 0 à chaque changement
+        }}
+        key={`tab-${activeTab}`}
+      >
         {renderContent()}
       </div>
+
+      {/* ══ ALERTE LIVE ══ */}
+      <AnimatePresence>
+        {liveAlert && (
+          <motion.div
+            initial={{ y: -80, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -80, opacity: 0 }}
+            transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+            className="fixed left-0 right-0 z-[190] px-3 pt-3"
+            style={{ top: showUpdateBanner ? '52px' : '0px' }}
+          >
+            <div className="flex items-center gap-3 bg-red-600 rounded-2xl px-4 py-3 shadow-2xl shadow-red-900/50">
+              <div className="w-2 h-2 rounded-full bg-white animate-pulse flex-shrink-0"/>
+              <div className="flex-1 min-w-0 cursor-pointer" onClick={() => { setSelectedVideo(liveAlert); setLiveAlert(null); setLiveAlertDismissed(prev => new Set([...prev, liveAlert.id])); }}>
+                <p className="text-white text-[10px] font-black uppercase tracking-widest">🔴 En direct maintenant</p>
+                <p className="text-white font-bold text-[12px] truncate">{liveAlert.title}</p>
+              </div>
+              <button
+                onClick={() => { setLiveAlert(null); setLiveAlertDismissed(prev => new Set([...prev, liveAlert!.id])); }}
+                className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0"
+              >
+                <X size={13} className="text-white"/>
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <Navbar activeTab={activeTab} onTabChange={setActiveTab} />
 
@@ -1174,15 +1502,15 @@ export default function App() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-end"
+            className="fixed inset-0 z-[100] bg-black/75 backdrop-blur-md flex items-center justify-center px-4"
             onClick={() => setInfoVideo(null)}
           >
             <motion.div
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className="w-full bg-zinc-900 rounded-t-2xl border-t border-white/10 overflow-hidden"
+              initial={{ opacity: 0, scale: 0.92, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.92, y: 16 }}
+              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+              className="w-full max-w-lg bg-zinc-900 rounded-2xl border border-white/10 overflow-hidden"
               onClick={e => e.stopPropagation()}
             >
               {/* Thumbnail */}
@@ -1287,7 +1615,7 @@ export default function App() {
               </div>
             </div>
 
-            <NewsComponent />
+            <NewsComponent user={user} onAuthRequired={() => setActiveTab('club')} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -1339,11 +1667,22 @@ export default function App() {
       <AnimatePresence>
         {showNewsPopup && (
           <motion.div
-            initial={{ opacity: 0, y: 80 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 80 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[90] flex items-center justify-center px-4"
+            onClick={() => setShowNewsPopup(false)}
+          >
+            {/* Backdrop flouté */}
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
+
+          <motion.div
+            initial={{ opacity: 0, scale: 0.92, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.92, y: 20 }}
             transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-            className="fixed bottom-24 left-4 right-4 z-[90] md:max-w-md md:left-auto md:right-6"
+            className="relative w-full max-w-sm z-10"
+            onClick={e => e.stopPropagation()}
           >
             <div className="bg-zinc-900 border border-white/15 rounded-2xl shadow-2xl overflow-hidden">
 
@@ -1430,6 +1769,7 @@ export default function App() {
               </div>
 
             </div>
+          </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

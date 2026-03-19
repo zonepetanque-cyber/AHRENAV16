@@ -1,105 +1,118 @@
-// notificationService.ts
-import { supabase } from '../lib/supabase';
+// ── Service Notifications AHRENA via OneSignal ──────────────────
+// OneSignal gère tout : SW, tokens, envoi
+// On utilise leurs tags pour filtrer les VIP côté dashboard
 
-// Clé VAPID publique — lue depuis les variables d'environnement Vercel
-// Ajouter dans Vercel : VITE_VAPID_PUBLIC_KEY
-export const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY || '';
+const getOS = (): any => (window as any).OneSignal;
 
-function urlBase64ToUint8Array(base64String: string): Uint8Array {
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-  const rawData = window.atob(base64);
-  return Uint8Array.from([...rawData].map(char => char.charCodeAt(0)));
-}
-
+// ── Abonnement aux notifications ────────────────────────────────
 export async function subscribeToPush(): Promise<boolean> {
   try {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
-    if (!VAPID_PUBLIC_KEY) {
-      console.warn('VITE_VAPID_PUBLIC_KEY manquante dans les variables Vercel');
-      return false;
-    }
-    const permission = await Notification.requestPermission();
-    if (permission !== 'granted') return false;
-
-    const registration = await navigator.serviceWorker.ready;
-    let subscription = await registration.pushManager.getSubscription();
-
-    if (!subscription) {
-      subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-      });
-    }
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user && subscription) {
-      await supabase.from('push_subscriptions').upsert({
-        user_id: user.id,
-        subscription: JSON.stringify(subscription),
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'user_id' });
-    }
-    return true;
+    const OS = getOS();
+    if (!OS) return false;
+    await OS.Notifications.requestPermission();
+    return OS.Notifications.permission === true;
   } catch (err) {
-    console.error('Push subscription error:', err);
+    console.error('OneSignal subscribe error:', err);
     return false;
   }
 }
 
 export async function unsubscribeFromPush(): Promise<void> {
   try {
-    const registration = await navigator.serviceWorker.ready;
-    const subscription = await registration.pushManager.getSubscription();
-    if (subscription) {
-      await subscription.unsubscribe();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await supabase.from('push_subscriptions').delete().eq('user_id', user.id);
-      }
-    }
+    const OS = getOS();
+    if (!OS) return;
+    await OS.User.PushSubscription.optOut();
   } catch (err) {
-    console.error('Unsubscribe error:', err);
+    console.error('OneSignal unsubscribe error:', err);
   }
 }
 
 export async function isPushEnabled(): Promise<boolean> {
   try {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
-    const registration = await navigator.serviceWorker.ready;
-    const subscription = await registration.pushManager.getSubscription();
-    return !!subscription && Notification.permission === 'granted';
+    const OS = getOS();
+    if (!OS) return false;
+    return OS.Notifications.permission === true && OS.User.PushSubscription.optedIn === true;
   } catch {
     return false;
   }
 }
 
+// ── Tags VIP — clé pour filtrer les notifs dans le dashboard ────
+// Appelé quand l'utilisateur devient VIP (paiement Stripe validé)
+export async function setVIPTag(isPremium: boolean): Promise<void> {
+  try {
+    const OS = getOS();
+    if (!OS) return;
+    if (isPremium) {
+      await OS.User.addTag('is_premium', 'true');
+      await OS.User.addTag('plan', 'vip');
+    } else {
+      await OS.User.removeTag('is_premium');
+      await OS.User.removeTag('plan');
+    }
+  } catch (err) {
+    console.error('OneSignal setVIPTag error:', err);
+  }
+}
+
+// ── Tags par chaîne — pour les notifs ciblées ───────────────────
 export async function toggleChannelSubscription(channelName: string, subscribe: boolean): Promise<void> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return;
-  if (subscribe) {
-    await supabase.from('channel_subscriptions').upsert({
-      user_id: user.id,
-      channel_name: channelName,
-    }, { onConflict: 'user_id,channel_name' });
-  } else {
-    await supabase.from('channel_subscriptions')
-      .delete()
-      .eq('user_id', user.id)
-      .eq('channel_name', channelName);
+  try {
+    const OS = getOS();
+    if (!OS) return;
+    // Normaliser le nom (ex: "Boulistenaute" → "channel_boulistenaute")
+    const tag = 'channel_' + channelName.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    if (subscribe) {
+      await OS.User.addTag(tag, 'true');
+    } else {
+      await OS.User.removeTag(tag);
+    }
+  } catch (err) {
+    console.error('OneSignal toggleChannel error:', err);
   }
 }
 
 export async function getChannelSubscriptions(): Promise<string[]> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return [];
-  const { data } = await supabase
-    .from('channel_subscriptions')
-    .select('channel_name')
-    .eq('user_id', user.id);
-  return data?.map(s => s.channel_name) || [];
+  try {
+    const OS = getOS();
+    if (!OS) return [];
+    const tags = await OS.User.getTags();
+    return Object.entries(tags || {})
+      .filter(([key, val]) => key.startsWith('channel_') && val === 'true')
+      .map(([key]) => {
+        // Reconvertir "channel_boulistenaute" → "Boulistenaute"
+        const name = key.replace('channel_', '');
+        return name.charAt(0).toUpperCase() + name.slice(1);
+      });
+  } catch {
+    return [];
+  }
 }
 
+// ── Lier l'utilisateur Supabase à OneSignal ─────────────────────
+// Appelé après le login pour associer l'ID Supabase au profil OneSignal
+export async function linkUserToOneSignal(userId: string, isPremium: boolean): Promise<void> {
+  try {
+    const OS = getOS();
+    if (!OS) return;
+    // Lier l'External ID (ID Supabase) au profil OneSignal
+    await OS.login(userId);
+    // Appliquer les tags VIP
+    await setVIPTag(isPremium);
+  } catch (err) {
+    console.error('OneSignal linkUser error:', err);
+  }
+}
+
+export async function unlinkUserFromOneSignal(): Promise<void> {
+  try {
+    const OS = getOS();
+    if (!OS) return;
+    await OS.logout();
+  } catch {}
+}
+
+// ── Notification in-app (inchangée) ─────────────────────────────
 export function showInAppNotification(title: string, body: string, url?: string) {
   window.dispatchEvent(new CustomEvent('ahrena-notification', {
     detail: { title, body, url }

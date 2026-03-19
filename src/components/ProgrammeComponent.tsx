@@ -102,7 +102,7 @@ const ProgrammeComponent = ({ videos, onVideoSelect }: ProgrammeComponentProps) 
   const sortedDays = Object.keys(grouped).sort();
 
   return (
-    <div style={{ paddingTop: `${headerH}px` }} className="min-h-screen bg-black text-white pb-28">
+    <div style={{ paddingTop: `${headerH}px`, height: '100%', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }} className="bg-black text-white pb-28">
 
       {/* Header */}
       <div className="px-5 pt-4 pb-2">

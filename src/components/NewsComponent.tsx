@@ -41,10 +41,36 @@ const formatDate = (iso: string): string => {
 };
 
 // NewsCard
-const NewsCard = ({ item }: { item: NewsItem }) => {
+const NewsCard = ({ item, user, onAuthRequired }: { item: NewsItem; user?: any; onAuthRequired?: () => void }) => {
   const [imgError, setImgError] = useState(false);
+  const [faved, setFaved] = useState(() => isFav('article-' + item.link));
+
+  const handleFav = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Bloquer si non connecté
+    if (!user) {
+      onAuthRequired?.();
+      return;
+    }
+    const favItem: FavArticle = {
+      id: 'article-' + item.link,
+      category: 'article',
+      title: item.title,
+      link: item.link,
+      image: item.image,
+      dept: item.dept,
+      date: item.date,
+      addedAt: new Date().toISOString(),
+    };
+    const added = toggleFav(favItem);
+    setFaved(added);
+    window.dispatchEvent(new Event('ahrena_fav_changed'));
+  };
+
   return (
-    <a href={item.link} target="_blank" rel="noopener noreferrer" className="block group">
+    <div className="relative group">
+    <a href={item.link} target="_blank" rel="noopener noreferrer" className="block">
       <div className="flex gap-4 p-4 md:p-5 rounded-xl border border-white/5 hover:border-white/15 hover:bg-white/5 transition-all active:scale-[0.98]">
         <div className="flex-shrink-0 w-24 h-24 md:w-32 md:h-24 rounded-xl overflow-hidden bg-zinc-900">
           {item.image && !imgError ? (
@@ -81,6 +107,15 @@ const NewsCard = ({ item }: { item: NewsItem }) => {
         </div>
       </div>
     </a>
+    {/* Bouton favori */}
+    <button
+      onClick={handleFav}
+      className="absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center transition-all z-10"
+      style={faved ? { background: '#dc2626' } : { background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
+    >
+      <Heart size={13} fill={faved ? 'white' : 'none'} stroke={faved ? 'white' : 'rgba(255,255,255,0.6)'} strokeWidth={2}/>
+    </button>
+    </div>
   );
 };
 
@@ -216,7 +251,7 @@ const NewsFilter = ({ news, filter, setFilter }: {
 };
 
 // NewsComponent principal
-const NewsComponent = () => {
+const NewsComponent = ({ user, onAuthRequired }: { user?: any; onAuthRequired?: () => void }) => {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -353,7 +388,7 @@ const NewsComponent = () => {
 
         {!loading && filtered.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {filtered.map(item => <NewsCard key={item.id} item={item} />)}
+            {filtered.map(item => <NewsCard key={item.id} item={item} user={user} onAuthRequired={onAuthRequired} />)}
           </div>
         )}
 
