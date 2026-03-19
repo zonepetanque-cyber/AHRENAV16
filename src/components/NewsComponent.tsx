@@ -251,7 +251,7 @@ const NewsFilter = ({ news, filter, setFilter }: {
 };
 
 // NewsComponent principal
-const NewsComponent = ({ user, onAuthRequired, stickyTop = 0 }: { user?: any; onAuthRequired?: () => void; stickyTop?: number }) => {
+const NewsComponent = ({ user, onAuthRequired }: { user?: any; onAuthRequired?: () => void }) => {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -325,7 +325,7 @@ const NewsComponent = ({ user, onAuthRequired, stickyTop = 0 }: { user?: any; on
     <div className="pb-4 min-h-screen">
 
       {/* Barre sticky */}
-      <div className="sticky z-40 bg-zinc-950/98 backdrop-blur-md border-b border-white/8" style={{ top: stickyTop }}>
+      <div className="sticky top-[52px] z-40 bg-zinc-950/98 backdrop-blur-md border-b border-white/8">
         <div className="max-w-5xl mx-auto px-4 pt-2.5 pb-1 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             {!loading && (

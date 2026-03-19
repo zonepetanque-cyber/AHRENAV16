@@ -498,6 +498,27 @@ const VideoModal = ({ video, onClose, isPremium, onMinimize, onAddToMultiplex, o
     localStorage.setItem('ahrena_pip_dismissed', '1');
   };
 
+  // ── Écouter le changement du switch alerte live ─────────────
+  useEffect(() => {
+    const handler = () => {
+      setLiveAlertEnabled(localStorage.getItem('ahrena_live_alert') !== 'false');
+    };
+    window.addEventListener('ahrena_live_alert_changed', handler);
+    return () => window.removeEventListener('ahrena_live_alert_changed', handler);
+  }, []);
+
+  // ── Détection live qui démarre (VIP + switch activé uniquement) ──
+  useEffect(() => {
+    if (!isPremium || !liveAlertEnabled) return;
+    if (liveVideos.length === 0) return;
+    const currentLives = liveVideos.filter(v => v.isLive);
+    if (currentLives.length === 0) return;
+    const newest = currentLives[0];
+    if (!liveAlertDismissed.has(newest.id)) {
+      setLiveAlert(newest);
+    }
+  }, [liveVideos, isPremium, liveAlertEnabled]);
+
   // ── Bloquer le scroll de la page en arrière-plan quand la modal est ouverte
   useEffect(() => {
     if (video) {
@@ -838,27 +859,6 @@ export default function App() {
     () => localStorage.getItem('ahrena_live_alert') !== 'false'
   );
   const [infoVideo, setInfoVideo] = useState<Video | null>(null);
-
-  // ── Écouter le changement du switch alerte live ─────────────
-  useEffect(() => {
-    const handler = () => {
-      setLiveAlertEnabled(localStorage.getItem('ahrena_live_alert') !== 'false');
-    };
-    window.addEventListener('ahrena_live_alert_changed', handler);
-    return () => window.removeEventListener('ahrena_live_alert_changed', handler);
-  }, []);
-
-  // ── Détection live qui démarre (VIP + switch activé uniquement) ──
-  useEffect(() => {
-    if (!isPremium || !liveAlertEnabled) return;
-    if (liveVideos.length === 0) return;
-    const currentLives = liveVideos.filter(v => v.isLive);
-    if (currentLives.length === 0) return;
-    const newest = currentLives[0];
-    if (!liveAlertDismissed.has(newest.id)) {
-      setLiveAlert(newest);
-    }
-  }, [liveVideos, isPremium, liveAlertEnabled]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [user, setUser] = useState<SupabaseUser | null>(null);
@@ -903,7 +903,7 @@ export default function App() {
         console.error("Supabase session error:", err);
       });
 
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
         setUser(session?.user ?? null);
 
         // Au SIGNED_IN via OAuth, nettoie l'URL et ferme le modal auth
@@ -1597,11 +1597,11 @@ export default function App() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-sm flex flex-col"
+            className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-sm overflow-y-auto"
             style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
           >
-            {/* Header du modal — fixe, hors du scroll */}
-            <div className="flex-shrink-0 bg-black/90 backdrop-blur-md border-b border-white/10">
+            {/* Header du modal */}
+            <div className="sticky top-0 z-10 bg-black/90 backdrop-blur-md border-b border-white/10">
               <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Newspaper size={18} className="text-white/60" />
@@ -1616,10 +1616,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* Zone scrollable isolée — sticky top-0 fonctionne dans ce contexte */}
-            <div className="flex-1 overflow-y-auto">
-              <NewsComponent user={user} onAuthRequired={() => setActiveTab('club')} stickyTop={0} />
-            </div>
+            <NewsComponent user={user} onAuthRequired={() => setActiveTab('club')} />
           </motion.div>
         )}
       </AnimatePresence>
