@@ -983,7 +983,8 @@ const ListView = ({ events, onVideoSelect, user, onAuthRequired }: { events: Uni
   return (
     <>
     <EventDetailSheet ev={detailEv} onClose={() => setDetailEv(null)} onVideoSelect={onVideoSelect} user={user} onAuthRequired={onAuthRequired} />
-    <div className="space-y-6 px-4 pb-6">
+    <div className="max-w-6xl mx-auto px-4 pb-6">
+      <div className="space-y-6">
       {grouped.map(([date, evs]) => {
         const d = new Date(date);
         const isToday = isoDate(today()) === date;
@@ -1002,12 +1003,13 @@ const ListView = ({ events, onVideoSelect, user, onAuthRequired }: { events: Uni
                 <p className="text-white/25 text-[10px]">{evs.length} événement{evs.length > 1 ? 's' : ''}</p>
               </div>
             </div>
-            <div className="space-y-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               {evs.map(ev => <EventCard key={ev.id} ev={ev} onVideoSelect={onVideoSelect} onSelect={setDetailEv}/>)}
             </div>
           </div>
         );
       })}
+      </div>
     </div>
     </>
   );
@@ -1159,7 +1161,7 @@ const MonthView = ({ events, allEvents, onVideoSelect, forcedMonth, user, onAuth
   const months = Array.from({ length: maxIdx + 1 }, (_, i) => addMonths(minYear, minMonth, i));
 
   return (
-    <div className="pb-6">
+    <div className="pb-6 max-w-3xl mx-auto">
       {/* Titre du mois */}
       <div className="flex items-center justify-center mb-4 px-4">
         <h2 className="text-white font-black text-lg uppercase tracking-wide">
@@ -1866,7 +1868,7 @@ const CalendarComponent = ({ videos, onVideoSelect, user, onAuthRequired }: { vi
       <div className="flex-shrink-0 bg-zinc-950/98 backdrop-blur-md border-b border-white/8 z-40">
 
         {/* Ligne 1 : vue + dept + filtres */}
-        <div className="px-4 py-2.5 flex items-center justify-between gap-2">
+        <div className="max-w-6xl mx-auto px-4 py-2.5 flex items-center justify-between gap-2">
 
           {/* Toggle vue */}
           <div className="flex gap-1 bg-zinc-900 p-1 rounded-xl flex-shrink-0">
@@ -1902,7 +1904,7 @@ const CalendarComponent = ({ videos, onVideoSelect, user, onAuthRequired }: { vi
 
         {/* Tags actifs */}
         {activeAdvanced > 0 && (
-          <div className="px-4 pb-2 flex items-center gap-2 flex-wrap">
+          <div className="max-w-6xl mx-auto px-4 pb-2 flex items-center gap-2 flex-wrap">
             {[...filters.formations, ...filters.joueurs, ...filters.categories].map(tag => (
               <span key={tag} className="bg-white/10 text-white/50 text-[9px] font-bold px-2 py-0.5 rounded-full border border-white/15">{tag}</span>
             ))}
@@ -1914,7 +1916,7 @@ const CalendarComponent = ({ videos, onVideoSelect, user, onAuthRequired }: { vi
         )}
 
         {/* Compteur */}
-        <div className="px-4 pb-1.5">
+        <div className="max-w-6xl mx-auto px-4 pb-1.5">
           <span className="text-white/25 text-[10px]">{filteredEvents.length} événements</span>
         </div>
       </div>

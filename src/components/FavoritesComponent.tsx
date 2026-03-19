@@ -306,81 +306,77 @@ const FavoritesComponent = ({ onVideoSelect, user, onAuthRequired }: {
 
   return (
     <div style={{ paddingTop: `${headerH}px`, height: '100%', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }} className="bg-black text-white pb-28">
-      <div className="px-5 pt-5 pb-3">
-        <h1 className="text-2xl font-black text-white uppercase italic tracking-tight">Mes Favoris</h1>
-        <p className="text-white/30 text-xs mt-0.5">{items.length} élément{items.length > 1 ? 's' : ''} sauvegardé{items.length > 1 ? 's' : ''}</p>
-      </div>
+      <div className="max-w-6xl mx-auto">
+        <div className="px-5 pt-5 pb-3">
+          <h1 className="text-2xl font-black text-white uppercase italic tracking-tight">Mes Favoris</h1>
+          <p className="text-white/30 text-xs mt-0.5">{items.length} élément{items.length > 1 ? 's' : ''} sauvegardé{items.length > 1 ? 's' : ''}</p>
+        </div>
 
-      {/* Onglets */}
-      <div className="flex gap-2 px-5 mb-5">
-        {TABS.map(t => {
-          const active = tab === t.key;
-          const count = counts[t.key];
-          return (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl font-black text-[11px] uppercase tracking-wider transition-all flex-1 justify-center border"
-              style={active
-                ? { background: t.color, borderColor: t.color, color: 'white' }
-                : { background: 'transparent', borderColor: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.4)' }
-              }
+        {/* Onglets */}
+        <div className="flex gap-2 px-5 mb-5">
+          {TABS.map(t => {
+            const active = tab === t.key;
+            const count = counts[t.key];
+            return (
+              <button key={t.key} onClick={() => setTab(t.key)}
+                className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl font-black text-[11px] uppercase tracking-wider transition-all flex-1 justify-center border"
+                style={active
+                  ? { background: t.color, borderColor: t.color, color: 'white' }
+                  : { background: 'transparent', borderColor: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.4)' }}
+              >
+                {t.icon}
+                <span>{t.label}</span>
+                {count > 0 && (
+                  <span className="text-[9px] px-1.5 py-0.5 rounded-full font-black"
+                    style={active ? { background: 'rgba(255,255,255,0.25)' } : { background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.5)' }}>
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Contenu */}
+        <AnimatePresence mode="wait">
+          {filtered.length === 0 ? (
+            <motion.div key={`empty-${tab}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="flex flex-col items-center justify-center py-20 px-8 text-center">
+              <div className="w-16 h-16 rounded-2xl bg-zinc-900 flex items-center justify-center mb-4 border border-white/5">
+                {TABS.find(t => t.key === tab)?.icon && React.cloneElement(
+                  TABS.find(t => t.key === tab)!.icon as React.ReactElement,
+                  { size: 28, className: 'text-white/15' }
+                )}
+              </div>
+              <p className="text-white/40 font-bold text-sm mb-1">
+                {tab === 'video' ? 'Aucune vidéo sauvegardée' : tab === 'article' ? 'Aucun article sauvegardé' : 'Aucun concours sauvegardé'}
+              </p>
+              <p className="text-white/20 text-xs leading-relaxed">
+                {tab === 'video' ? 'Appuyez sur ♥ sur une vidéo pour la retrouver ici.' : tab === 'article' ? 'Appuyez sur ♥ sur un article pour le lire plus tard.' : 'Appuyez sur ♥ sur un concours du calendrier pour le retrouver ici.'}
+              </p>
+            </motion.div>
+          ) : (
+            <motion.div key={`list-${tab}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className={`px-4 ${
+                tab === 'video'
+                  ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3'
+                  : tab === 'concours'
+                  ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3'
+                  : 'grid grid-cols-1 md:grid-cols-2 gap-3'
+              }`}
             >
-              {t.icon}
-              <span>{t.label}</span>
-              {count > 0 && (
-                <span className="text-[9px] px-1.5 py-0.5 rounded-full font-black"
-                  style={active ? { background: 'rgba(255,255,255,0.25)' } : { background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.5)' }}>
-                  {count}
-                </span>
-              )}
-            </button>
-          );
-        })}
+              <AnimatePresence>
+                {filtered.map(item => {
+                  if (item.category === 'video') return <VideoCard key={item.id} item={item as FavVideo} onPlay={onVideoSelect} onRemove={handleRemove}/>;
+                  if (item.category === 'article') return <ArticleCard key={item.id} item={item as FavArticle} onRemove={handleRemove}/>;
+                  if (item.category === 'concours') return <ConcoursCard key={item.id} item={item as FavConcours} onRemove={handleRemove}/>;
+                  return null;
+                })}
+              </AnimatePresence>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
-
-      {/* Contenu */}
-      <AnimatePresence mode="wait">
-        {filtered.length === 0 ? (
-          <motion.div
-            key={`empty-${tab}`}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="flex flex-col items-center justify-center py-20 px-8 text-center"
-          >
-            <div className="w-16 h-16 rounded-2xl bg-zinc-900 flex items-center justify-center mb-4 border border-white/5">
-              {TABS.find(t => t.key === tab)?.icon && React.cloneElement(
-                TABS.find(t => t.key === tab)!.icon as React.ReactElement,
-                { size: 28, className: 'text-white/15' }
-              )}
-            </div>
-            <p className="text-white/40 font-bold text-sm mb-1">
-              {tab === 'video' ? 'Aucune vidéo sauvegardée' : tab === 'article' ? 'Aucun article sauvegardé' : 'Aucun concours sauvegardé'}
-            </p>
-            <p className="text-white/20 text-xs leading-relaxed">
-              {tab === 'video' ? 'Appuyez sur ♥ sur une vidéo pour la retrouver ici.' : tab === 'article' ? 'Appuyez sur ♥ sur un article pour le lire plus tard.' : 'Appuyez sur ♥ sur un concours du calendrier pour le retrouver ici.'}
-            </p>
-          </motion.div>
-        ) : (
-          <motion.div
-            key={`list-${tab}`}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className={`px-4 ${tab === 'video' ? 'grid grid-cols-2 gap-3' : 'space-y-3'}`}
-          >
-            <AnimatePresence>
-              {filtered.map(item => {
-                if (item.category === 'video') return <VideoCard key={item.id} item={item as FavVideo} onPlay={onVideoSelect} onRemove={handleRemove}/>;
-                if (item.category === 'article') return <ArticleCard key={item.id} item={item as FavArticle} onRemove={handleRemove}/>;
-                if (item.category === 'concours') return <ConcoursCard key={item.id} item={item as FavConcours} onRemove={handleRemove}/>;
-                return null;
-              })}
-            </AnimatePresence>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 };

@@ -184,7 +184,7 @@ const NewsFilter = ({ news, filter, setFilter }: {
   const activeMediaLabel = isMediaActive ? (filter as any).dept : null;
 
   return (
-    <div className="max-w-5xl mx-auto px-4 pb-3 pt-1 flex flex-wrap gap-2 items-center">
+    <div className="max-w-6xl mx-auto px-4 pb-3 pt-1 flex flex-wrap gap-2 items-center">
 
       {/* TOUS */}
       <button
@@ -360,7 +360,7 @@ const NewsComponent = ({ user, onAuthRequired }: { user?: any; onAuthRequired?: 
 
       {/* Barre fixe sous le header — ne scroll pas */}
       <div className="flex-shrink-0 bg-zinc-950 border-b border-white/8 z-40" style={{ overflow: "visible" }}>
-        <div className="max-w-5xl mx-auto px-4 pt-2.5 pb-1 flex items-center justify-between gap-2">
+        <div className="max-w-6xl mx-auto px-4 pt-2.5 pb-1 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             {!loading && (
               <span className="text-white/25 text-[10px]">
@@ -396,7 +396,7 @@ const NewsComponent = ({ user, onAuthRequired }: { user?: any; onAuthRequired?: 
 
       {/* Zone scrollable */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden" style={{ WebkitOverflowScrolling: 'touch' }}>
-      <div className="px-4 py-4 md:max-w-5xl md:mx-auto">
+      <div className="px-4 py-4 max-w-6xl mx-auto">
 
         {error && news.length === 0 && (
           <div className="flex items-center gap-3 bg-red-600/10 border border-red-600/20 rounded-xl px-4 py-3 mb-4">
