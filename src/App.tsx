@@ -47,7 +47,7 @@ import AdminDashboard from './components/AdminDashboard';
 
 // --- Components ---
 
-const Header = ({ onProfileClick, onSearchClick, onNewsClick }: { onProfileClick: () => void, onSearchClick: () => void, onNewsClick: () => void }) => (
+const Header = ({ onProfileClick, onSearchClick, onFavoritesClick }: { onProfileClick: () => void, onSearchClick: () => void, onFavoritesClick: () => void }) => (
   <header className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-b from-black/95 via-black/50 to-transparent">
     <div className="mx-auto max-w-[1400px] px-6 py-4 flex items-center justify-between">
     <div className="flex-none">
@@ -59,7 +59,7 @@ const Header = ({ onProfileClick, onSearchClick, onNewsClick }: { onProfileClick
       />
     </div>
     <div className="flex items-center gap-4">
-      <button onClick={onNewsClick} className="p-2 text-white/70 hover:text-white transition-colors">
+      <button onClick={onFavoritesClick} className="p-2 text-white/70 hover:text-white transition-colors">
         <Heart size={22} />
       </button>
       <button onClick={onSearchClick} className="p-2 text-white/70 hover:text-white transition-colors">
@@ -101,10 +101,16 @@ const Navbar = ({ activeTab, onTabChange }: { activeTab: string, onTabChange: (t
       onClick={() => onTabChange('club')}
     />
     <NavItem 
-      icon={<Newspaper size={24} />} 
+      icon={<Heart size={24} />} 
       label="Favoris" 
       active={activeTab === 'favorites'} 
       onClick={() => onTabChange('favorites')}
+    />
+    <NavItem 
+      icon={<Newspaper size={24} />} 
+      label="Actus" 
+      active={activeTab === 'news'} 
+      onClick={() => onTabChange('news')}
     />
     </div>
   </nav>
@@ -1354,6 +1360,12 @@ export default function App() {
         return <ClubComponent onTabChange={setActiveTab} />;
       case 'favorites':
         return <FavoritesComponent onVideoSelect={setSelectedVideo} user={user} onAuthRequired={() => setActiveTab('club')} />;
+      case 'news':
+        return (
+          <div className="min-h-full overflow-y-auto">
+            <NewsComponent user={user} onAuthRequired={() => setActiveTab('club')} />
+          </div>
+        );
       case 'admin_disabled':
         return null;
       case 'legal':
@@ -1387,7 +1399,7 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      <Header onProfileClick={() => setActiveTab('club')} onSearchClick={() => {}} onNewsClick={() => setShowNews(true)} />
+      <Header onProfileClick={() => setActiveTab('club')} onSearchClick={() => {}} onFavoritesClick={() => setActiveTab('favorites')} />
 
       {/* Bannière mise à jour disponible */}
       <AnimatePresence>

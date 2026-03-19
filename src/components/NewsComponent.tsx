@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ExternalLink, RefreshCw, Newspaper, AlertCircle, ChevronRight, Clock, ChevronDown } from 'lucide-react';
+import { ExternalLink, RefreshCw, Newspaper, AlertCircle, ChevronRight, Clock, ChevronDown, Heart } from 'lucide-react';
+import { isFav, toggleFav, FavArticle } from '../services/favoritesService';
 
 interface NewsItem {
   id: string;
