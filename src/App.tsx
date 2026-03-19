@@ -47,7 +47,7 @@ import AdminDashboard from './components/AdminDashboard';
 
 // --- Components ---
 
-const Header = ({ onProfileClick, onSearchClick, onFavoritesClick }: { onProfileClick: () => void, onSearchClick: () => void, onFavoritesClick: () => void }) => (
+const Header = ({ onProfileClick, onSearchClick, onNewsClick }: { onProfileClick: () => void, onSearchClick: () => void, onNewsClick: () => void }) => (
   <header className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-b from-black/95 via-black/50 to-transparent">
     <div className="mx-auto max-w-[1400px] px-6 py-4 flex items-center justify-between">
     <div className="flex-none">
@@ -59,7 +59,7 @@ const Header = ({ onProfileClick, onSearchClick, onFavoritesClick }: { onProfile
       />
     </div>
     <div className="flex items-center gap-4">
-      <button onClick={onFavoritesClick} className="p-2 text-white/70 hover:text-white transition-colors">
+      <button onClick={onNewsClick} className="p-2 text-white/70 hover:text-white transition-colors">
         <Heart size={22} />
       </button>
       <button onClick={onSearchClick} className="p-2 text-white/70 hover:text-white transition-colors">
@@ -102,9 +102,9 @@ const Navbar = ({ activeTab, onTabChange }: { activeTab: string, onTabChange: (t
     />
     <NavItem 
       icon={<Newspaper size={24} />} 
-      label="Actus" 
-      active={activeTab === 'news'} 
-      onClick={() => onTabChange('news')}
+      label="Favoris" 
+      active={activeTab === 'favorites'} 
+      onClick={() => onTabChange('favorites')}
     />
     </div>
   </nav>
@@ -497,6 +497,27 @@ const VideoModal = ({ video, onClose, isPremium, onMinimize, onAddToMultiplex, o
     setPipDismissed(true);
     localStorage.setItem('ahrena_pip_dismissed', '1');
   };
+
+  // ── Écouter le changement du switch alerte live ─────────────
+  useEffect(() => {
+    const handler = () => {
+      setLiveAlertEnabled(localStorage.getItem('ahrena_live_alert') !== 'false');
+    };
+    window.addEventListener('ahrena_live_alert_changed', handler);
+    return () => window.removeEventListener('ahrena_live_alert_changed', handler);
+  }, []);
+
+  // ── Détection live qui démarre (VIP + switch activé uniquement) ──
+  useEffect(() => {
+    if (!isPremium || !liveAlertEnabled) return;
+    if (liveVideos.length === 0) return;
+    const currentLives = liveVideos.filter(v => v.isLive);
+    if (currentLives.length === 0) return;
+    const newest = currentLives[0];
+    if (!liveAlertDismissed.has(newest.id)) {
+      setLiveAlert(newest);
+    }
+  }, [liveVideos, isPremium, liveAlertEnabled]);
 
   // ── Bloquer le scroll de la page en arrière-plan quand la modal est ouverte
   useEffect(() => {
@@ -894,15 +915,12 @@ export default function App() {
           syncLocalToSupabase();
           // Lier l'utilisateur à OneSignal avec son ID Supabase
           if (session?.user) {
-            const userId = session.user.id;
-            supabase
+            const { data: profile } = await supabase
               .from('profiles')
               .select('is_premium')
-              .eq('id', userId)
-              .single()
-              .then(({ data: profile }) => {
-                linkUserToOneSignal(userId, profile?.is_premium || false);
-              });
+              .eq('id', session.user.id)
+              .single();
+            linkUserToOneSignal(session.user.id, profile?.is_premium || false);
           }
         }
       });
@@ -934,27 +952,6 @@ export default function App() {
       setIsPremium(false);
     }
   }, [user]);
-
-  // ── Écouter le changement du switch alerte live ─────────────
-  useEffect(() => {
-    const handler = () => {
-      setLiveAlertEnabled(localStorage.getItem('ahrena_live_alert') !== 'false');
-    };
-    window.addEventListener('ahrena_live_alert_changed', handler);
-    return () => window.removeEventListener('ahrena_live_alert_changed', handler);
-  }, []);
-
-  // ── Détection live qui démarre (VIP + switch activé uniquement) ──
-  useEffect(() => {
-    if (!isPremium || !liveAlertEnabled) return;
-    if (liveVideos.length === 0) return;
-    const currentLives = liveVideos.filter(v => v.isLive);
-    if (currentLives.length === 0) return;
-    const newest = currentLives[0];
-    if (!liveAlertDismissed.has(newest.id)) {
-      setLiveAlert(newest);
-    }
-  }, [liveVideos, isPremium, liveAlertEnabled]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     if (window.scrollY === 0) {
@@ -1354,8 +1351,6 @@ export default function App() {
         return <ClubComponent onTabChange={setActiveTab} />;
       case 'favorites':
         return <FavoritesComponent onVideoSelect={setSelectedVideo} user={user} onAuthRequired={() => setActiveTab('club')} />;
-      case 'news':
-        return <NewsComponent user={user} onAuthRequired={() => setActiveTab('club')} />;
       case 'admin_disabled':
         return null;
       case 'legal':
@@ -1389,7 +1384,7 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      <Header onProfileClick={() => setActiveTab('club')} onSearchClick={() => {}} onFavoritesClick={() => setActiveTab('favorites')} />
+      <Header onProfileClick={() => setActiveTab('club')} onSearchClick={() => {}} onNewsClick={() => setShowNews(true)} />
 
       {/* Bannière mise à jour disponible */}
       <AnimatePresence>
@@ -1435,7 +1430,7 @@ export default function App() {
         className={activeTab !== 'live' ? 'md:max-w-[1400px] md:mx-auto' : ''}
         style={{
           flex: 1,
-          overflowY: (activeTab === 'live' || activeTab === 'news') ? 'auto' : 'hidden',
+          overflowY: activeTab === 'live' ? 'auto' : 'hidden',
           overflowX: 'hidden',
           WebkitOverflowScrolling: 'touch',
           // Clé unique par onglet = reset du scroll à 0 à chaque changement
@@ -1602,10 +1597,11 @@ export default function App() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-sm overflow-y-auto"
+            className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-sm flex flex-col"
+            style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
           >
-            {/* Header du modal */}
-            <div className="sticky top-0 z-10 bg-black/90 backdrop-blur-md border-b border-white/10">
+            {/* Header du modal — fixe, hors du scroll */}
+            <div className="flex-shrink-0 bg-black/90 backdrop-blur-md border-b border-white/10">
               <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Newspaper size={18} className="text-white/60" />
@@ -1620,7 +1616,10 @@ export default function App() {
               </div>
             </div>
 
-            <NewsComponent user={user} onAuthRequired={() => setActiveTab('club')} />
+            {/* Zone scrollable isolée — sticky top-0 fonctionne dans ce contexte */}
+            <div className="flex-1 overflow-y-auto">
+              <NewsComponent user={user} onAuthRequired={() => setActiveTab('club')} stickyTop={0} />
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

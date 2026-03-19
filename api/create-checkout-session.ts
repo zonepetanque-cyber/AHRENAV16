@@ -11,7 +11,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Stripe from 'stripe';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2025-02-24.acacia',
+  apiVersion: '2024-06-20',
 });
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://ahrenav-16.vercel.app';
