@@ -1435,7 +1435,7 @@ export default function App() {
         className={activeTab !== 'live' ? 'md:max-w-[1400px] md:mx-auto' : ''}
         style={{
           flex: 1,
-          overflowY: (activeTab === 'live' || activeTab === 'news') ? 'auto' : 'hidden',
+          overflowY: activeTab === 'live' ? 'auto' : 'hidden',
           overflowX: 'hidden',
           WebkitOverflowScrolling: 'touch',
           // Clé unique par onglet = reset du scroll à 0 à chaque changement
@@ -1675,7 +1675,7 @@ export default function App() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[90] flex items-center justify-center px-4"
+            className="fixed inset-0 z-[300] flex items-center justify-center px-4"
             onClick={() => setShowNewsPopup(false)}
           >
             {/* Backdrop flouté */}

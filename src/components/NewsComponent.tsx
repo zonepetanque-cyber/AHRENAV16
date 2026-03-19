@@ -275,6 +275,7 @@ const NewsFilter = ({ news, filter, setFilter }: {
 
 // NewsComponent principal
 const NewsComponent = ({ user, onAuthRequired }: { user?: any; onAuthRequired?: () => void }) => {
+  const [headerH, setHeaderH] = useState(128);
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -325,6 +326,16 @@ const NewsComponent = ({ user, onAuthRequired }: { user?: any; onAuthRequired?: 
   useEffect(() => { loadNews(); }, [loadNews]);
 
   useEffect(() => {
+    const measure = () => {
+      const h = document.querySelector('header');
+      if (h) setHeaderH(h.getBoundingClientRect().height);
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, []);
+
+  useEffect(() => {
     if (!updatedAt) return;
     setUpdatedAtStr(formatDate(updatedAt));
     const t = setInterval(() => setUpdatedAtStr(formatDate(updatedAt)), 60000);
@@ -345,10 +356,10 @@ const NewsComponent = ({ user, onAuthRequired }: { user?: any; onAuthRequired?: 
   );
 
   return (
-    <div className="pb-4 min-h-screen">
+    <div className="flex flex-col" style={{ paddingTop: `${headerH}px`, height: '100%', overflow: 'hidden' }}>
 
-      {/* Barre sticky */}
-      <div className="sticky top-16 z-[150] bg-zinc-950/98 backdrop-blur-md border-b border-white/8" style={{overflow: "visible"}}>
+      {/* Barre fixe sous le header — ne scroll pas */}
+      <div className="flex-shrink-0 bg-zinc-950 border-b border-white/8 z-40" style={{ overflow: "visible" }}>
         <div className="max-w-5xl mx-auto px-4 pt-2.5 pb-1 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             {!loading && (
@@ -372,7 +383,8 @@ const NewsComponent = ({ user, onAuthRequired }: { user?: any; onAuthRequired?: 
         {news.length > 0 && <NewsFilter news={news} filter={filter} setFilter={setFilter} />}
       </div>
 
-      {/* Contenu */}
+      {/* Zone scrollable */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden" style={{ WebkitOverflowScrolling: 'touch' }}>
       <div className="px-4 py-4 md:max-w-5xl md:mx-auto">
 
         {error && news.length === 0 && (
@@ -447,6 +459,7 @@ const NewsComponent = ({ user, onAuthRequired }: { user?: any; onAuthRequired?: 
             </div>
           </div>
         )}
+      </div>
       </div>
     </div>
   );
