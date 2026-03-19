@@ -187,7 +187,7 @@ const NewsFilter = ({ news, filter, setFilter }: {
         </button>
 
         {openAccordion === 'comites' && (
-          <div className="absolute left-0 top-[calc(100%+6px)] z-50 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl overflow-hidden min-w-[220px] max-h-72 overflow-y-auto">
+          <div className="absolute left-0 top-[calc(100%+6px)] z-[200] bg-zinc-900 border border-white/10 rounded-xl shadow-2xl overflow-hidden min-w-[220px] max-h-72 overflow-y-auto">
             <div className="py-1.5">
               {comites.length === 0 ? (
                 <p className="text-white/30 text-[10px] px-4 py-3">Aucun comité disponible</p>
@@ -224,7 +224,7 @@ const NewsFilter = ({ news, filter, setFilter }: {
         </button>
 
         {openAccordion === 'medias' && (
-          <div className="absolute left-0 top-[calc(100%+6px)] z-50 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl overflow-hidden min-w-[220px]">
+          <div className="absolute left-0 top-[calc(100%+6px)] z-[200] bg-zinc-900 border border-white/10 rounded-xl shadow-2xl overflow-hidden min-w-[220px]">
             <div className="py-1.5">
               {medias.length === 0 ? (
                 <p className="text-white/30 text-[10px] px-4 py-3">Aucun média disponible</p>
@@ -326,7 +326,7 @@ const NewsComponent = ({ user, onAuthRequired }: { user?: any; onAuthRequired?: 
     <div className="pb-4 min-h-screen">
 
       {/* Barre sticky */}
-      <div className="sticky top-16 z-40 bg-zinc-950/98 backdrop-blur-md border-b border-white/8">
+      <div className="sticky top-16 z-[150] bg-zinc-950/98 backdrop-blur-md border-b border-white/8" style={{overflow: "visible"}}>
         <div className="max-w-5xl mx-auto px-4 pt-2.5 pb-1 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             {!loading && (

@@ -101,12 +101,6 @@ const Navbar = ({ activeTab, onTabChange }: { activeTab: string, onTabChange: (t
       onClick={() => onTabChange('club')}
     />
     <NavItem 
-      icon={<Heart size={24} />} 
-      label="Favoris" 
-      active={activeTab === 'favorites'} 
-      onClick={() => onTabChange('favorites')}
-    />
-    <NavItem 
       icon={<Newspaper size={24} />} 
       label="Actus" 
       active={activeTab === 'news'} 
@@ -1361,11 +1355,7 @@ export default function App() {
       case 'favorites':
         return <FavoritesComponent onVideoSelect={setSelectedVideo} user={user} onAuthRequired={() => setActiveTab('club')} />;
       case 'news':
-        return (
-          <div className="min-h-full overflow-y-auto">
-            <NewsComponent user={user} onAuthRequired={() => setActiveTab('club')} />
-          </div>
-        );
+        return <NewsComponent user={user} onAuthRequired={() => setActiveTab('club')} />;
       case 'admin_disabled':
         return null;
       case 'legal':
@@ -1445,7 +1435,7 @@ export default function App() {
         className={activeTab !== 'live' ? 'md:max-w-[1400px] md:mx-auto' : ''}
         style={{
           flex: 1,
-          overflowY: activeTab === 'live' ? 'auto' : 'hidden',
+          overflowY: (activeTab === 'live' || activeTab === 'news') ? 'auto' : 'hidden',
           overflowX: 'hidden',
           WebkitOverflowScrolling: 'touch',
           // Clé unique par onglet = reset du scroll à 0 à chaque changement
