@@ -32,7 +32,7 @@ import { CONCOURS_CREUSE_2026, DEPT_CREUSE } from '../data/creuse2026';
 import { CONCOURS_DORDOGNE_2026, DEPT_DORDOGNE } from '../data/dordogne2026';
 import {
   Calendar as CalendarIcon, Clock,
-  List, MapPin, SlidersHorizontal, X, RotateCcw, Check, Radio, ChevronDown
+  List, MapPin, SlidersHorizontal, X, RotateCcw, Check, Radio, ChevronDown, Heart
 } from 'lucide-react';
 
 // ── Helpers ───────────────────────────────────────────────────
