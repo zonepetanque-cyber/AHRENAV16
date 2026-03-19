@@ -1436,9 +1436,10 @@ export default function App() {
         style={{
           flex: 1,
           overflowY: activeTab === 'live' ? 'auto' : 'hidden',
-          overflowX: 'hidden',
+          // overflowX 'hidden' créerait un stacking context qui bloquerait les portals (modals, bottom sheets)
+          // On ne le met que sur 'live' où c'est nécessaire
+          overflowX: activeTab === 'live' ? 'hidden' : 'visible',
           WebkitOverflowScrolling: 'touch',
-          // Clé unique par onglet = reset du scroll à 0 à chaque changement
         }}
         key={`tab-${activeTab}`}
       >

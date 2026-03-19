@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import { isFav, toggleFav, FavConcours } from '../services/favoritesService';
 
 import { motion, AnimatePresence } from 'motion/react';
@@ -446,14 +447,14 @@ const GeoPrompt = ({ deptKey, deptAvailable = true, onConfirm, onDecline }: {
   const isManualMode = !deptKey || !dept;
   const isUnavailable = deptKey && dept && !deptAvailable; // dept détecté mais pas dans l'app
 
-  return (
+  if (typeof document === 'undefined') return null;
+  return ReactDOM.createPortal(
     <AnimatePresence>
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-[400] flex items-center justify-center px-5"
-        style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
       >
         <div className="absolute inset-0 bg-black/80 backdrop-blur-md" />
         <motion.div
@@ -596,7 +597,8 @@ const GeoPrompt = ({ deptKey, deptAvailable = true, onConfirm, onDecline }: {
           </div>
         </motion.div>
       </motion.div>
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 };
 
@@ -636,16 +638,11 @@ const EventDetailSheet = ({ ev, onClose, onVideoSelect, user, onAuthRequired }: 
   const [faved, setFaved] = useState(false);
 
   useEffect(() => {
-    if (ev) {
-      document.body.style.overflow = 'hidden';
-      setFaved(isFav('concours-' + ev.id));
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => { document.body.style.overflow = ''; };
-  }, [ev]);
+    if (ev) setFaved(isFav('concours-' + ev.id));
+  }, [ev?.id]);
 
-  if (!ev) return null;
+  // Rendu portal toujours monté — AnimatePresence gère l'animation
+  if (typeof document === 'undefined') return null;
 
   const color = SOURCE_COLOR[ev.source] || '#dc2626';
   const typeColor = TYPE_COLOR[ev.typeEvent || 'CONCOURS'] || '#6b7280';
@@ -657,7 +654,8 @@ const EventDetailSheet = ({ ev, onClose, onVideoSelect, user, onAuthRequired }: 
   // Construire les joueurs selon le format
   const players = ev.format === 'TRIPLETTE' ? 3 : ev.format === 'DOUBLETTE' ? 2 : 1;
 
-  return (
+  if (typeof document === 'undefined') return null;
+  return ReactDOM.createPortal(
     <AnimatePresence mode="wait">
       {ev ? (
         <motion.div
@@ -666,7 +664,6 @@ const EventDetailSheet = ({ ev, onClose, onVideoSelect, user, onAuthRequired }: 
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 z-[300] flex items-center justify-center px-4"
-          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
           onClick={onClose}
         >
           <div className="absolute inset-0 bg-black/75 backdrop-blur-md" />
@@ -850,7 +847,8 @@ const EventDetailSheet = ({ ev, onClose, onVideoSelect, user, onAuthRequired }: 
           </motion.div>
         </motion.div>
       ) : null}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 };
 
@@ -1332,8 +1330,8 @@ const DeptAccordion = ({ sources, onChange }: {
       </button>
 
       {/* Bottom Sheet Portal */}
-      {open && (
-        <div className="fixed inset-0 z-[200] flex flex-col justify-end" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
+      {open && ReactDOM.createPortal(
+        <div className="fixed inset-0 z-[200] flex flex-col justify-end">
 
           {/* Backdrop flouté */}
           <motion.div
@@ -1546,7 +1544,8 @@ const DeptAccordion = ({ sources, onChange }: {
             </div>
 
           </motion.div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
@@ -1637,8 +1636,9 @@ const FilterPanel = ({ filters, onChange, onClose }: {
     </div>
   );
 
-  return (
-    <div className="fixed inset-0 z-[9999] bg-black/75 backdrop-blur-md flex items-center justify-center px-4" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }} onClick={onClose}>
+  if (typeof document === 'undefined') return null;
+  return ReactDOM.createPortal(
+    <div className="fixed inset-0 z-[9999] bg-black/75 backdrop-blur-md flex items-center justify-center px-4" onClick={onClose}>
       <div
         className="w-full max-w-lg bg-zinc-950 border border-white/10 rounded-2xl overflow-hidden shadow-2xl max-h-[85vh] flex flex-col"
         onClick={e => e.stopPropagation()}
@@ -1712,7 +1712,7 @@ const FilterPanel = ({ filters, onChange, onClose }: {
         </div>
       </div>
     </div>
-  );
+  , document.body);
 };
 
 // ── Composant principal ───────────────────────────────────────
