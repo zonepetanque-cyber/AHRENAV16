@@ -643,6 +643,7 @@ const EventDetailSheet = ({ ev, onClose, onVideoSelect, user, onAuthRequired }: 
 
   // Rendu portal toujours monté — AnimatePresence gère l'animation
   if (typeof document === 'undefined') return null;
+  if (!ev) return ReactDOM.createPortal(<></>, document.body);
 
   const color = SOURCE_COLOR[ev.source] || '#dc2626';
   const typeColor = TYPE_COLOR[ev.typeEvent || 'CONCOURS'] || '#6b7280';
