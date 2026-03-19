@@ -58,15 +58,17 @@ const DEPT_SOURCES: DeptSource[] = [
   { dept: 'Sportmag',         code: 'MEDIA', color: '#7c3aed', active: true, siteUrl: 'https://www.sportmag.fr',              rssUrls: ['https://www.sportmag.fr/category/petanque/feed', 'https://www.sportmag.fr/category/petanque/rss.xml'] },
   { dept: 'Boule Provençal',  code: 'MEDIA', color: '#0369a1', active: true, siteUrl: 'https://bouleprovencal.org',           rssUrls: rss('https://bouleprovencal.org') },
   { dept: 'FFSB Sport-Boules',code: 'MEDIA', color: '#059669', active: true, siteUrl: 'https://www.ffsb.fr',                  rssUrls: rss('https://www.ffsb.fr') },
-  { dept: 'France 3 Pétanque',code: 'MEDIA', color: '#1d4ed8', active: true, siteUrl: 'https://france3-regions.franceinfo.fr/sport/petanque', rssUrls: ['https://france3-regions.franceinfo.fr/sport/petanque/rss.xml', 'https://france3-regions.franceinfo.fr/sport/petanque/feed', 'https://france3-regions.franceinfo.fr/rss/sport.xml'] },
+  { dept: 'France 3 Pétanque',code: 'MEDIA', color: '#1d4ed8', active: true, siteUrl: 'https://france3-regions.franceinfo.fr/sport/petanque', rssUrls: ['https://france3-regions.franceinfo.fr/sport/petanque/rss.xml', 'https://france3-regions.franceinfo.fr/sport/petanque/feed', 'https://france3-regions.franceinfo.fr/sport/rss.xml', 'https://france3-regions.franceinfo.fr/rss/sport.xml', 'https://france3-regions.franceinfo.fr/feed'] }, 
   { dept: 'PPF Tour',         code: 'MEDIA', color: '#b45309', active: true, siteUrl: 'https://www.petanquefrancaise.com',    rssUrls: rss('https://www.petanquefrancaise.com') },
   { dept: 'Trophée des Villes',code:'MEDIA', color: '#6d28d9', active: true, siteUrl: 'https://www.tropheedesvilles.fr',      rssUrls: rss('https://www.tropheedesvilles.fr') },
   { dept: 'Ouest-France',     code: 'MEDIA', color: '#0f4c8a', active: true, siteUrl: 'https://www.ouest-france.fr/sport/petanque', rssUrls: ['https://www.ouest-france.fr/sport/petanque/rss', 'https://www.ouest-france.fr/sport/rss', 'https://www.ouest-france.fr/rss/sport.xml'], filterKeywords: ['pétanque','petanque','boules','bouliste'] },
   { dept: 'Midi Libre',       code: 'MEDIA', color: '#e8520a', active: true, siteUrl: 'https://www.midilibre.fr/sport', rssUrls: ['https://www.midilibre.fr/sport/petanque/rss.xml', 'https://www.midilibre.fr/sport/rss.xml', 'https://www.midilibre.fr/rss.xml'], filterKeywords: ['pétanque','petanque','boules','bouliste'] },
   { dept: 'La Montagne',      code: 'MEDIA', color: '#2d7d46', active: true, siteUrl: 'https://www.lamontagne.fr/sport', rssUrls: ['https://www.lamontagne.fr/sport/petanque/rss.xml', 'https://www.lamontagne.fr/sport/rss.xml', 'https://www.lamontagne.fr/rss.xml'], filterKeywords: ['pétanque','petanque','boules','bouliste'] },
-  { dept: 'France 3 PACA',    code: 'MEDIA', color: '#2563eb', active: true, siteUrl: 'https://france3-regions.franceinfo.fr/provence-alpes-cote-d-azur/sport', rssUrls: ['https://france3-regions.franceinfo.fr/provence-alpes-cote-d-azur/rss/sport.xml', 'https://france3-regions.franceinfo.fr/provence-alpes-cote-d-azur/rss.xml'], filterKeywords: ['pétanque','petanque','boules','bouliste','jeu provençal'] },
-  { dept: 'La Provence',      code: 'MEDIA', color: '#b91c1c', active: true, siteUrl: 'https://www.laprovence.com/sport', rssUrls: ['https://www.laprovence.com/sport/petanque/rss.xml', 'https://www.laprovence.com/sport/rss.xml', 'https://www.laprovence.com/rss.xml'], filterKeywords: ['pétanque','petanque','boules','bouliste','jeu provençal'] },
+  { dept: 'France 3 PACA',    code: 'MEDIA', color: '#2563eb', active: true, siteUrl: 'https://france3-regions.franceinfo.fr/provence-alpes-cote-d-azur', rssUrls: ['https://france3-regions.franceinfo.fr/sport/petanque/rss.xml', 'https://france3-regions.franceinfo.fr/sport/petanque/feed', 'https://france3-regions.franceinfo.fr/provence-alpes-cote-d-azur/rss/sport.xml', 'https://france3-regions.franceinfo.fr/provence-alpes-cote-d-azur/rss.xml', 'https://france3-regions.franceinfo.fr/rss/sport.xml'], filterKeywords: ['pétanque','petanque','boules','bouliste','jeu provençal','marseillaise','la marseillaise'] },
+  { dept: 'La Provence',      code: 'MEDIA', color: '#b91c1c', active: true, siteUrl: 'https://www.laprovence.com/boules', rssUrls: ['https://www.laprovence.com/boules/rss.xml', 'https://www.laprovence.com/boules/feed', 'https://www.laprovence.com/sport/petanque/rss.xml', 'https://www.laprovence.com/sport/petanque/feed', 'https://www.laprovence.com/sport/rss.xml', 'https://www.laprovence.com/rss.xml', 'https://www.laprovence.com/feed'], filterKeywords: ['pétanque','petanque','boules','bouliste','jeu provençal','marseillaise'] },
+  { dept: 'Sport en France',   code: 'MEDIA', color: '#0284c7', active: true, siteUrl: 'https://sportenfrance.com/sports/petanque', rssUrls: ['https://sportenfrance.com/feed', 'https://sportenfrance.com/rss.xml', 'https://sportenfrance.com/sports/petanque/feed'], filterKeywords: ['pétanque','petanque','boules','bouliste'] },
   { dept: 'Mondial La Marseillaise', code: 'MEDIA', color: '#1e40af', active: true, siteUrl: 'https://mondiallamarseillaiseapetanque.com', rssUrls: ['https://mondiallamarseillaiseapetanque.com/feed', 'https://mondiallamarseillaiseapetanque.com/rss.xml', 'https://mondiallamarseillaiseapetanque.com/feed/rss/'] },
+  { dept: 'RMC Sport',          code: 'MEDIA', color: '#e85d04', active: true, siteUrl: 'https://rmcsport.bfmtv.com/petanque', rssUrls: ['https://rmcsport.bfmtv.com/rss/petanque.xml', 'https://rmcsport.bfmtv.com/petanque/rss.xml', 'https://rmcsport.bfmtv.com/petanque/feed', 'https://rmcsport.bfmtv.com/rss/sport.xml', 'https://rmcsport.bfmtv.com/rss.xml'], filterKeywords: ['pétanque','petanque','boules','bouliste','marseillaise','masters de pétanque'] },
 
   // ── FUTURS (active: false → mettre true quand ajouté au calendrier) ──────
   { dept: 'Charente (16)',          code: '16', color: '#6b7280', active: false, siteUrl: 'https://www.petanque16.fr',                 rssUrls: rss('https://www.petanque16.fr') },
@@ -157,8 +159,8 @@ function parseRSS(xml: string, source: DeptSource): NewsItem[] {
 
   const keywords = source.filterKeywords;
   // Pour les flux filtrés, on scanne plus d'articles pour en trouver assez
-  const maxScan = keywords ? 60 : 5;
-  const maxKeep = 5;
+  const maxScan = keywords ? 150 : 5;
+  const maxKeep = keywords ? 10 : 5;
 
   let match, scanned = 0, count = 0;
   while ((match = itemRegex.exec(xml)) !== null && scanned < maxScan && count < maxKeep) {
@@ -199,7 +201,7 @@ async function fetchFeed(source: DeptSource): Promise<NewsItem[]> {
     try {
       const res = await fetch(rssUrl, {
         headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AHRENA-NewsAggregator/1.0)', 'Accept': 'application/rss+xml, application/xml, text/xml, */*' },
-        signal: AbortSignal.timeout(6000),
+        signal: AbortSignal.timeout(10000),
       });
       if (!res.ok) continue;
       const xml = await res.text();

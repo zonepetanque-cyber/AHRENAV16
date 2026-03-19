@@ -47,7 +47,7 @@ import AdminDashboard from './components/AdminDashboard';
 
 // --- Components ---
 
-const Header = ({ onProfileClick, onSearchClick, onNewsClick }: { onProfileClick: () => void, onSearchClick: () => void, onNewsClick: () => void }) => (
+const Header = ({ onProfileClick, onSearchClick, onFavoritesClick }: { onProfileClick: () => void, onSearchClick: () => void, onFavoritesClick: () => void }) => (
   <header className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-b from-black/95 via-black/50 to-transparent">
     <div className="mx-auto max-w-[1400px] px-6 py-4 flex items-center justify-between">
     <div className="flex-none">
@@ -59,7 +59,7 @@ const Header = ({ onProfileClick, onSearchClick, onNewsClick }: { onProfileClick
       />
     </div>
     <div className="flex items-center gap-4">
-      <button onClick={onNewsClick} className="p-2 text-white/70 hover:text-white transition-colors">
+      <button onClick={onFavoritesClick} className="p-2 text-white/70 hover:text-white transition-colors">
         <Heart size={22} />
       </button>
       <button onClick={onSearchClick} className="p-2 text-white/70 hover:text-white transition-colors">
@@ -102,9 +102,9 @@ const Navbar = ({ activeTab, onTabChange }: { activeTab: string, onTabChange: (t
     />
     <NavItem 
       icon={<Newspaper size={24} />} 
-      label="Favoris" 
-      active={activeTab === 'favorites'} 
-      onClick={() => onTabChange('favorites')}
+      label="Actus" 
+      active={activeTab === 'news'} 
+      onClick={() => onTabChange('news')}
     />
     </div>
   </nav>
@@ -497,27 +497,6 @@ const VideoModal = ({ video, onClose, isPremium, onMinimize, onAddToMultiplex, o
     setPipDismissed(true);
     localStorage.setItem('ahrena_pip_dismissed', '1');
   };
-
-  // ── Écouter le changement du switch alerte live ─────────────
-  useEffect(() => {
-    const handler = () => {
-      setLiveAlertEnabled(localStorage.getItem('ahrena_live_alert') !== 'false');
-    };
-    window.addEventListener('ahrena_live_alert_changed', handler);
-    return () => window.removeEventListener('ahrena_live_alert_changed', handler);
-  }, []);
-
-  // ── Détection live qui démarre (VIP + switch activé uniquement) ──
-  useEffect(() => {
-    if (!isPremium || !liveAlertEnabled) return;
-    if (liveVideos.length === 0) return;
-    const currentLives = liveVideos.filter(v => v.isLive);
-    if (currentLives.length === 0) return;
-    const newest = currentLives[0];
-    if (!liveAlertDismissed.has(newest.id)) {
-      setLiveAlert(newest);
-    }
-  }, [liveVideos, isPremium, liveAlertEnabled]);
 
   // ── Bloquer le scroll de la page en arrière-plan quand la modal est ouverte
   useEffect(() => {
@@ -915,12 +894,15 @@ export default function App() {
           syncLocalToSupabase();
           // Lier l'utilisateur à OneSignal avec son ID Supabase
           if (session?.user) {
-            const { data: profile } = await supabase
+            const userId = session.user.id;
+            supabase
               .from('profiles')
               .select('is_premium')
-              .eq('id', session.user.id)
-              .single();
-            linkUserToOneSignal(session.user.id, profile?.is_premium || false);
+              .eq('id', userId)
+              .single()
+              .then(({ data: profile }) => {
+                linkUserToOneSignal(userId, profile?.is_premium || false);
+              });
           }
         }
       });
@@ -952,6 +934,27 @@ export default function App() {
       setIsPremium(false);
     }
   }, [user]);
+
+  // ── Écouter le changement du switch alerte live ─────────────
+  useEffect(() => {
+    const handler = () => {
+      setLiveAlertEnabled(localStorage.getItem('ahrena_live_alert') !== 'false');
+    };
+    window.addEventListener('ahrena_live_alert_changed', handler);
+    return () => window.removeEventListener('ahrena_live_alert_changed', handler);
+  }, []);
+
+  // ── Détection live qui démarre (VIP + switch activé uniquement) ──
+  useEffect(() => {
+    if (!isPremium || !liveAlertEnabled) return;
+    if (liveVideos.length === 0) return;
+    const currentLives = liveVideos.filter(v => v.isLive);
+    if (currentLives.length === 0) return;
+    const newest = currentLives[0];
+    if (!liveAlertDismissed.has(newest.id)) {
+      setLiveAlert(newest);
+    }
+  }, [liveVideos, isPremium, liveAlertEnabled]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     if (window.scrollY === 0) {
@@ -1351,6 +1354,8 @@ export default function App() {
         return <ClubComponent onTabChange={setActiveTab} />;
       case 'favorites':
         return <FavoritesComponent onVideoSelect={setSelectedVideo} user={user} onAuthRequired={() => setActiveTab('club')} />;
+      case 'news':
+        return <NewsComponent user={user} onAuthRequired={() => setActiveTab('club')} />;
       case 'admin_disabled':
         return null;
       case 'legal':
@@ -1384,7 +1389,7 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      <Header onProfileClick={() => setActiveTab('club')} onSearchClick={() => {}} onNewsClick={() => setShowNews(true)} />
+      <Header onProfileClick={() => setActiveTab('club')} onSearchClick={() => {}} onFavoritesClick={() => setActiveTab('favorites')} />
 
       {/* Bannière mise à jour disponible */}
       <AnimatePresence>
@@ -1430,7 +1435,7 @@ export default function App() {
         className={activeTab !== 'live' ? 'md:max-w-[1400px] md:mx-auto' : ''}
         style={{
           flex: 1,
-          overflowY: activeTab === 'live' ? 'auto' : 'hidden',
+          overflowY: (activeTab === 'live' || activeTab === 'news') ? 'auto' : 'hidden',
           overflowX: 'hidden',
           WebkitOverflowScrolling: 'touch',
           // Clé unique par onglet = reset du scroll à 0 à chaque changement
@@ -1598,7 +1603,6 @@ export default function App() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-sm overflow-y-auto"
-            style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
           >
             {/* Header du modal */}
             <div className="sticky top-0 z-10 bg-black/90 backdrop-blur-md border-b border-white/10">
@@ -1682,7 +1686,7 @@ export default function App() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.92, y: 20 }}
             transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-            className="relative w-full max-w-sm z-10"
+            className="relative w-full max-w-md z-10"
             onClick={e => e.stopPropagation()}
           >
             <div className="bg-zinc-900 border border-white/15 rounded-2xl shadow-2xl overflow-hidden">
@@ -1711,11 +1715,11 @@ export default function App() {
                     href={item.link}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 transition-colors group"
+                    className="flex items-center gap-4 px-4 py-4 hover:bg-white/5 transition-colors group"
                     onClick={() => setShowNewsPopup(false)}
                   >
                     {/* Image */}
-                    <div className="flex-shrink-0 w-16 h-14 rounded-lg overflow-hidden bg-zinc-800">
+                    <div className="flex-shrink-0 w-24 h-20 rounded-xl overflow-hidden bg-zinc-800">
                       {item.image ? (
                         <img
                           src={item.image}
@@ -1728,24 +1732,24 @@ export default function App() {
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center" style={{ background: item.color + '22' }}>
-                          <Newspaper size={16} style={{ color: item.color }} />
+                          <Newspaper size={22} style={{ color: item.color }} />
                         </div>
                       )}
                     </div>
 
                     {/* Texte */}
                     <div className="flex-1 min-w-0">
-                      <p className="text-white/90 text-[12px] font-bold leading-snug line-clamp-2 group-hover:text-white transition-colors">
+                      <p className="text-white/90 text-[15px] font-bold leading-snug line-clamp-2 group-hover:text-white transition-colors">
                         {item.title}
                       </p>
-                      <div className="flex items-center gap-1.5 mt-1">
-                        <p className="text-white/35 text-[9px] uppercase tracking-wide font-medium">
+                      <div className="flex items-center gap-2 mt-2">
+                        <p className="text-white/40 text-[11px] uppercase tracking-wide font-bold">
                           {item.dept}
                         </p>
                         {item.date && (
                           <>
-                            <span className="text-white/15 text-[9px]">·</span>
-                            <p className="text-white/30 text-[9px]">
+                            <span className="text-white/20 text-[11px]">·</span>
+                            <p className="text-white/35 text-[11px]">
                               {formatNewsDate(item.date)}
                             </p>
                           </>
@@ -1753,7 +1757,7 @@ export default function App() {
                       </div>
                     </div>
 
-                    <ChevronRight size={12} className="text-white/20 group-hover:text-white/50 flex-shrink-0 transition-colors" />
+                    <ChevronRight size={16} className="text-white/20 group-hover:text-white/50 flex-shrink-0 transition-colors" />
                   </a>
                 ))}
               </div>

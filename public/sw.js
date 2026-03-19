@@ -1,12 +1,11 @@
-// ── Version du cache — Vite remplace __APP_VERSION__ au build ──
-const CACHE_NAME = 'ahrena-v__APP_VERSION__';
+// ── Version du cache — mise à jour à chaque déploiement ──
+// La version est basée sur l'heure de build injectée par Vite
+const CACHE_NAME = 'ahrena-v' + (self.__APP_VERSION__ || '1');
 
 // Fichiers shell minimaux à précacher
 const STATIC_CACHE = ['/', '/index.html', '/manifest.json'];
 
 // ── Installation : précache SANS skipWaiting ────────────────────
-// On NE fait PAS skipWaiting ici — le nouveau SW reste en "waiting"
-// ce qui permet à App.tsx de détecter reg.waiting et d'afficher la bannière.
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => cache.addAll(STATIC_CACHE))
@@ -22,7 +21,6 @@ self.addEventListener('activate', (event) => {
       ),
       clients.claim(),
     ]).then(() => {
-      // Notifie tous les onglets : une mise à jour vient d'être activée
       clients.matchAll({ includeUncontrolled: true, type: 'window' }).then(clientList => {
         clientList.forEach(client => {
           client.postMessage({ type: 'SW_UPDATED' });
@@ -33,7 +31,6 @@ self.addEventListener('activate', (event) => {
 });
 
 // ── Message depuis l'app ─────────────────────────────────────────
-// L'app envoie SKIP_WAITING quand l'utilisateur clique "Mettre à jour"
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();

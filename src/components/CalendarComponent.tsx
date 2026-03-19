@@ -28,6 +28,7 @@ import { CONCOURS_CORSE2B_2026, DEPT_CORSE2B } from '../data/corse2b2026';
 import { CONCOURS_COTEDOR_2026, DEPT_COTEDOR } from '../data/cotedor2026';
 import { CONCOURS_COTESDARMOR_2026, DEPT_COTESDARMOR } from '../data/cotesdarmor2026';
 import { CONCOURS_CREUSE_2026, DEPT_CREUSE } from '../data/creuse2026';
+import { CONCOURS_DORDOGNE_2026, DEPT_DORDOGNE } from '../data/dordogne2026';
 import {
   Calendar as CalendarIcon, Clock,
   List, MapPin, SlidersHorizontal, X, RotateCcw, Check, Radio, ChevronDown
@@ -47,19 +48,19 @@ const MONTHS_SHORT = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','O
 const DAYS_FR   = ['L','M','M','J','V','S','D'];
 
 // ── Source meta ───────────────────────────────────────────────
-type EventSource = 'live' | 'national' | 'allier' | 'nievre' | 'ain' | 'aisne' | 'ahp' | 'am' | 'ardeche' | 'ariege' | 'aube' | 'aude' | 'aveyron' | 'bdr' | 'calvados' | 'cantal' | 'charente_maritime' | 'cher' | 'correze' | 'corse2a' | 'corse2b' | 'cotedor' | 'cotesdarmor' | 'creuse' | 'jeunes' | 'regional';
+type EventSource = 'live' | 'national' | 'allier' | 'nievre' | 'ain' | 'aisne' | 'ahp' | 'am' | 'ardeche' | 'ariege' | 'aube' | 'aude' | 'aveyron' | 'bdr' | 'calvados' | 'cantal' | 'charente_maritime' | 'cher' | 'correze' | 'corse2a' | 'corse2b' | 'cotedor' | 'cotesdarmor' | 'creuse' | 'dordogne' | 'jeunes' | 'regional';
 
 const SOURCE_COLOR: Record<EventSource, string> = {
   live: '#dc2626', national: '#3b82f6', allier: '#10b981',
   nievre: '#f97316', ain: '#8b5cf6', aisne: '#06b6d4',
   ahp: '#84cc16', am: '#0066CC', ardeche: '#f97316', ariege: '#e11d48',
-  aube: '#f43f5e', aude: '#a855f7', aveyron: '#f97316', bdr: '#ef4444', calvados: '#3b82f6', cantal: '#d97706', charente_maritime: '#0891b2', cher: '#dc2626', correze: '#7e22ce', corse2a: '#e8a020', corse2b: '#9333ea', cotedor: '#c2410c', cotesdarmor: '#0369a1', creuse: '#7e22ce', jeunes: '#10b981', regional: '#f59e0b',
+  aube: '#f43f5e', aude: '#a855f7', aveyron: '#f97316', bdr: '#ef4444', calvados: '#3b82f6', cantal: '#d97706', charente_maritime: '#0891b2', cher: '#dc2626', correze: '#7e22ce', corse2a: '#e8a020', corse2b: '#9333ea', cotedor: '#c2410c', cotesdarmor: '#0369a1', creuse: '#7e22ce', dordogne: '#16a34a', jeunes: '#10b981', regional: '#f59e0b',
 };
 const SOURCE_LABEL: Record<EventSource, string> = {
   live: 'Direct', national: 'National', allier: 'Allier (03)',
   nievre: 'Nièvre (58)', ain: 'Ain (01)', aisne: 'Aisne (02)',
   ahp: 'Alpes-de-Haute-Provence (04)', am: 'Alpes-Mar. (06)', ardeche: 'Ardèche (07)',
-  ariege: 'Ariège (09)', aube: 'Aube (10)', aude: 'Aude (11)', aveyron: 'Aveyron (12)', bdr: 'Bouches-du-Rhône (13)', calvados: 'Calvados (14)', cantal: 'Cantal (15)', charente_maritime: 'Charente-Maritime (17)', cher: 'Cher (18)', correze: 'Corrèze (19)', corse2a: 'Corse-du-Sud (2A)', corse2b: 'Haute-Corse (2B)', cotedor: 'Côte-d\'Or (21)', cotesdarmor: 'Côtes-d\'Armor (22)', creuse: 'Creuse (23)', jeunes: 'Circuit National Jeunes', regional: 'Régionaux',
+  ariege: 'Ariège (09)', aube: 'Aube (10)', aude: 'Aude (11)', aveyron: 'Aveyron (12)', bdr: 'Bouches-du-Rhône (13)', calvados: 'Calvados (14)', cantal: 'Cantal (15)', charente_maritime: 'Charente-Maritime (17)', cher: 'Cher (18)', correze: 'Corrèze (19)', corse2a: 'Corse-du-Sud (2A)', corse2b: 'Haute-Corse (2B)', cotedor: 'Côte-d\'Or (21)', cotesdarmor: 'Côtes-d\'Armor (22)', creuse: 'Creuse (23)', dordogne: 'Dordogne (24)', jeunes: 'Circuit National Jeunes', regional: 'Régionaux',
 };
 
 const DEPT_LINKS: Record<string, { facebook: string; site: string; code: string } | null> = {
@@ -86,6 +87,7 @@ const DEPT_LINKS: Record<string, { facebook: string; site: string; code: string 
   cotedor:            { facebook: DEPT_COTEDOR.facebook,           site: DEPT_COTEDOR.site,           code: '21' },
   cotesdarmor:        { facebook: DEPT_COTESDARMOR.facebook,       site: DEPT_COTESDARMOR.site,       code: '22' },
   creuse:             { facebook: null,                              site: DEPT_CREUSE.site,             code: '23' },
+  dordogne:           { facebook: DEPT_DORDOGNE.facebook,           site: null,                         code: '24' },
   jeunes:             { facebook: SOURCE_JEUNES.facebook,            site: SOURCE_JEUNES.site,           code: 'FR' },
 };
 
@@ -116,6 +118,7 @@ const DEPT_DATA: { key: EventSource | string; label: string; color: string; last
   { key: 'cotedor',             label: 'Côte-d\'Or (21)',          color: '#c2410c' },
   { key: 'cotesdarmor',         label: 'Côtes-d\'Armor (22)',      color: '#0369a1' },
   { key: 'creuse',              label: 'Creuse (23)',               color: '#7e22ce' },
+  { key: 'dordogne',            label: 'Dordogne (24)',              color: '#16a34a' },
   { key: 'nievre',  label: 'Nièvre (58)',         color: '#ea580c' },
 ];
 
@@ -142,6 +145,7 @@ const DEPT_LAST_DATE: Record<string, string> = {
   cotedor:           '2026-12-20',
   cotesdarmor:       '2026-12-13',
   creuse:            '2026-12-20',
+  dordogne:          '2026-09-24',
   nievre:            '2026-12-31',
   national:          '2027-12-31',
   regional:          '2027-12-31',
@@ -186,6 +190,7 @@ const DEPT_BBOX: Record<string, [number, number, number, number]> = {
   cotedor:           [46.90, 48.01, 4.05,  5.54],
   cotesdarmor:       [48.10, 48.90, -3.70, -1.90],
   creuse:            [45.70, 46.50, 1.40,  2.50],
+  dordogne:          [44.62, 45.65, 0.21,  1.47],
   nievre:            [46.56, 47.58, 3.07,  4.10],
 };
 
@@ -220,6 +225,7 @@ const LIMITROPHES: Record<string, string[]> = {
   charente_maritime: ['charente', 'deux_sevres', 'vendee', 'gironde'],
   cher:              ['allier', 'nievre', 'yonne', 'loiret', 'loir_cher', 'indre', 'creuse'],
   correze:           ['cantal', 'aveyron', 'lot', 'dordogne', 'creuse', 'hte_vienne'],
+  dordogne:          ['correze', 'charente_maritime', 'charente', 'lot_et_garonne', 'lot', 'creuse', 'hte_vienne'],
   corse2a:           ['corse2b'],
   corse2b:           ['corse2a'],
   cotedor:           ['aube', 'yonne', 'nievre', 'saone_loire', 'jura', 'hte_saone'],
@@ -333,6 +339,7 @@ function buildEvents(videos: Video[]): UnifiedEvent[] {
     addDept(CONCOURS_COTEDOR_2026 as any[], 'cotedor');
     addDept(CONCOURS_COTESDARMOR_2026 as any[], 'cotesdarmor');
     addDept(CONCOURS_CREUSE_2026 as any[], 'creuse');
+    addDept(CONCOURS_DORDOGNE_2026 as any[], 'dordogne');
   addDept(CONCOURS_JEUNES_2026            as any[], 'jeunes');
 
   CONCOURS_REGIONAUX_2026.forEach(c => events.push({
@@ -921,12 +928,16 @@ const EventCard = ({ ev, onVideoSelect, onSelect }: { ev: UnifiedEvent; onVideoS
         <div className="px-3 pb-2.5 flex items-center gap-2 flex-wrap border-t border-white/5">
           <span className="text-amber-400/60 text-[9px] font-bold">⚠️ Vérifier annulation</span>
           <div className="flex gap-1.5 ml-auto">
-            <a href={DEPT_LINKS[ev.source]!.facebook} target="_blank" rel="noopener noreferrer"
-              className="bg-blue-600/15 text-blue-400 text-[9px] font-bold px-2 py-0.5 rounded border border-blue-600/20"
-              onClick={e => e.stopPropagation()}>📘 FB CD{DEPT_LINKS[ev.source]!.code}</a>
-            <a href={DEPT_LINKS[ev.source]!.site} target="_blank" rel="noopener noreferrer"
-              className="bg-emerald-600/15 text-emerald-400 text-[9px] font-bold px-2 py-0.5 rounded border border-emerald-600/20"
-              onClick={e => e.stopPropagation()}>🌐 Site</a>
+            {DEPT_LINKS[ev.source]!.facebook && (
+              <a href={DEPT_LINKS[ev.source]!.facebook} target="_blank" rel="noopener noreferrer"
+                className="bg-blue-600/15 text-blue-400 text-[9px] font-bold px-2 py-0.5 rounded border border-blue-600/20"
+                onClick={e => e.stopPropagation()}>📘 FB CD{DEPT_LINKS[ev.source]!.code}</a>
+            )}
+            {DEPT_LINKS[ev.source]!.site && (
+              <a href={DEPT_LINKS[ev.source]!.site} target="_blank" rel="noopener noreferrer"
+                className="bg-emerald-600/15 text-emerald-400 text-[9px] font-bold px-2 py-0.5 rounded border border-emerald-600/20"
+                onClick={e => e.stopPropagation()}>🌐 Site</a>
+            )}
           </div>
         </div>
       )}

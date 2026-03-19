@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ExternalLink, RefreshCw, Newspaper, AlertCircle, ChevronRight, Clock, ChevronDown } from 'lucide-react';
+import { ExternalLink, RefreshCw, Newspaper, AlertCircle, ChevronRight, Clock, ChevronDown, Heart } from 'lucide-react';
+import { isFav, toggleFav, FavArticle } from '../services/favoritesService';
 
 interface NewsItem {
   id: string;
@@ -122,6 +123,24 @@ const NewsCard = ({ item, user, onAuthRequired }: { item: NewsItem; user?: any; 
 // Types de filtre
 type FilterValue = { type: 'all' } | { type: 'dept'; code: string } | { type: 'media'; dept: string };
 
+// Médias toujours affichés dans le filtre (même sans article RSS disponible)
+const KNOWN_MEDIAS: { dept: string; color: string }[] = [
+  { dept: 'Boulistenaute',           color: '#e11d48' },
+  { dept: 'France 3 Pétanque',       color: '#1d4ed8' },
+  { dept: 'France 3 PACA',           color: '#2563eb' },
+  { dept: 'RMC Sport',               color: '#e85d04' },
+  { dept: 'La Provence',             color: '#b91c1c' },
+  { dept: 'Sportmag',                color: '#7c3aed' },
+  { dept: 'Boule Provençal',         color: '#0369a1' },
+  { dept: 'Midi Libre',              color: '#e8520a' },
+  { dept: 'La Montagne',             color: '#2d7d46' },
+  { dept: 'Ouest-France',            color: '#0f4c8a' },
+  { dept: 'FFSB Sport-Boules',       color: '#059669' },
+  { dept: 'PPF Tour',                color: '#b45309' },
+  { dept: 'Mondial La Marseillaise', color: '#1e40af' },
+  { dept: 'Sport en France',          color: '#0284c7' },
+];
+
 // NewsFilter avec accordéons
 const NewsFilter = ({ news, filter, setFilter }: {
   news: NewsItem[];
@@ -148,12 +167,16 @@ const NewsFilter = ({ news, filter, setFilter }: {
     ).values()
   ).sort((a, b) => (parseInt(a.code) || 999) - (parseInt(b.code) || 999));
 
-  const medias = Array.from(
-    new Map(
-      news.filter(i => i.code === 'MEDIA' || i.code === 'FR')
-        .map(i => [i.dept, { code: i.code, dept: i.dept, color: i.color }])
-    ).values()
+  // Fusionner les médias connus (fixes) avec ceux reçus via RSS
+  const mediasFromRSS = new Map(
+    news.filter(i => i.code === 'MEDIA' || i.code === 'FR')
+      .map(i => [i.dept, { code: i.code, dept: i.dept, color: i.color }])
   );
+  const medias = KNOWN_MEDIAS.map(m => ({
+    code: 'MEDIA',
+    dept: m.dept,
+    color: mediasFromRSS.get(m.dept)?.color || m.color,
+  }));
 
   const isComiteActive = filter.type === 'dept';
   const isMediaActive = filter.type === 'media';
@@ -186,7 +209,7 @@ const NewsFilter = ({ news, filter, setFilter }: {
         </button>
 
         {openAccordion === 'comites' && (
-          <div className="absolute left-0 top-[calc(100%+6px)] z-50 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl overflow-hidden min-w-[220px] max-h-72 overflow-y-auto">
+          <div className="absolute left-0 top-[calc(100%+6px)] z-[200] bg-zinc-900 border border-white/10 rounded-xl shadow-2xl overflow-hidden min-w-[220px] max-h-72 overflow-y-auto">
             <div className="py-1.5">
               {comites.length === 0 ? (
                 <p className="text-white/30 text-[10px] px-4 py-3">Aucun comité disponible</p>
@@ -223,7 +246,7 @@ const NewsFilter = ({ news, filter, setFilter }: {
         </button>
 
         {openAccordion === 'medias' && (
-          <div className="absolute left-0 top-[calc(100%+6px)] z-50 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl overflow-hidden min-w-[220px]">
+          <div className="absolute left-0 top-[calc(100%+6px)] z-[200] bg-zinc-900 border border-white/10 rounded-xl shadow-2xl overflow-hidden min-w-[220px]">
             <div className="py-1.5">
               {medias.length === 0 ? (
                 <p className="text-white/30 text-[10px] px-4 py-3">Aucun média disponible</p>
@@ -325,7 +348,7 @@ const NewsComponent = ({ user, onAuthRequired }: { user?: any; onAuthRequired?: 
     <div className="pb-4 min-h-screen">
 
       {/* Barre sticky */}
-      <div className="sticky top-[52px] z-40 bg-zinc-950/98 backdrop-blur-md border-b border-white/8">
+      <div className="sticky top-16 z-[150] bg-zinc-950/98 backdrop-blur-md border-b border-white/8" style={{overflow: "visible"}}>
         <div className="max-w-5xl mx-auto px-4 pt-2.5 pb-1 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             {!loading && (
