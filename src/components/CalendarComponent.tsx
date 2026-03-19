@@ -658,9 +658,10 @@ const EventDetailSheet = ({ ev, onClose, onVideoSelect, user, onAuthRequired }: 
   const players = ev.format === 'TRIPLETTE' ? 3 : ev.format === 'DOUBLETTE' ? 2 : 1;
 
   return ReactDOM.createPortal(
-    <AnimatePresence>
-      {ev && (
+    <AnimatePresence mode="wait">
+      {ev ? (
         <motion.div
+          key={ev.id}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -817,16 +818,20 @@ const EventDetailSheet = ({ ev, onClose, onVideoSelect, user, onAuthRequired }: 
               {/* Liens comité */}
               {dept && (
                 <div className="grid grid-cols-2 gap-2">
+                  {dept.facebook && (
                   <a href={dept.facebook} target="_blank" rel="noopener noreferrer"
                     className="flex items-center justify-center gap-2 bg-blue-600/15 border border-blue-600/25 rounded-2xl py-3 text-blue-400 font-bold text-[11px] hover:bg-blue-600/25 transition-colors active:scale-95">
                     <span className="text-base">📘</span>
                     Facebook CD{dept.code}
                   </a>
+                  )}
+                  {dept.site && (
                   <a href={dept.site} target="_blank" rel="noopener noreferrer"
                     className="flex items-center justify-center gap-2 bg-emerald-600/15 border border-emerald-600/25 rounded-2xl py-3 text-emerald-400 font-bold text-[11px] hover:bg-emerald-600/25 transition-colors active:scale-95">
                     <span className="text-base">🌐</span>
                     Site officiel
                   </a>
+                  )}
                 </div>
               )}
 
@@ -843,7 +848,7 @@ const EventDetailSheet = ({ ev, onClose, onVideoSelect, user, onAuthRequired }: 
             </div>
           </motion.div>
         </motion.div>
-      )}
+      ) : null}
     </AnimatePresence>,
     document.body
   );
