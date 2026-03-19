@@ -903,7 +903,7 @@ export default function App() {
         console.error("Supabase session error:", err);
       });
 
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
         setUser(session?.user ?? null);
 
         // Au SIGNED_IN via OAuth, nettoie l'URL et ferme le modal auth
