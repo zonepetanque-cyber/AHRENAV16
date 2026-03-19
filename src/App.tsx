@@ -915,12 +915,15 @@ export default function App() {
           syncLocalToSupabase();
           // Lier l'utilisateur à OneSignal avec son ID Supabase
           if (session?.user) {
-            const { data: profile } = await supabase
+            const userId = session.user.id;
+            supabase
               .from('profiles')
               .select('is_premium')
-              .eq('id', session.user.id)
-              .single();
-            linkUserToOneSignal(session.user.id, profile?.is_premium || false);
+              .eq('id', userId)
+              .single()
+              .then(({ data: profile }) => {
+                linkUserToOneSignal(userId, profile?.is_premium || false);
+              });
           }
         }
       });
