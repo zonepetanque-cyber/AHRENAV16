@@ -374,10 +374,21 @@ const NewsComponent = ({ user, onAuthRequired }: { user?: any; onAuthRequired?: 
                 <Clock size={8} /> {updatedAtStr}
               </span>
             )}
-            <button onClick={handleRefresh} disabled={refreshing}
-              className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition-colors disabled:opacity-40">
-              <RefreshCw size={12} className={`text-white/60 ${refreshing ? 'animate-spin' : ''}`} />
-            </button>
+            <div className="relative group/refresh">
+              <button
+                disabled
+                title="Actualités mises à jour automatiquement toutes les 2h"
+                className="p-1.5 rounded-lg bg-white/5 opacity-30 cursor-not-allowed"
+              >
+                <RefreshCw size={12} className="text-white/60" />
+              </button>
+              {/* Tooltip */}
+              <div className="absolute right-0 top-full mt-2 z-50 pointer-events-none opacity-0 group-hover/refresh:opacity-100 transition-opacity duration-200">
+                <div className="bg-zinc-800 border border-white/10 rounded-lg px-3 py-2 text-[10px] text-white/70 whitespace-nowrap shadow-xl">
+                  🕐 Actu. toutes les 2h
+                </div>
+              </div>
+            </div>
           </div>
         </div>
         {news.length > 0 && <NewsFilter news={news} filter={filter} setFilter={setFilter} />}

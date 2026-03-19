@@ -946,7 +946,7 @@ const EventCard = ({ ev, onVideoSelect, onSelect }: { ev: UnifiedEvent; onVideoS
 };
 
 // ── ListView ──────────────────────────────────────────────────
-const ListView = ({ events, onVideoSelect }: { events: UnifiedEvent[]; onVideoSelect: (v: Video) => void }) => {
+const ListView = ({ events, onVideoSelect, user, onAuthRequired }: { events: UnifiedEvent[]; onVideoSelect: (v: Video) => void; user?: any; onAuthRequired?: () => void }) => {
   const [detailEv, setDetailEv] = useState<UnifiedEvent | null>(null);
   const grouped = useMemo(() => {
     const map = new Map<string, UnifiedEvent[]>();
@@ -1056,8 +1056,8 @@ const MonthGrid = ({
 };
 
 // ── MonthView — scroll-snap CSS natif, sans saut ──────────────
-const MonthView = ({ events, allEvents, onVideoSelect, forcedMonth }: {
-  events: UnifiedEvent[]; allEvents: UnifiedEvent[]; onVideoSelect: (v: Video) => void; forcedMonth: { month: number; year: number } | null;
+const MonthView = ({ events, allEvents, onVideoSelect, forcedMonth, user, onAuthRequired }: {
+  events: UnifiedEvent[]; allEvents: UnifiedEvent[]; onVideoSelect: (v: Video) => void; forcedMonth: { month: number; year: number } | null; user?: any; onAuthRequired?: () => void;
 }) => {
   const todayDate = today();
   const minYear   = todayDate.getFullYear();
@@ -1257,6 +1257,7 @@ const MonthView = ({ events, allEvents, onVideoSelect, forcedMonth }: {
           </motion.div>
         )}
       </AnimatePresence>
+      <EventDetailSheet ev={detailEv} onClose={() => setDetailEv(null)} onVideoSelect={onVideoSelect} user={user} onAuthRequired={onAuthRequired} />
     </div>
   );
 };
@@ -1926,8 +1927,8 @@ const CalendarComponent = ({ videos, onVideoSelect, user, onAuthRequired }: { vi
       {/* Zone scrollable — prend tout l'espace restant */}
       <div className="flex-1 overflow-y-auto overscroll-contain pb-36">
         {view === 'month'
-          ? <MonthView events={filteredEvents} allEvents={allEvents} onVideoSelect={onVideoSelect} forcedMonth={filters.month}/>
-          : <ListView  events={filteredEvents} onVideoSelect={onVideoSelect}/>
+          ? <MonthView events={filteredEvents} allEvents={allEvents} onVideoSelect={onVideoSelect} forcedMonth={filters.month} user={user} onAuthRequired={onAuthRequired}/>
+          : <ListView  events={filteredEvents} onVideoSelect={onVideoSelect} user={user} onAuthRequired={onAuthRequired}/>
         }
       </div>
 

@@ -143,8 +143,40 @@ function parseRSS(xml: string, source: DeptSource): NewsItem[] {
     return '';
   };
 
+  const decodeEntities = (str: string): string => {
+    return str
+      // Entités numériques décimales &#8211; &#8217; etc.
+      .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(parseInt(code, 10)))
+      // Entités numériques hexadécimales &#x2019; etc.
+      .replace(/&#x([0-9a-fA-F]+);/g, (_, code) => String.fromCharCode(parseInt(code, 16)))
+      // Entités nommées courantes
+      .replace(/&amp;/gi, '&')
+      .replace(/&lt;/gi, '<')
+      .replace(/&gt;/gi, '>')
+      .replace(/&quot;/gi, '"')
+      .replace(/&apos;/gi, "'")
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&laquo;/gi, '«')
+      .replace(/&raquo;/gi, '»')
+      .replace(/&eacute;/gi, 'é')
+      .replace(/&egrave;/gi, 'è')
+      .replace(/&ecirc;/gi, 'ê')
+      .replace(/&agrave;/gi, 'à')
+      .replace(/&ccedil;/gi, 'ç')
+      .replace(/&ocirc;/gi, 'ô')
+      .replace(/&icirc;/gi, 'î')
+      .replace(/&hellip;/gi, '…')
+      .replace(/&mdash;/gi, '—')
+      .replace(/&ndash;/gi, '–')
+      .replace(/&rsquo;/gi, '\'')
+      .replace(/&lsquo;/gi, '\'')
+      .replace(/&rdquo;/gi, '"')
+      .replace(/&ldquo;/gi, '"')
+      .replace(/&[a-z]+;/gi, ' ');
+  };
+
   const stripHtml = (html: string) =>
-    html.replace(/<[^>]+>/g, ' ').replace(/&[a-z]+;/gi, ' ').replace(/\s+/g, ' ').trim();
+    decodeEntities(html.replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim();
 
   const extractImage = (block: string): string | undefined => {
     const patterns = [
@@ -231,7 +263,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     allItems.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-    res.status(200).json({ items: allItems, total: allItems.length, failedDepts, updatedAt: new Date().toISOString() });
+    // Filtrer les articles de plus de 2 mois
+    const twoMonthsAgo = new Date();
+    twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
+    const recentItems = allItems.filter(item => new Date(item.date) >= twoMonthsAgo);
+
+    res.status(200).json({ items: recentItems, total: recentItems.length, failedDepts, updatedAt: new Date().toISOString() });
   } catch {
     res.status(500).json({ error: 'Erreur serveur', items: [], total: 0 });
   }
