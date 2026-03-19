@@ -242,19 +242,7 @@ const Hero = ({ onPlay, onInfo, heroVideos, onClubClick }: { onPlay: (video: Vid
         </button>
       </div>
 
-      {/* Navigation Indicators */}
-      {heroVideos.length > 1 && (
-        <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-2 z-20">
-          {heroVideos.map((_, idx) => (
-            <div 
-              key={idx}
-              className={`h-1 rounded-full transition-all duration-500 ${
-                idx === currentSlide ? 'w-6 bg-[#D4AF37]' : 'w-2 bg-white/30'
-              }`}
-            />
-          ))}
-        </div>
-      )}
+
     </div>
   );
 };
