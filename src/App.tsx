@@ -988,7 +988,7 @@ export default function App() {
               onClubClick={() => setActiveTab('club')}
             />
 
-            <main className="relative z-10 -mt-12 md:max-w-[1400px] md:mx-auto">
+            <main className="relative z-10 -mt-12 md:max-w-[1400px] md:mx-auto pb-28">
               {/* ── Carrousel LIVES EN COURS ── */}
               {loading ? (
                 <Skeleton />
@@ -1097,10 +1097,10 @@ export default function App() {
 
                 // ── Carousels thématiques ──
                 const keywords: Record<string, string[]> = {
-                  '🏆 Championnats & Compétitions': ['championnat', 'champion', 'finale', 'final', 'coupe', 'tournoi', 'compétition', 'competition', 'open', 'masters', 'world', 'mondial', 'national', 'international', 'ffpjp', 'ffsb'],
-                  '🎯 Technique & Apprentissage':   ['technique', 'tir', 'pointé', 'pointer', 'apprendre', 'tutoriel', 'cours', 'conseil', 'débutant', 'perfectionnement', 'entraînement', 'training', 'school', 'academy'],
-                  '🎬 Replays & Highlights':         ['replay', 'highlight', 'best of', 'résumé', 'top', 'moment', 'partie', 'match'],
-                  '🌍 Événements & Spectacle':       ['festival', 'exhibition', 'show', 'gala', 'fête', 'fete', 'initiation', 'découverte', 'reportage', 'portrait', 'interview'],
+                  'Championnats & Compétitions': ['championnat', 'champion', 'finale', 'final', 'coupe', 'tournoi', 'compétition', 'competition', 'open', 'masters', 'world', 'mondial', 'national', 'international', 'ffpjp', 'ffsb'],
+                  'Technique & Apprentissage':   ['technique', 'tir', 'pointé', 'pointer', 'apprendre', 'tutoriel', 'cours', 'conseil', 'débutant', 'perfectionnement', 'entraînement', 'training', 'school', 'academy'],
+                  'Replays & Highlights':         ['replay', 'highlight', 'best of', 'résumé', 'top', 'moment', 'partie', 'match'],
+                  'Événements & Spectacle':       ['festival', 'exhibition', 'show', 'gala', 'fête', 'fete', 'initiation', 'découverte', 'reportage', 'portrait', 'interview'],
                 };
 
                 const themed: Record<string, any[]> = {};
@@ -1149,7 +1149,7 @@ export default function App() {
                               <div className="flex items-center gap-2 mb-0.5">
                                 <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full"
                                   style={{ background: isThisWeekend ? 'rgba(220,38,38,0.2)' : 'rgba(255,255,255,0.08)', color: isThisWeekend ? '#ef4444' : 'rgba(255,255,255,0.5)' }}>
-                                  {isThisWeekend ? '🔥 Ce weekend !' : '🗓 Prochain National'}
+                                  {isThisWeekend ? 'Ce weekend !' : 'Prochain National'}
                                 </span>
                               </div>
                               <p className="text-white font-black text-sm leading-tight truncate">{next.categorie} — {next.format}</p>
@@ -1180,7 +1180,7 @@ export default function App() {
                       return (
                         <div className="px-6 mb-2">
                           <h2 className="text-xl font-black text-white mb-3 flex items-center gap-2">
-                            🏆 Ce weekend
+                            Ce weekend
                             <span className="text-[10px] font-black bg-red-600 text-white px-2 py-0.5 rounded-full">{total} événement{total > 1 ? 's' : ''}</span>
                           </h2>
                           <div className="space-y-2">
@@ -1257,7 +1257,7 @@ export default function App() {
                         })) as any[];
                         return (
                           <VideoCarousel
-                            title="▶ Continuer à regarder"
+                            title="Continuer à regarder"
                             videos={videos}
                             onVideoSelect={setSelectedVideo}
                           />
@@ -1282,7 +1282,7 @@ export default function App() {
                       if (trending.length < 3) return null;
                       return (
                         <VideoCarousel
-                          title="🔥 Tendances"
+                          title="Tendances"
                           videos={trending}
                           onVideoSelect={setSelectedVideo}
                         />
@@ -1306,7 +1306,7 @@ export default function App() {
                         if (recommended.length < 3) return null;
                         return (
                           <VideoCarousel
-                            title="⭐ Recommandés pour vous"
+                            title="Recommandés pour vous"
                             videos={recommended}
                             onVideoSelect={setSelectedVideo}
                           />

@@ -32,33 +32,6 @@ const AuthComponent = () => {
     }
   };
 
-  const handleGoogleLogin = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      // Redirection vers la PWA après OAuth — utilise l'URL exacte de l'app installée
-      const redirectTo = window.location.origin + '/';
-
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo,
-          skipBrowserRedirect: false, // Laisser Supabase gérer la redirection
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'select_account',
-          },
-        }
-      });
-      if (error) throw error;
-      // La redirection est gérée par Supabase — pas besoin de window.location.href
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <div className="w-full max-w-md mx-auto p-6 bg-zinc-900 rounded-2xl border border-white/10 shadow-2xl">
       <h2 className="text-2xl font-black text-white uppercase italic mb-6 text-center">
@@ -73,33 +46,13 @@ const AuthComponent = () => {
         </div>
       )}
 
-      <div className="mb-6">
-        <button 
-          onClick={handleGoogleLogin}
-          disabled={loading}
-          className="w-full bg-white text-black font-bold py-3 rounded-xl hover:bg-white/90 transition-colors flex items-center justify-center gap-3 shadow-lg disabled:opacity-50"
-        >
-          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="" className="w-5 h-5" />
-          Continuer avec Google
-        </button>
-      </div>
-
-      <div className="relative mb-6">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-white/5"></div>
-        </div>
-        <div className="relative flex justify-center text-[10px] uppercase tracking-widest">
-          <span className="bg-zinc-900 px-4 text-white/20">Ou avec email</span>
-        </div>
-      </div>
-
       <form onSubmit={handleAuth} className="space-y-4">
         <div className="space-y-1">
           <label className="text-[10px] uppercase tracking-widest text-white/40 font-bold ml-1">Email</label>
           <div className="relative">
             <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={18} />
-            <input 
-              type="email" 
+            <input
+              type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -113,8 +66,8 @@ const AuthComponent = () => {
           <label className="text-[10px] uppercase tracking-widest text-white/40 font-bold ml-1">Mot de passe</label>
           <div className="relative">
             <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={18} />
-            <input 
-              type="password" 
+            <input
+              type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -138,7 +91,7 @@ const AuthComponent = () => {
           </div>
         )}
 
-        <button 
+        <button
           disabled={loading}
           className="w-full bg-red-600 text-white font-black py-4 rounded-xl hover:bg-red-700 transition-colors uppercase tracking-widest shadow-xl flex items-center justify-center gap-2 disabled:opacity-50"
         >
@@ -147,7 +100,7 @@ const AuthComponent = () => {
       </form>
 
       <div className="mt-6 text-center">
-        <button 
+        <button
           onClick={() => setIsSignUp(!isSignUp)}
           className="text-white/40 hover:text-white transition-colors text-xs font-medium"
         >
