@@ -34,12 +34,17 @@ export async function subscribeToPush(): Promise<boolean> {
     // Opt-in OneSignal
     await OS.User.PushSubscription.optIn();
 
-    // Laisser le temps à OneSignal de confirmer l'état (async interne)
-    await new Promise(r => setTimeout(r, 1500));
+    // Polling : OneSignal peut prendre jusqu'a ~5s pour confirmer l'etat
+    // apres la creation du player cote serveur
+    for (let i = 0; i < 10; i++) {
+      await new Promise(r => setTimeout(r, 800));
+      const optedIn = OS.User?.PushSubscription?.optedIn === true;
+      const token   = OS.User?.PushSubscription?.token;
+      if (optedIn && token) return true;
+    }
 
-    // Lire l'état réel
-    const optedIn = OS.User?.PushSubscription?.optedIn === true;
-    return optedIn;
+    // Dernier recours : lire l'etat final
+    return OS.User?.PushSubscription?.optedIn === true;
   } catch (err) {
     console.error('OneSignal subscribe error:', err);
     return false;

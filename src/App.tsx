@@ -20,8 +20,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { CHANNELS } from './constants';
-// OneSignal App ID — à remplacer par le vrai ID depuis OneSignal Dashboard > Settings > Keys & IDs
-const ONESIGNAL_APP_ID = 'b4998b21-f64b-4c50-af5a-743c1173176c';
+// OneSignal App ID — géré via VITE_ONESIGNAL_APP_ID dans .env / Vercel
 import { NATIONAUX_2026 } from './data/nationaux2026';
 import { CONCOURS_REGIONAUX_2026 } from './data/regionaux2026';
 import { fetchAllVideos, Video } from './services/youtubeService';
