@@ -349,11 +349,15 @@ const AdminDashboard = () => {
       });
       const data = await res.json();
       if (!res.ok || data.error) {
-        const detail = data.detail
+        const rawDetail = data.detail
           ? (Array.isArray(data.detail) ? data.detail.join(', ') : JSON.stringify(data.detail))
           : data.error;
-        setNotifResult({ error: detail });
-        showToast('error', `Erreur OneSignal : ${detail}`);
+        // Traduction de l'erreur OneSignal la plus fréquente
+        const friendlyDetail = rawDetail?.includes('not subscribed')
+          ? 'Aucun abonné actif — activez d\'abord les notifications depuis Le Club'
+          : rawDetail;
+        setNotifResult({ error: friendlyDetail });
+        showToast('error', `Erreur : ${friendlyDetail}`);
       } else {
         setNotifResult({ recipients: data.recipients ?? 0 });
         showToast('success', `✅ Notification envoyée à ${data.recipients ?? 0} abonné(s).`);

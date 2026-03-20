@@ -34,17 +34,20 @@ export async function subscribeToPush(): Promise<boolean> {
     // Opt-in OneSignal
     await OS.User.PushSubscription.optIn();
 
-    // Polling : OneSignal peut prendre jusqu'a ~5s pour confirmer l'etat
-    // apres la creation du player cote serveur
-    for (let i = 0; i < 10; i++) {
+    // Attendre que le token soit disponible (signe que le player est créé côté serveur)
+    // Polling jusqu'à 12s
+    for (let i = 0; i < 15; i++) {
       await new Promise(r => setTimeout(r, 800));
-      const optedIn = OS.User?.PushSubscription?.optedIn === true;
       const token   = OS.User?.PushSubscription?.token;
-      if (optedIn && token) return true;
+      const optedIn = OS.User?.PushSubscription?.optedIn === true;
+      if (token && optedIn) return true;
+      // Même si optedIn est false mais qu'on a un token, c'est ok
+      if (token) return true;
     }
 
-    // Dernier recours : lire l'etat final
-    return OS.User?.PushSubscription?.optedIn === true;
+    // Dernier recours : permission accordée = considérer comme abonné
+    // (le token peut arriver avec un léger délai selon le navigateur)
+    return (window as any).Notification?.permission === 'granted';
   } catch (err) {
     console.error('OneSignal subscribe error:', err);
     return false;
@@ -63,10 +66,17 @@ export async function unsubscribeFromPush(): Promise<void> {
 
 export async function isPushEnabled(): Promise<boolean> {
   try {
+    // Vérification primaire : permission navigateur
+    if ((window as any).Notification?.permission !== 'granted') return false;
+
     const OS = await waitForOS();
-    const permission = (window as any).Notification?.permission === 'granted';
-    const optedIn = OS.User?.PushSubscription?.optedIn === true;
-    return permission && optedIn;
+
+    // Vérification via token (plus fiable que optedIn seul)
+    const token = OS.User?.PushSubscription?.token;
+    if (token) return true;
+
+    // Fallback : optedIn
+    return OS.User?.PushSubscription?.optedIn === true;
   } catch {
     return false;
   }

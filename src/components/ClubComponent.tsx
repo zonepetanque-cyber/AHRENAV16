@@ -61,13 +61,21 @@ const ClubComponent = ({ onTabChange }: { onTabChange: (tab: string) => void }) 
     if (data) {
       setIsPremium(data.is_premium);
       if (data.is_premium) {
-        // Charger état push et abonnements chaînes
-        const [pushState, subs] = await Promise.all([
-          isPushEnabled(),
-          getChannelSubscriptions(),
-        ]);
-        setPushEnabled(pushState);
+        // Charger abonnements chaînes
+        const subs = await getChannelSubscriptions();
         setChannelSubs(subs);
+
+        // Vérifier l'état push avec retry car OneSignal peut ne pas être prêt
+        // au moment du montage du composant
+        const checkPush = async () => {
+          for (let i = 0; i < 5; i++) {
+            const pushState = await isPushEnabled();
+            if (pushState) { setPushEnabled(true); return; }
+            await new Promise(r => setTimeout(r, 1000));
+          }
+          setPushEnabled(false);
+        };
+        checkPush();
       }
     }
     setLoading(false);
