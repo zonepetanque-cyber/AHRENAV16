@@ -76,14 +76,28 @@ const ClubComponent = ({ onTabChange }: { onTabChange: (tab: string) => void }) 
   const handleTogglePush = async () => {
     if (!isPremium) return;
     setNotifLoading(true);
-    if (pushEnabled) {
-      await unsubscribeFromPush();
-      setPushEnabled(false);
-    } else {
-      const ok = await subscribeToPush();
-      setPushEnabled(ok);
+    try {
+      if (pushEnabled) {
+        await unsubscribeFromPush();
+        setPushEnabled(false);
+      } else {
+        const ok = await subscribeToPush();
+        // Re-lire l'état réel depuis OneSignal après l'opt-in
+        const realState = ok ? await isPushEnabled() : false;
+        setPushEnabled(realState);
+        if (!realState && ok) {
+          // optIn a semblé réussir mais l'état est toujours false
+          // → peut arriver si le SW n'est pas encore actif, on réessaie une fois
+          await new Promise(r => setTimeout(r, 2000));
+          const retryState = await isPushEnabled();
+          setPushEnabled(retryState);
+        }
+      }
+    } catch (err) {
+      console.error('Toggle push error:', err);
+    } finally {
+      setNotifLoading(false);
     }
-    setNotifLoading(false);
   };
 
   const handleToggleChannel = async (channel: string) => {

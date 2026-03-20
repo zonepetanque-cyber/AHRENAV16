@@ -1,15 +1,24 @@
-// ── Service Notifications AHRENA via OneSignal ──────────────────
+// ── Service Notifications AHRENA via OneSignal v16 ──────────────
 
-const getOS = (): any => (window as any).OneSignal;
-
-// Helper pour attendre que OneSignal soit prêt
+// Attend que OneSignal v16 soit initialisé (SDK page script async)
 const waitForOS = (): Promise<any> => {
-  return new Promise((resolve) => {
-    const OS = (window as any).OneSignal;
-    if (OS) { resolve(OS); return; }
-    const deferred = (window as any).OneSignalDeferred || [];
-    deferred.push((OS: any) => resolve(OS));
-    (window as any).OneSignalDeferred = deferred;
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error('OneSignal timeout')), 8000);
+
+    // Cas 1 : déjà initialisé et prêt
+    const existing = (window as any).OneSignal;
+    if (existing?.User?.PushSubscription !== undefined) {
+      clearTimeout(timeout);
+      resolve(existing);
+      return;
+    }
+
+    // Cas 2 : attendre via OneSignalDeferred (pattern officiel SDK v16)
+    (window as any).OneSignalDeferred = (window as any).OneSignalDeferred || [];
+    (window as any).OneSignalDeferred.push((OS: any) => {
+      clearTimeout(timeout);
+      resolve(OS);
+    });
   });
 };
 
@@ -17,11 +26,20 @@ const waitForOS = (): Promise<any> => {
 export async function subscribeToPush(): Promise<boolean> {
   try {
     const OS = await waitForOS();
-    if (!OS) return false;
+
+    // Demander la permission navigateur
     const permission = await Notification.requestPermission();
     if (permission !== 'granted') return false;
+
+    // Opt-in OneSignal
     await OS.User.PushSubscription.optIn();
-    return true;
+
+    // Laisser le temps à OneSignal de confirmer l'état (async interne)
+    await new Promise(r => setTimeout(r, 1500));
+
+    // Lire l'état réel
+    const optedIn = OS.User?.PushSubscription?.optedIn === true;
+    return optedIn;
   } catch (err) {
     console.error('OneSignal subscribe error:', err);
     return false;
@@ -31,8 +49,8 @@ export async function subscribeToPush(): Promise<boolean> {
 export async function unsubscribeFromPush(): Promise<void> {
   try {
     const OS = await waitForOS();
-    if (!OS) return;
     await OS.User.PushSubscription.optOut();
+    await new Promise(r => setTimeout(r, 800));
   } catch (err) {
     console.error('OneSignal unsubscribe error:', err);
   }
@@ -41,7 +59,6 @@ export async function unsubscribeFromPush(): Promise<void> {
 export async function isPushEnabled(): Promise<boolean> {
   try {
     const OS = await waitForOS();
-    if (!OS) return false;
     const permission = (window as any).Notification?.permission === 'granted';
     const optedIn = OS.User?.PushSubscription?.optedIn === true;
     return permission && optedIn;
@@ -54,7 +71,6 @@ export async function isPushEnabled(): Promise<boolean> {
 export async function setVIPTag(isPremium: boolean): Promise<void> {
   try {
     const OS = await waitForOS();
-    if (!OS) return;
     if (isPremium) {
       await OS.User.addTag('is_premium', 'true');
       await OS.User.addTag('plan', 'vip');
@@ -71,7 +87,6 @@ export async function setVIPTag(isPremium: boolean): Promise<void> {
 export async function toggleChannelSubscription(channelName: string, subscribe: boolean): Promise<void> {
   try {
     const OS = await waitForOS();
-    if (!OS) return;
     const tag = 'channel_' + channelName.toLowerCase().replace(/[^a-z0-9]/g, '_');
     if (subscribe) {
       await OS.User.addTag(tag, 'true');
@@ -86,7 +101,6 @@ export async function toggleChannelSubscription(channelName: string, subscribe: 
 export async function getChannelSubscriptions(): Promise<string[]> {
   try {
     const OS = await waitForOS();
-    if (!OS) return [];
     const tags = await OS.User.getTags();
     return Object.entries(tags || {})
       .filter(([key, val]) => key.startsWith('channel_') && val === 'true')
@@ -103,7 +117,6 @@ export async function getChannelSubscriptions(): Promise<string[]> {
 export async function linkUserToOneSignal(userId: string, isPremium: boolean): Promise<void> {
   try {
     const OS = await waitForOS();
-    if (!OS) return;
     await OS.login(userId);
     await setVIPTag(isPremium);
   } catch (err) {
@@ -114,7 +127,6 @@ export async function linkUserToOneSignal(userId: string, isPremium: boolean): P
 export async function unlinkUserFromOneSignal(): Promise<void> {
   try {
     const OS = await waitForOS();
-    if (!OS) return;
     await OS.logout();
   } catch {}
 }
