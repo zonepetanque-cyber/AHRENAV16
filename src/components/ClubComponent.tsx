@@ -63,23 +63,9 @@ const ClubComponent = ({ onTabChange }: { onTabChange: (tab: string) => void }) 
       if (data.is_premium) {
         const subs = await getChannelSubscriptions();
         setChannelSubs(subs);
-
-        // Si la permission navigateur est deja accordee, allumer le switch immediatement
-        // sans attendre OneSignal (qui peut etre lent a s'initialiser)
-        if ((window as any).Notification?.permission === 'granted') {
-          setPushEnabled(true);
-        } else {
-          // Sinon verifier via OneSignal avec retry
-          const checkPush = async () => {
-            for (let i = 0; i < 5; i++) {
-              const pushState = await isPushEnabled();
-              if (pushState) { setPushEnabled(true); return; }
-              await new Promise(r => setTimeout(r, 1000));
-            }
-            setPushEnabled(false);
-          };
-          checkPush();
-        }
+        // OneSignal est initialise via index.html - on lit l'etat directement
+        const pushState = await isPushEnabled();
+        setPushEnabled(pushState);
       }
     }
     setLoading(false);
@@ -91,17 +77,12 @@ const ClubComponent = ({ onTabChange }: { onTabChange: (tab: string) => void }) 
     try {
       if (pushEnabled) {
         await unsubscribeFromPush();
-        setPushEnabled(false);
+        // Verifier que l'opt-out est bien effectif
+        const stillEnabled = await isPushEnabled();
+        setPushEnabled(stillEnabled);
       } else {
         const ok = await subscribeToPush();
         setPushEnabled(ok);
-        if (!ok) {
-          // Si subscribeToPush echoue mais que la permission est deja accordee,
-          // on force l'etat a true (OneSignal a peut-etre deja un player enregistre)
-          if ((window as any).Notification?.permission === 'granted') {
-            setPushEnabled(true);
-          }
-        }
       }
     } catch (err) {
       console.error('Toggle push error:', err);

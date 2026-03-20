@@ -3,9 +3,6 @@ import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 
-// ── Injecter l'App ID OneSignal depuis les variables d'environnement ──
-// Doit être fait AVANT que OneSignalDeferred s'exécute
-(window as any).__ONESIGNAL_APP_ID__ = import.meta.env.VITE_ONESIGNAL_APP_ID || '';
 
 // ── Service Worker : mise à jour automatique et silencieuse ────
 if ('serviceWorker' in navigator) {
