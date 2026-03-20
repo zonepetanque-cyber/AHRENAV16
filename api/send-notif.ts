@@ -31,7 +31,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (!ONESIGNAL_APP_ID || !ONESIGNAL_REST_KEY) {
-    return res.status(500).json({ error: 'OneSignal not configured (ONESIGNAL_APP_ID / ONESIGNAL_REST_API_KEY manquants)' });
+    const missing = [];
+    if (!ONESIGNAL_APP_ID)   missing.push('ONESIGNAL_APP_ID');
+    if (!ONESIGNAL_REST_KEY) missing.push('ONESIGNAL_REST_API_KEY');
+    return res.status(500).json({ error: `Variables Vercel manquantes : ${missing.join(', ')}` });
   }
 
   const { title, body, url, segment, channelTag, icon } = req.body as {

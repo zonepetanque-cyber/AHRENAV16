@@ -1420,9 +1420,7 @@ export default function App() {
         className={activeTab !== 'live' ? 'md:max-w-[1400px] md:mx-auto' : ''}
         style={{
           flex: 1,
-          overflowY: activeTab === 'live' ? 'auto' : 'hidden',
-          // overflowX 'hidden' créerait un stacking context qui bloquerait les portals (modals, bottom sheets)
-          // On ne le met que sur 'live' où c'est nécessaire
+          overflowY: 'auto',
           overflowX: activeTab === 'live' ? 'hidden' : 'visible',
           WebkitOverflowScrolling: 'touch',
         }}
