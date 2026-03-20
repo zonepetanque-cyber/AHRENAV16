@@ -94,7 +94,13 @@ const AdminDashboard = () => {
   const [chatLoading, setChatLoading] = useState(false);
 
   // Notif tab
-  const [broadcastMsg, setBroadcastMsg] = useState('');
+  const [notifTitle, setNotifTitle]     = useState('');
+  const [notifBody, setNotifBody]       = useState('');
+  const [notifUrl, setNotifUrl]         = useState('');
+  const [notifSegment, setNotifSegment] = useState<'all' | 'vip' | 'channel'>('all');
+  const [notifChannel, setNotifChannel] = useState('');
+  const [notifLoading, setNotifLoading] = useState(false);
+  const [notifResult, setNotifResult]   = useState<{ recipients?: number; error?: string } | null>(null);
   const [broadcastLoading, setBroadcastLoading] = useState(false);
 
   // Videos tab
@@ -315,26 +321,51 @@ const AdminDashboard = () => {
     finally { setFilterLoading(false); }
   };
 
-  const handleBroadcast = async () => {
-    if (!broadcastMsg.trim()) return;
-    setBroadcastLoading(true);
+  const handleSendNotif = async () => {
+    if (!notifTitle.trim() || !notifBody.trim()) {
+      showToast('error', 'Titre et message sont requis.');
+      return;
+    }
+    if (notifSegment === 'channel' && !notifChannel) {
+      showToast('error', 'Sélectionne une chaîne.');
+      return;
+    }
+    setNotifLoading(true);
+    setNotifResult(null);
     try {
-      const { count } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true });
-
-      await supabase.from('notifications').insert({
-        message: broadcastMsg.trim(),
-        type: 'broadcast',
-        created_at: new Date().toISOString(),
+      const res = await fetch('/api/send-notif', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-notify-secret': import.meta.env.VITE_NOTIFY_SECRET || '',
+        },
+        body: JSON.stringify({
+          title:      notifTitle.trim(),
+          body:       notifBody.trim(),
+          url:        notifUrl.trim() || '/',
+          segment:    notifSegment,
+          channelTag: notifSegment === 'channel' ? notifChannel : undefined,
+        }),
       });
-
-      showToast('success', `Message envoyé à ${count ?? 0} utilisateurs.`);
-      setBroadcastMsg('');
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        const detail = data.detail
+          ? (Array.isArray(data.detail) ? data.detail.join(', ') : JSON.stringify(data.detail))
+          : data.error;
+        setNotifResult({ error: detail });
+        showToast('error', `Erreur OneSignal : ${detail}`);
+      } else {
+        setNotifResult({ recipients: data.recipients ?? 0 });
+        showToast('success', `✅ Notification envoyée à ${data.recipients ?? 0} abonné(s).`);
+        setNotifTitle('');
+        setNotifBody('');
+        setNotifUrl('');
+      }
     } catch (err: any) {
-      showToast('error', `Erreur : ${err.message}`);
+      showToast('error', `Erreur réseau : ${err.message}`);
+      setNotifResult({ error: err.message });
     } finally {
-      setBroadcastLoading(false);
+      setNotifLoading(false);
     }
   };
 
@@ -523,86 +554,147 @@ const AdminDashboard = () => {
       {tab === 'notif' && (
         <div className="px-5 space-y-4">
 
-          {/* Notification à TOUS */}
+          {/* Sélecteur de segment */}
           <div className="bg-zinc-900/60 border border-white/5 rounded-xl p-4">
+            <p className="text-white/40 text-[9px] uppercase tracking-widest mb-3">Destinataires</p>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { key: 'all',     label: '🌍 Tous',        sub: 'Tous les abonnés' },
+                { key: 'vip',     label: '👑 VIP',         sub: 'Tag is_premium' },
+                { key: 'channel', label: '📺 Chaîne',      sub: 'Par chaîne' },
+              ].map(({ key, label, sub }) => (
+                <button
+                  key={key}
+                  onClick={() => setNotifSegment(key as any)}
+                  className={`flex flex-col items-center gap-1 py-3 px-2 rounded-xl border text-center transition-colors ${
+                    notifSegment === key
+                      ? 'border-red-600 bg-red-600/10 text-white'
+                      : 'border-white/10 bg-black/40 text-white/40 hover:text-white/70'
+                  }`}
+                >
+                  <span className="text-sm font-black">{label}</span>
+                  <span className="text-[9px] uppercase tracking-wider">{sub}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Sélecteur chaîne si segment = channel */}
+            {notifSegment === 'channel' && (
+              <div className="mt-3">
+                <p className="text-white/30 text-[9px] uppercase tracking-widest mb-2">Chaîne ciblée</p>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {[
+                    { tag: 'boulistenaute',    label: 'Boulistenaute' },
+                    { tag: 'sportmag',         label: 'Sportmag' },
+                    { tag: 'sportmediamat',    label: 'Sportmediamat' },
+                    { tag: 'petanque_academy', label: 'Pétanque Academy' },
+                    { tag: 'groupe_petanque',  label: 'Groupe Pétanque' },
+                    { tag: 'petanque_tv_europe', label: 'Pétanque TV Europe' },
+                    { tag: 'ppf',              label: 'PPF' },
+                    { tag: 'ffpjp',            label: 'FFPJP' },
+                    { tag: 'ffsb',             label: 'FFSB' },
+                  ].map(({ tag, label }) => (
+                    <button
+                      key={tag}
+                      onClick={() => setNotifChannel(tag)}
+                      className={`py-2 px-3 rounded-lg text-[10px] font-bold uppercase tracking-wide border transition-colors text-left ${
+                        notifChannel === tag
+                          ? 'border-red-600 bg-red-600/10 text-white'
+                          : 'border-white/10 bg-black/40 text-white/30 hover:text-white/60'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Formulaire */}
+          <div className="bg-zinc-900/60 border border-white/5 rounded-xl p-4 space-y-3">
             <div className="flex items-center gap-2 mb-1">
               <Bell size={16} className="text-red-500" />
-              <p className="text-white font-black text-sm uppercase">Tous les utilisateurs</p>
+              <p className="text-white font-black text-sm uppercase">Composer la notification</p>
             </div>
-            <p className="text-white/30 text-[9px] uppercase tracking-widest mb-3">VIP + membres gratuits</p>
-            <input
-              type="text"
-              placeholder="Titre de la notification..."
-              className="w-full bg-black border border-white/10 rounded-xl p-3 text-white placeholder:text-white/20 focus:border-red-600 outline-none text-sm mb-2"
-              id="notif-title-all"
-            />
-            <textarea
-              value={broadcastMsg}
-              onChange={e => setBroadcastMsg(e.target.value)}
-              placeholder="Message..."
-              rows={3}
-              className="w-full bg-black border border-white/10 rounded-xl p-3 text-white placeholder:text-white/20 focus:border-red-600 outline-none text-sm resize-none mb-3"
-            />
-            <button
-              onClick={handleBroadcast}
-              disabled={broadcastLoading || !broadcastMsg.trim()}
-              className="w-full bg-red-600 text-white font-black py-3 rounded-xl uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-40"
-            >
-              {broadcastLoading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-              {broadcastLoading ? 'Envoi...' : 'Envoyer à tous'}
-            </button>
-          </div>
 
-          {/* Notification VIP uniquement */}
-          <div className="bg-zinc-900/60 border border-white/5 rounded-xl p-4">
-            <div className="flex items-center gap-2 mb-1">
-              <Crown size={16} className="text-yellow-400" />
-              <p className="text-white font-black text-sm uppercase">Membres VIP uniquement</p>
+            <div>
+              <p className="text-white/30 text-[9px] uppercase tracking-widest mb-1">Titre *</p>
+              <input
+                type="text"
+                value={notifTitle}
+                onChange={e => setNotifTitle(e.target.value)}
+                placeholder="ex: 🔴 Live maintenant — Finale FFPJP"
+                maxLength={64}
+                className="w-full bg-black border border-white/10 rounded-xl p-3 text-white placeholder:text-white/20 focus:border-red-600 outline-none text-sm"
+              />
+              <p className="text-white/20 text-[9px] text-right mt-1">{notifTitle.length}/64</p>
             </div>
-            <p className="text-white/30 text-[9px] uppercase tracking-widest mb-3">Abonnés à 2€/mois</p>
-            <input
-              type="text"
-              placeholder="Titre..."
-              className="w-full bg-black border border-white/10 rounded-xl p-3 text-white placeholder:text-white/20 focus:border-yellow-600 outline-none text-sm mb-2"
-            />
-            <textarea
-              placeholder="Message réservé aux VIP..."
-              rows={3}
-              className="w-full bg-black border border-white/10 rounded-xl p-3 text-white placeholder:text-white/20 focus:border-yellow-600 outline-none text-sm resize-none mb-3"
-            />
-            <button
-              onClick={async () => {
-                const titleEl = document.querySelector('#notif-vip-title') as HTMLInputElement;
-                const msgEl = document.querySelector('#notif-vip-msg') as HTMLTextAreaElement;
-                if (!msgEl?.value.trim()) return;
-                setBroadcastLoading(true);
-                try {
-                  await supabase.from('notifications').insert({
-                    message: msgEl.value.trim(),
-                    type: 'vip',
-                    created_at: new Date().toISOString(),
-                  });
-                  showToast('success', 'Notification envoyée aux membres VIP.');
-                  msgEl.value = '';
-                } catch (e: any) {
-                  showToast('error', e.message);
-                } finally {
-                  setBroadcastLoading(false);
+
+            <div>
+              <p className="text-white/30 text-[9px] uppercase tracking-widest mb-1">Message *</p>
+              <textarea
+                value={notifBody}
+                onChange={e => setNotifBody(e.target.value)}
+                placeholder="ex: La finale nationale est en direct sur AHRENA !"
+                rows={3}
+                maxLength={178}
+                className="w-full bg-black border border-white/10 rounded-xl p-3 text-white placeholder:text-white/20 focus:border-red-600 outline-none text-sm resize-none"
+              />
+              <p className="text-white/20 text-[9px] text-right mt-1">{notifBody.length}/178</p>
+            </div>
+
+            <div>
+              <p className="text-white/30 text-[9px] uppercase tracking-widest mb-1">URL de destination <span className="text-white/15">(optionnel)</span></p>
+              <input
+                type="text"
+                value={notifUrl}
+                onChange={e => setNotifUrl(e.target.value)}
+                placeholder="/ ou /?video=XXXXXXXXXXX"
+                className="w-full bg-black border border-white/10 rounded-xl p-3 text-white placeholder:text-white/20 focus:border-white/30 outline-none text-sm"
+              />
+            </div>
+
+            {/* Résultat du dernier envoi */}
+            {notifResult && (
+              <div className={`flex items-center gap-2 p-3 rounded-xl text-xs font-medium ${
+                notifResult.error
+                  ? 'bg-red-500/10 border border-red-500/20 text-red-400'
+                  : 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
+              }`}>
+                {notifResult.error
+                  ? <><AlertTriangle size={13} /> <span>Erreur : {notifResult.error}</span></>
+                  : <><CheckCircle2 size={13} /> <span>Envoyé à {notifResult.recipients} abonné(s) OneSignal</span></>
                 }
-              }}
-              className="w-full bg-yellow-600 text-black font-black py-3 rounded-xl uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-40"
+              </div>
+            )}
+
+            <button
+              onClick={handleSendNotif}
+              disabled={notifLoading || !notifTitle.trim() || !notifBody.trim()}
+              className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-xl uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
-              <Send size={16} />
-              Envoyer aux VIP
+              {notifLoading
+                ? <><Loader2 size={16} className="animate-spin" /> Envoi en cours...</>
+                : <><Send size={16} /> Envoyer via OneSignal</>
+              }
             </button>
           </div>
 
-          {/* Info */}
-          <div className="bg-zinc-900/40 border border-white/5 rounded-xl p-4">
-            <p className="text-white/30 text-[10px] leading-relaxed">
-              💡 Les notifications push sont envoyées uniquement aux utilisateurs qui ont activé les notifications dans leur profil. Les membres non-VIP ne reçoivent jamais de notifications automatiques par chaîne.
+          {/* Info technique */}
+          <div className="bg-zinc-900/40 border border-white/5 rounded-xl p-4 space-y-2">
+            <p className="text-white/50 text-[10px] font-black uppercase tracking-widest">Comment ça marche</p>
+            <p className="text-white/25 text-[10px] leading-relaxed">
+              Les notifications sont envoyées via l'API REST OneSignal. Seuls les utilisateurs ayant activé les notifications push dans leur navigateur / app les reçoivent.
+            </p>
+            <p className="text-white/25 text-[10px] leading-relaxed">
+              Le segment <span className="text-yellow-400/60">VIP</span> cible les utilisateurs ayant le tag <code className="text-yellow-400/60">is_premium=true</code> dans OneSignal. Ce tag est positionné automatiquement lors de la connexion d'un membre VIP.
+            </p>
+            <p className="text-white/25 text-[10px] leading-relaxed">
+              Le segment <span className="text-blue-400/60">Chaîne</span> cible les utilisateurs ayant activé les alertes pour cette chaîne dans leurs préférences de notification (section Club).
             </p>
           </div>
+
         </div>
       )}
 

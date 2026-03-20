@@ -102,24 +102,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         (global as any)[CACHE_KEY] = new Set(activeLives.map((l: any) => l.id));
 
         for (const live of newLives) {
-          // Appel interne sécurisé à notify.ts
+          // Appel interne sécurisé à send-notif.ts (OneSignal REST API)
           const notifyUrl = process.env.VERCEL_URL
-            ? `https://${process.env.VERCEL_URL}/api/notify`
-            : 'http://localhost:3000/api/notify';
+            ? `https://${process.env.VERCEL_URL}/api/send-notif`
+            : 'http://localhost:3000/api/send-notif';
 
           fetch(notifyUrl, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'x-notify-secret': process.env.NOTIFY_SECRET,
+              'x-notify-secret': process.env.NOTIFY_SECRET!,
             },
             body: JSON.stringify({
-              title: `🔴 Live maintenant sur AHRENA`,
-              body: live.title,
-              url: `/?video=${live.id}`,
-              channelName: live.channelName,
+              title:      `🔴 Live maintenant sur AHRENA`,
+              body:       live.title,
+              url:        `/?video=${live.id}`,
+              segment:    'all',          // tous les abonnés push
+              channelTag: live.channelName,
             }),
-          }).catch(() => {}); // fire & forget — ne bloque pas la réponse
+          }).catch(() => {}); // fire & forget
         }
       } catch {}
     }
