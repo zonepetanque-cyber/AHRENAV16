@@ -52,7 +52,6 @@ const COORDS: Record<string, [number, number]> = {
   "Argences":             [49.1219,  -0.2239],
   "Sainteny":             [49.2028,  -1.3078],
   "Potigny":              [48.9806,  -0.2319],
-  "Tilly-sur-Seulles":    [49.1700,  -0.6200],
   "Pont-d'Ouilly":        [48.8692,  -0.4000],
   "Trouville-sur-Mer":    [49.3656,   0.0808],
   "Trévière":             [49.2167,  -0.9500],

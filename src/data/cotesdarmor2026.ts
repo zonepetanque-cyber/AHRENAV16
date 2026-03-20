@@ -69,13 +69,11 @@ const COORDS: Record<string, [number, number]> = {
   "Saint-Brieuc":       [48.5144, -2.7656],
   "Korong":             [48.3800, -3.1200],
   "Blaye":              [45.1281, -0.6633],
-  "Plouisy":            [48.5800, -3.1500],
   "Ploufragan-BP":      [48.4811, -2.8097],
   "Romillé":            [48.1869, -1.8728],
   "Sainte-Livrade":     [44.3953, 0.5933],
   "Saint-Yrieix":       [45.5167, 1.2000],
   "Vienne":             [45.5236, 4.8742],
-  "Plourivo":           [48.7536, -3.1044],
 };
 
 function ll(ville: string): [number, number] {

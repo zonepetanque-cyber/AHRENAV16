@@ -66,7 +66,6 @@ const COORDS: Record<string, [number, number]> = {
   "Lignieres": [46.7583, 2.1739],
   "Avord": [47.0433, 2.6403],
   "Plaimpied-Givaudins": [47.0197, 2.3542],
-  "Charost": [47.0044, 2.1142],
   "Clemont": [47.3833, 2.4667],
   "Preuilly": [47.2333, 2.1500],
   "Genouilly": [46.9167, 2.1167],
