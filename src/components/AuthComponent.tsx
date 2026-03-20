@@ -36,19 +36,14 @@ const AuthComponent = () => {
     setLoading(true);
     setError(null);
     try {
-      // Construit l'URL de redirection : toujours l'origine de la PWA
-      // Sur Android, après OAuth Google, le navigateur revient sur cette URL
-      // et Supabase détecte le token dans le hash (#access_token=...)
+      // Redirection vers la PWA après OAuth — utilise l'URL exacte de l'app installée
       const redirectTo = window.location.origin + '/';
 
-      // skipBrowserRedirect: true → Supabase retourne l'URL sans ouvrir de Chrome Tab
-      // On ouvre nous-mêmes dans la fenêtre courante (window.location.href)
-      // Cela maintient le mode PWA standalone sur Android
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo,
-          skipBrowserRedirect: true,
+          skipBrowserRedirect: false, // Laisser Supabase gérer la redirection
           queryParams: {
             access_type: 'offline',
             prompt: 'select_account',
@@ -56,10 +51,7 @@ const AuthComponent = () => {
         }
       });
       if (error) throw error;
-      // Redirection dans la fenêtre courante = reste dans la PWA
-      if (data?.url) {
-        window.location.href = data.url;
-      }
+      // La redirection est gérée par Supabase — pas besoin de window.location.href
     } catch (err: any) {
       setError(err.message);
     } finally {
