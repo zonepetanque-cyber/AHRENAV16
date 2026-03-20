@@ -55,14 +55,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   let included_segments: string[] | undefined;
 
   if (segment === 'all' || !segment) {
-    included_segments = ['Total Subscriptions'];  // segment natif OneSignal v16+
+    // Pas de filtre = tous les abonnes (fonctionne sur tous les plans OneSignal)
+    included_segments = undefined;
+    filters = undefined;
   } else if (segment === 'vip') {
     filters = [{ field: 'tag', key: 'is_premium', relation: '=', value: 'true' }];
   } else if (segment === 'channel' && channelTag) {
     const tag = `channel_${channelTag.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
     filters = [{ field: 'tag', key: tag, relation: '=', value: 'true' }];
-  } else {
-    included_segments = ['Total Subscriptions'];
   }
 
   // ── Payload OneSignal ─────────────────────────────────────────────────────
@@ -90,6 +90,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const osData = await osRes.json();
 
+    console.log('[send-notif] OneSignal response:', JSON.stringify(osData));
+    console.log('[send-notif] Payload sent:', JSON.stringify(payload));
+
     if (!osRes.ok || osData.errors) {
       console.error('[send-notif] OneSignal error:', osData);
       return res.status(502).json({
@@ -102,6 +105,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       success:    true,
       recipients: osData.recipients ?? 0,
       id:         osData.id,
+      raw:        osData,
     });
 
   } catch (err: any) {
