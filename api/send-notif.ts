@@ -55,14 +55,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   let included_segments: string[] | undefined;
 
   if (segment === 'all' || !segment) {
-    // Pas de filtre = tous les abonnes (fonctionne sur tous les plans OneSignal)
-    included_segments = undefined;
-    filters = undefined;
+    included_segments = ['Total Subscriptions'];
   } else if (segment === 'vip') {
     filters = [{ field: 'tag', key: 'is_premium', relation: '=', value: 'true' }];
   } else if (segment === 'channel' && channelTag) {
     const tag = `channel_${channelTag.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
     filters = [{ field: 'tag', key: tag, relation: '=', value: 'true' }];
+  } else {
+    included_segments = ['Total Subscriptions'];
   }
 
   // ── Payload OneSignal ─────────────────────────────────────────────────────
