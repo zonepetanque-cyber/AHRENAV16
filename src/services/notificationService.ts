@@ -1,28 +1,44 @@
-// ── Service Notifications AHRENA via OneSignal v16 ──────────────
+// Service Notifications AHRENA via OneSignal v16
 
-// Attend que OneSignal v16 soit initialisé (SDK page script async)
+// Attend que OneSignal v16 soit initialise
+// Strategie robuste : polling sur window.OneSignal.User
 const waitForOS = (): Promise<any> => {
   return new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => reject(new Error('OneSignal timeout')), 8000);
+    const timeout = setTimeout(() => reject(new Error('OneSignal timeout')), 10000);
 
-    // Cas 1 : déjà initialisé et prêt
-    const existing = (window as any).OneSignal;
-    if (existing?.User?.PushSubscription !== undefined) {
+    const done = (OS: any) => {
       clearTimeout(timeout);
-      resolve(existing);
+      resolve(OS);
+    };
+
+    // Cas 1 : OneSignal deja present et initialise
+    const existing = (window as any).OneSignal;
+    if (existing?.User !== undefined) {
+      done(existing);
       return;
     }
 
-    // Cas 2 : attendre via OneSignalDeferred (pattern officiel SDK v16)
-    (window as any).OneSignalDeferred = (window as any).OneSignalDeferred || [];
-    (window as any).OneSignalDeferred.push((OS: any) => {
-      clearTimeout(timeout);
-      resolve(OS);
-    });
+    // Cas 2 : Polling toutes les 100ms jusqu'a ce que OneSignal.User soit dispo
+    let attempts = 0;
+    const poll = setInterval(() => {
+      attempts++;
+      const OS = (window as any).OneSignal;
+      if (OS?.User !== undefined) {
+        clearInterval(poll);
+        done(OS);
+        return;
+      }
+      // Apres 5s de polling, on essaie via OneSignalDeferred
+      if (attempts > 50) {
+        clearInterval(poll);
+        (window as any).OneSignalDeferred = (window as any).OneSignalDeferred || [];
+        (window as any).OneSignalDeferred.push((OS: any) => done(OS));
+      }
+    }, 100);
   });
 };
 
-// ── Abonnement ──────────────────────────────────────────────────
+// Abonnement
 export async function subscribeToPush(): Promise<boolean> {
   try {
     const OS = await waitForOS();
@@ -34,19 +50,16 @@ export async function subscribeToPush(): Promise<boolean> {
     // Opt-in OneSignal
     await OS.User.PushSubscription.optIn();
 
-    // Attendre que le token soit disponible (signe que le player est créé côté serveur)
-    // Polling jusqu'à 12s
+    // Attendre que le token soit disponible (player cree cote serveur)
+    // Polling jusqu'a 12s
     for (let i = 0; i < 15; i++) {
       await new Promise(r => setTimeout(r, 800));
-      const token   = OS.User?.PushSubscription?.token;
-      const optedIn = OS.User?.PushSubscription?.optedIn === true;
-      if (token && optedIn) return true;
-      // Même si optedIn est false mais qu'on a un token, c'est ok
+      const token = OS.User?.PushSubscription?.token;
       if (token) return true;
+      if (OS.User?.PushSubscription?.optedIn === true) return true;
     }
 
-    // Dernier recours : permission accordée = considérer comme abonné
-    // (le token peut arriver avec un léger délai selon le navigateur)
+    // Dernier recours : permission accordee = considerer comme abonne
     return (window as any).Notification?.permission === 'granted';
   } catch (err) {
     console.error('OneSignal subscribe error:', err);
@@ -66,23 +79,24 @@ export async function unsubscribeFromPush(): Promise<void> {
 
 export async function isPushEnabled(): Promise<boolean> {
   try {
-    // Vérification primaire : permission navigateur
+    // Verification primaire : permission navigateur
     if ((window as any).Notification?.permission !== 'granted') return false;
 
     const OS = await waitForOS();
 
-    // Vérification via token (plus fiable que optedIn seul)
+    // Token = preuve qu'un player existe cote OneSignal
     const token = OS.User?.PushSubscription?.token;
     if (token) return true;
 
     // Fallback : optedIn
     return OS.User?.PushSubscription?.optedIn === true;
   } catch {
-    return false;
+    // Si OneSignal timeout mais permission accordee, on considere actif
+    return (window as any).Notification?.permission === 'granted';
   }
 }
 
-// ── Tags VIP ────────────────────────────────────────────────────
+// Tags VIP
 export async function setVIPTag(isPremium: boolean): Promise<void> {
   try {
     const OS = await waitForOS();
@@ -98,7 +112,7 @@ export async function setVIPTag(isPremium: boolean): Promise<void> {
   }
 }
 
-// ── Tags par chaîne ─────────────────────────────────────────────
+// Tags par chaine
 export async function toggleChannelSubscription(channelName: string, subscribe: boolean): Promise<void> {
   try {
     const OS = await waitForOS();
@@ -128,7 +142,7 @@ export async function getChannelSubscriptions(): Promise<string[]> {
   }
 }
 
-// ── Lier l'utilisateur Supabase à OneSignal ─────────────────────
+// Lier l'utilisateur Supabase a OneSignal
 export async function linkUserToOneSignal(userId: string, isPremium: boolean): Promise<void> {
   try {
     const OS = await waitForOS();
@@ -146,7 +160,7 @@ export async function unlinkUserFromOneSignal(): Promise<void> {
   } catch {}
 }
 
-// ── Notification in-app ─────────────────────────────────────────
+// Notification in-app
 export function showInAppNotification(title: string, body: string, url?: string) {
   window.dispatchEvent(new CustomEvent('ahrena-notification', {
     detail: { title, body, url }

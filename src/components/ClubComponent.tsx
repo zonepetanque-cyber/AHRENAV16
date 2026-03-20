@@ -61,21 +61,25 @@ const ClubComponent = ({ onTabChange }: { onTabChange: (tab: string) => void }) 
     if (data) {
       setIsPremium(data.is_premium);
       if (data.is_premium) {
-        // Charger abonnements chaînes
         const subs = await getChannelSubscriptions();
         setChannelSubs(subs);
 
-        // Vérifier l'état push avec retry car OneSignal peut ne pas être prêt
-        // au moment du montage du composant
-        const checkPush = async () => {
-          for (let i = 0; i < 5; i++) {
-            const pushState = await isPushEnabled();
-            if (pushState) { setPushEnabled(true); return; }
-            await new Promise(r => setTimeout(r, 1000));
-          }
-          setPushEnabled(false);
-        };
-        checkPush();
+        // Si la permission navigateur est deja accordee, allumer le switch immediatement
+        // sans attendre OneSignal (qui peut etre lent a s'initialiser)
+        if ((window as any).Notification?.permission === 'granted') {
+          setPushEnabled(true);
+        } else {
+          // Sinon verifier via OneSignal avec retry
+          const checkPush = async () => {
+            for (let i = 0; i < 5; i++) {
+              const pushState = await isPushEnabled();
+              if (pushState) { setPushEnabled(true); return; }
+              await new Promise(r => setTimeout(r, 1000));
+            }
+            setPushEnabled(false);
+          };
+          checkPush();
+        }
       }
     }
     setLoading(false);
@@ -89,9 +93,15 @@ const ClubComponent = ({ onTabChange }: { onTabChange: (tab: string) => void }) 
         await unsubscribeFromPush();
         setPushEnabled(false);
       } else {
-        // subscribeToPush contient deja un polling interne jusqu'a 8s
         const ok = await subscribeToPush();
         setPushEnabled(ok);
+        if (!ok) {
+          // Si subscribeToPush echoue mais que la permission est deja accordee,
+          // on force l'etat a true (OneSignal a peut-etre deja un player enregistre)
+          if ((window as any).Notification?.permission === 'granted') {
+            setPushEnabled(true);
+          }
+        }
       }
     } catch (err) {
       console.error('Toggle push error:', err);
