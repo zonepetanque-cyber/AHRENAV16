@@ -9,6 +9,10 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     detectSessionInUrl: true,
     // Persiste la session dans localStorage pour que la PWA s'en souvienne
     persistSession: true,
+    // Renouvelle automatiquement le token avant expiration
+    autoRefreshToken: true,
+    // Clé stable dans localStorage (évite les conflits entre onglets)
+    storageKey: 'ahrena-auth-token',
     // Utilise PKCE (plus sûr, requis pour les PWA / apps mobiles)
     flowType: 'pkce',
   },

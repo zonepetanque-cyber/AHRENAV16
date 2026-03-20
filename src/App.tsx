@@ -500,27 +500,24 @@ const VideoModal = ({ video, onClose, isPremium, onMinimize, onAddToMultiplex, o
 
   useEffect(() => {
     if (video) {
-      const saved = localStorage.getItem('ahrena_favorites');
-      if (saved) {
-        const favs = JSON.parse(saved);
-        setIsFavorite(favs.some((f: Video) => f.id === video.id));
-      }
+      setIsFavorite(isFav('video-' + video.id));
     }
   }, [video]);
 
-  const toggleFavorite = () => {
+  const toggleFavorite = async () => {
     if (!video) return;
-    const saved = localStorage.getItem('ahrena_favorites');
-    let favs = saved ? JSON.parse(saved) : [];
-    
-    if (isFavorite) {
-      favs = favs.filter((f: Video) => f.id !== video.id);
-    } else {
-      favs.push(video);
-    }
-    
-    localStorage.setItem('ahrena_favorites', JSON.stringify(favs));
-    setIsFavorite(!isFavorite);
+    const favItem: FavVideo = {
+      id: 'video-' + video.id,
+      category: 'video',
+      title: video.title,
+      thumbnail: video.thumbnail,
+      channelName: video.channelName || '',
+      videoId: video.id,
+      addedAt: new Date().toISOString(),
+    };
+    const added = await toggleFav(favItem);
+    setIsFavorite(added);
+    window.dispatchEvent(new Event('ahrena_fav_changed'));
   };
 
   return (
