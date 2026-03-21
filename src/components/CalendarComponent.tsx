@@ -1148,7 +1148,8 @@ const MonthView = ({ events, allEvents, onVideoSelect, forcedMonth, user, onAuth
     return map;
   }, [events]);
 
-  // Dernier mois qui a des événements
+  // Dernier mois navigable = max entre le dernier événement filtré ET décembre de l'année en cours
+  // Cela permet de naviguer même si aucun événement n'est visible dans les mois futurs
   const maxIdx = useMemo(() => {
     let max = 0;
     evByDate.forEach((_, dateStr) => {
@@ -1156,7 +1157,9 @@ const MonthView = ({ events, allEvents, onVideoSelect, forcedMonth, user, onAuth
       const diff = (d.getFullYear() - minYear) * 12 + (d.getMonth() - minMonth);
       if (diff > max) max = diff;
     });
-    return max;
+    // Garantir au minimum jusqu'à décembre de l'année en cours
+    const decemberDiff = (minYear - minYear) * 12 + (11 - minMonth);
+    return Math.max(max, decemberDiff);
   }, [evByDate, minYear, minMonth]);
 
   const [idx, setIdx]       = useState(0);
@@ -1173,7 +1176,8 @@ const MonthView = ({ events, allEvents, onVideoSelect, forcedMonth, user, onAuth
   useEffect(() => {
     if (forcedMonth !== null) {
       const newIdx = (forcedMonth.year - minYear) * 12 + (forcedMonth.month - minMonth);
-      const clamped = Math.max(0, Math.min(newIdx, maxIdx));
+      // On clamp uniquement vers le bas (pas de mois passés) mais pas vers le haut
+      const clamped = Math.max(0, newIdx);
       setIdx(clamped);
       setSelected(null);
     }
@@ -1471,16 +1475,19 @@ const DeptAccordion = ({ sources, onChange }: {
                 if (!dept.available) {
                   return (
                     <div key={dept.key}
-                      className="flex items-center gap-4 px-5 py-3 mx-0 opacity-40 cursor-not-allowed select-none"
+                      className="flex items-center gap-4 px-5 py-3 mx-0 cursor-not-allowed select-none"
                     >
-                      {/* Checkbox désactivée */}
-                      <div className="w-5 h-5 rounded-md border-2 border-white/15 flex-shrink-0 bg-transparent" />
-                      {/* Dot couleur estompé */}
-                      <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: dept.color, opacity: 0.5 }}/>
-                      {/* Label + badge */}
-                      <span className="text-sm font-bold text-white/40 flex-1 text-left">{dept.label}</span>
-                      <span className="text-[9px] font-black uppercase tracking-widest text-white/30 border border-white/15 px-2 py-0.5 rounded-full flex-shrink-0">
-                        Prochainement
+                      {/* Checkbox désactivée avec croix */}
+                      <div className="w-5 h-5 rounded-md border-2 border-white/15 flex-shrink-0 bg-zinc-900 flex items-center justify-center">
+                        <X size={10} className="text-white/25" />
+                      </div>
+                      {/* Dot couleur très estompé */}
+                      <div className="w-3 h-3 rounded-full flex-shrink-0 opacity-30" style={{ background: dept.color }}/>
+                      {/* Label grisé italique */}
+                      <span className="text-sm italic text-white/30 flex-1 text-left">{dept.label}</span>
+                      {/* Badge orange "Bientôt" bien visible */}
+                      <span className="text-[9px] font-black uppercase tracking-wider text-amber-400/80 bg-amber-400/10 border border-amber-400/25 px-2 py-0.5 rounded-full flex-shrink-0 whitespace-nowrap">
+                        Bientôt
                       </span>
                     </div>
                   );
