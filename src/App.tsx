@@ -11,6 +11,8 @@ import {
   ChevronLeft,
   Radio,
   Search,
+  Download,
+  RefreshCw,
   User,
   Maximize2,
   ChevronDown,
@@ -739,20 +741,28 @@ export default function App() {
     };
   }, []);
 
+  const [updateLoading, setUpdateLoading] = React.useState(false);
+
   const handleUpdate = () => {
     if (!('serviceWorker' in navigator)) return;
-    // Recharger dès que le nouveau SW prend le contrôle
+    setUpdateLoading(true);
+
+    // Timeout de sécurité : si rien ne se passe en 4s, recharger quand même
+    const fallback = setTimeout(() => window.location.reload(), 4000);
+
     navigator.serviceWorker.addEventListener('controllerchange', () => {
+      clearTimeout(fallback);
       window.location.reload();
     }, { once: true });
+
     navigator.serviceWorker.ready.then(reg => {
       if (reg.waiting) {
         reg.waiting.postMessage({ type: 'SKIP_WAITING' });
       } else {
+        clearTimeout(fallback);
         window.location.reload();
       }
     });
-    setShowUpdateBanner(false);
   };
 
   // Détecter le retour depuis Stripe Checkout
@@ -1379,28 +1389,60 @@ export default function App() {
       <AnimatePresence>
         {showUpdateBanner && (
           <motion.div
-            initial={{ opacity: 0, y: -60 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -60 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="fixed top-0 left-0 right-0 z-[200] flex items-center justify-between gap-3 px-4 py-3 bg-[#D4AF37] shadow-lg"
+            initial={{ y: -80, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -80, opacity: 0 }}
+            transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+            className="fixed top-0 left-0 right-0 z-[200] shadow-2xl"
+            style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #b8922a 100%)' }}
           >
-            <p className="text-black font-bold text-xs flex items-center gap-2">
-              🆕 Nouvelle version disponible !
-            </p>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <button
-                onClick={handleUpdate}
-                className="bg-black text-[#D4AF37] font-black text-[11px] uppercase tracking-wider px-3 py-1.5 rounded-lg hover:bg-zinc-900 transition-colors"
-              >
-                Mettre à jour
-              </button>
-              <button
-                onClick={() => setShowUpdateBanner(false)}
-                className="p-1 text-black/50 hover:text-black transition-colors"
-              >
-                <X size={14} />
-              </button>
+            {/* Barre de progression simulée pendant la mise à jour */}
+            {updateLoading && (
+              <motion.div
+                initial={{ scaleX: 0 }}
+                animate={{ scaleX: 1 }}
+                transition={{ duration: 3.5, ease: 'linear' }}
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-black/30 origin-left"
+              />
+            )}
+
+            <div className="px-4 py-3 flex items-center gap-3">
+              {/* Icône */}
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-black/15 flex items-center justify-center">
+                {updateLoading
+                  ? <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 0.8, ease: 'linear' }}><RefreshCw size={14} className="text-black" /></motion.div>
+                  : <span className="text-sm">🆕</span>
+                }
+              </div>
+
+              {/* Texte */}
+              <div className="flex-1 min-w-0">
+                <p className="text-black font-black text-[12px] uppercase tracking-[0.1em] leading-none">
+                  {updateLoading ? 'Mise à jour en cours…' : 'Nouvelle version disponible'}
+                </p>
+                <p className="text-black/60 text-[10px] mt-0.5">
+                  {updateLoading ? 'Rechargement imminent' : 'Une mise à jour AHRENA est prête à être installée'}
+                </p>
+              </div>
+
+              {/* Boutons */}
+              {!updateLoading && (
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    onClick={handleUpdate}
+                    className="flex items-center gap-1.5 bg-black text-[#D4AF37] font-black text-[11px] uppercase tracking-wider px-3.5 py-2 rounded-lg active:scale-95 transition-transform"
+                  >
+                    <Download size={11} />
+                    Mettre à jour
+                  </button>
+                  <button
+                    onClick={() => setShowUpdateBanner(false)}
+                    className="w-7 h-7 rounded-full bg-black/15 flex items-center justify-center active:bg-black/30 transition-colors"
+                  >
+                    <X size={13} className="text-black/70" />
+                  </button>
+                </div>
+              )}
             </div>
           </motion.div>
         )}

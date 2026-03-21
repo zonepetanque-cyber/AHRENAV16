@@ -18,7 +18,7 @@ export interface Video {
 
 let upcomingCache: { data: any; ts: number } | null = null;
 let liveCache: { data: Video[]; ts: number } | null = null;
-const UPCOMING_CACHE_MS = 60 * 60 * 1000;  // 1h côté client
+const UPCOMING_CACHE_MS = 5 * 60 * 1000;   // 5 min côté client (était 1h — trop long pour détecter un live qui démarre)
 const LIVE_CACHE_MS = 2 * 60 * 1000;        // 2 min côté client
 
 export async function fetchAllVideos(): Promise<{
@@ -41,6 +41,15 @@ export async function fetchAllVideos(): Promise<{
     const upcomingOnly = (upcomingData.lives || []).filter(
       (v: Video) => !liveIds.has(v.id) && v.isUpcoming === true
     );
+
+    // Si un live en cours était dans le cache upcoming, l'invalider
+    // pour qu'au prochain appel il soit rechargé depuis l'API
+    const liveWasInUpcoming = (upcomingData.lives || []).some(
+      (v: Video) => liveIds.has(v.id)
+    );
+    if (liveWasInUpcoming) {
+      upcomingCache = null;
+    }
 
     return {
       lives: [...livesWithFlag, ...upcomingOnly],

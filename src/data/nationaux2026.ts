@@ -15,6 +15,7 @@ export interface National {
   frais: number;
 }
 
+
 export const NATIONAUX_2026: National[] = [
   { id: 5, ville: "Tours", departement: "37", lat: 47.3941, lng: 0.6848, dateDebut: "2026-01-10", dateFin: "2026-01-11", categorie: "SÉNIOR", format: "TRIPLETTE OPEN", organisateur: "AMICALE PETANQUE TOURS NORD", contact: "aptn37@gmail.com", limite: 384, frais: 10 },
   { id: 6, ville: "Tours", departement: "37", lat: 47.3941, lng: 0.6848, dateDebut: "2026-01-10", dateFin: "2026-01-11", categorie: "FÉMININ", format: "TRIPLETTE", organisateur: "AMICALE PETANQUE TOURS NORD", contact: "aptn37@gmail.com", limite: 128, frais: 10 },

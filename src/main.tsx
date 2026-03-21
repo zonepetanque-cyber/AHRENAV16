@@ -4,11 +4,14 @@ import App from './App.tsx';
 import './index.css';
 
 
-// ── Service Worker : mise à jour automatique et silencieuse ────
+// ── Service Worker : mise à jour via bannière utilisateur ─────
+// L'activation du nouveau SW est déclenchée UNIQUEMENT par le bouton
+// "Mettre à jour" dans la bannière (App.tsx → handleUpdate)
+// pour éviter des rechargements intempestifs et la bannière en boucle.
 if ('serviceWorker' in navigator) {
 
-  // Rechargement silencieux quand le SW actif change
-  // Déclaré en dehors de 'load' pour capter l'événement à coup sûr
+  // Rechargement automatique quand le SW actif change
+  // (déclenché uniquement après SKIP_WAITING via handleUpdate)
   let refreshing = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     if (refreshing) return;
@@ -19,31 +22,7 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').then(reg => {
 
-      // Force l'activation d'un SW en attente
-      const activateWaiting = (worker: ServiceWorker | null) => {
-        if (!worker) return;
-        worker.postMessage({ type: 'SKIP_WAITING' });
-      };
-
-      // Cas 1 : un SW est déjà en 'waiting' à l'arrivée (cas iOS fréquent)
-      if (reg.waiting) {
-        activateWaiting(reg.waiting);
-      }
-
-      // Cas 2 : un nouveau SW est trouvé pendant la session
-      reg.addEventListener('updatefound', () => {
-        const newWorker = reg.installing;
-        if (!newWorker) return;
-
-        newWorker.addEventListener('statechange', () => {
-          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-            // Nouveau SW installé + un SW actif existe → mise à jour silencieuse
-            activateWaiting(newWorker);
-          }
-        });
-      });
-
-      // Déclenche une vérification au retour au premier plan (ouverture de l'app)
+      // Déclenche une vérification au retour au premier plan
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') reg.update();
       });
