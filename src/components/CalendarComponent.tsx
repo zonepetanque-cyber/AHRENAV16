@@ -5,7 +5,7 @@ import { isFav, toggleFav, FavConcours } from '../services/favoritesService';
 import { motion, AnimatePresence } from 'motion/react';
 import { Video } from '../services/youtubeService';
 import { NATIONAUX_2026, National } from '../data/nationaux2026';
-import { CIRCUIT_LOGOS, getCircuitBadge } from '../data/circuits2026';
+import { CIRCUIT_LOGOS, getCircuitBadge, MARSEILLAISE_DATE } from '../data/circuits2026';
 import { CONCOURS_ALLIER_2026, ConcourAllier, DEPT_ALLIER } from '../data/allier2026';
 import { CONCOURS_NIEVRE_2026, ConcourNievre, DEPT_NIEVRE } from '../data/nievre2026';
 import { CONCOURS_AIN_2026, ConcourAin, DEPT_AIN } from '../data/ain2026';
@@ -307,7 +307,7 @@ interface AdvancedFilters {
 
 const FORMATIONS = ['Tête-à-Tête', 'Doublette', 'Triplette', 'Doublette mixte', 'Triplette mixte', 'En équipe (CDC, CRC, CNC)'];
 const JOUEURS    = ['Jeune', 'Benjamins', 'Minimes', 'Cadets', 'Juniors', 'Sénior', 'Vétéran', 'Masculin', 'Féminin', 'Promotion', 'Jeu Provençal'];
-const CAT_TYPES  = ['Départemental', 'Régional', 'National', 'Championnat', 'Circuit National Jeunes', 'Masters de Pétanque', 'PPF Tour', 'Autres (mondial, coupes, tir…)'];
+const CAT_TYPES  = ['Départemental', 'Régional', 'National', 'Championnat', 'Circuit National Jeunes', 'Masters de Pétanque', 'PPF Tour'];
 
 const makeDefaultFilters = (): AdvancedFilters => ({
   officiel: true, ouvert: true,
@@ -388,7 +388,8 @@ function applyFilters(events: UnifiedEvent[], f: AdvancedFilters): UnifiedEvent[
     // Filtre source/département
     const wantsMasters = f.categories.has('Masters de Pétanque');
     const wantsPPF = f.categories.has('PPF Tour');
-    const hasBadgeFilter = wantsMasters || wantsPPF;
+    const wantsMarseillaise = f.categories.has('Mondial La Marseillaise');
+    const hasBadgeFilter = wantsMasters || wantsPPF || wantsMarseillaise;
 
     if (f.sources.size > 0) {
       const alwaysOn = new Set(['national', 'regional', 'jeunes', 'live']);
@@ -443,9 +444,10 @@ function applyFilters(events: UnifiedEvent[], f: AdvancedFilters): UnifiedEvent[
         (f.categories.has('National') && t === 'national') ||
         (f.categories.has('Championnat') && (t === 'championnat' || t === 'qualificatif')) ||
         (f.categories.has('Circuit National Jeunes') && ev.source === 'jeunes') ||
-        (f.categories.has('Autres (mondial, coupes, tir…)') && t === 'spécial') ||
+
         (f.categories.has('Masters de Pétanque') && (ev.badge === 'masters' || ev.badge === 'both')) ||
-        (f.categories.has('PPF Tour') && (ev.badge === 'ppf' || ev.badge === 'both'));
+        (f.categories.has('PPF Tour') && (ev.badge === 'ppf' || ev.badge === 'both')) ||
+        (f.categories.has('Mondial La Marseillaise') && ev.ville === 'Marseille' && ev.raw?.organisateur?.toLowerCase().includes('marseillaise'));
       if (!ok) return false;
     }
 
@@ -1739,8 +1741,8 @@ const FilterPanel = ({ filters, onChange, onClose }: {
           </Section>
 
           <Section title="Catégorie de concours">
-            <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
-              {/* Tout — se décoche dès qu'on choisit une catégorie */}
+            <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
+              {/* Tout */}
               <Checkbox
                 checked={local.categories.size === 0}
                 onChange={() => setLocal(l => ({ ...l, categories: new Set() }))}
@@ -1749,52 +1751,71 @@ const FilterPanel = ({ filters, onChange, onClose }: {
               {CAT_TYPES.map(c => {
                 const isMasters = c === 'Masters de Pétanque';
                 const isPPF = c === 'PPF Tour';
+                const isJeunes = c === 'Circuit National Jeunes';
                 const isChecked = local.categories.has(c);
                 const toggle = () => setLocal(l => ({...l, categories: toggleSet(l.categories, c)}));
 
-                if (isMasters || isPPF) {
+                if (isMasters || isPPF || isJeunes) {
+                  const logo = isMasters ? CIRCUIT_LOGOS.masters : isPPF ? CIRCUIT_LOGOS.ppf : CIRCUIT_LOGOS.jeunes;
+                  const label = isMasters ? 'Masters de Pétanque' : isPPF ? 'PPF Tour 2026' : 'Circuit National Jeunes';
                   return (
                     <button
                       key={c}
                       onClick={toggle}
-                      className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-xl border transition-all text-left ${
-                        isChecked
-                          ? 'border-white/30 bg-white/10'
-                          : 'border-white/8 bg-white/3 hover:bg-white/6'
+                      className={`flex items-center gap-2 w-full px-3 py-2.5 rounded-xl border transition-all text-left ${
+                        isChecked ? 'border-white/30 bg-white/10' : 'border-white/8 bg-white/3 hover:bg-white/6'
                       }`}
                     >
-                      {/* Checkbox custom */}
                       <div className={`w-4 h-4 rounded flex items-center justify-center flex-shrink-0 transition-colors ${isChecked ? 'bg-red-600' : 'bg-white/10 border border-white/20'}`}>
                         {isChecked && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                       </div>
-                      {/* Logo */}
-                      <img
-                        src={isMasters ? CIRCUIT_LOGOS.masters : CIRCUIT_LOGOS.ppf}
-                        alt={c}
-                        className="h-6 w-auto object-contain flex-shrink-0"
-                      />
-                      {/* Label */}
-                      <span className={`text-xs font-bold flex-1 ${isChecked ? 'text-white' : 'text-white/60'}`}>
-                        {isMasters ? 'Masters de Pétanque' : 'PPF Tour 2026'}
-                      </span>
+                      <img src={logo} alt={label} className="h-6 w-auto object-contain flex-shrink-0" />
+                      <span className={`text-[10px] font-bold flex-1 leading-tight ${isChecked ? 'text-white' : 'text-white/60'}`}>{label}</span>
                     </button>
                   );
                 }
 
                 return (
-                  <Checkbox key={c} checked={isChecked}
-                    onChange={toggle}
-                    label={c}/>
+                  <Checkbox key={c} checked={isChecked} onChange={toggle} label={c}/>
                 );
               })}
             </div>
+
+            {/* Mondial La Marseillaise — pleine largeur avec navigation auto */}
+            {(() => {
+              const isChecked = local.categories.has('Mondial La Marseillaise');
+              const toggle = () => setLocal(l => ({...l, categories: toggleSet(l.categories, 'Mondial La Marseillaise')}));
+              return (
+                <button
+                  onClick={toggle}
+                  className={`mt-2 flex items-center gap-3 w-full px-4 py-3 rounded-xl border transition-all ${
+                    isChecked ? 'border-white/30 bg-white/10' : 'border-white/8 bg-white/3 hover:bg-white/6'
+                  }`}
+                >
+                  <div className={`w-4 h-4 rounded flex items-center justify-center flex-shrink-0 transition-colors ${isChecked ? 'bg-red-600' : 'bg-white/10 border border-white/20'}`}>
+                    {isChecked && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                  </div>
+                  <img src={CIRCUIT_LOGOS.marseillaise} alt="Mondial La Marseillaise" className="h-8 w-auto object-contain flex-shrink-0" />
+                  <div className="flex-1 text-left">
+                    <p className={`text-xs font-black uppercase tracking-wide ${isChecked ? 'text-white' : 'text-white/70'}`}>Mondial La Marseillaise</p>
+                    <p className="text-[10px] text-white/35 mt-0.5">3 – 8 juillet 2026 · Marseille</p>
+                  </div>
+                </button>
+              );
+            })()}
           </Section>
         </div>
 
         {/* Footer */}
         <div className="px-6 py-4 border-t border-white/8 space-y-3 bg-zinc-950">
           <button
-            onClick={() => { onChange({ ...local, sources: filters.sources, month: filters.month }); onClose(); }}
+            onClick={() => {
+              const newMonth = local.categories.has('Mondial La Marseillaise')
+                ? MARSEILLAISE_DATE
+                : filters.month;
+              onChange({ ...local, sources: filters.sources, month: newMonth });
+              onClose();
+            }}
             className="w-full bg-red-600 hover:bg-red-700 text-white font-black py-3.5 rounded-xl uppercase tracking-[0.15em] text-sm transition-colors"
           >
             Appliquer les filtres

@@ -4,9 +4,14 @@
 // quand une ville+dateDebut correspond à une entrée ci-dessous.
 
 export const CIRCUIT_LOGOS = {
-  masters: "https://cdn.shopify.com/s/files/1/0915/3760/4942/files/1774042007475.png?v=1774042096",
-  ppf:     "https://cdn.shopify.com/s/files/1/0915/3760/4942/files/logo.png?v=1774042110",
+  masters:      "https://cdn.shopify.com/s/files/1/0915/3760/4942/files/1774042007475.png?v=1774042096",
+  ppf:          "https://cdn.shopify.com/s/files/1/0915/3760/4942/files/logo.png?v=1774042110",
+  jeunes:       "https://cdn.shopify.com/s/files/1/0915/3760/4942/files/1774085754335.png?v=1774085795",
+  marseillaise: "https://cdn.shopify.com/s/files/1/0915/3760/4942/files/1774085431986.png?v=1774085465",
 };
+
+// Date du Mondial La Marseillaise 2026
+export const MARSEILLAISE_DATE = { year: 2026, month: 6 }; // juillet = index 6
 
 export type CircuitBadge = "masters" | "ppf" | "both";
 
