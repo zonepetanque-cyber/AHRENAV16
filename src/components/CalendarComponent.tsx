@@ -787,17 +787,17 @@ const EventDetailSheet = ({ ev, onClose, onVideoSelect, user, onAuthRequired }: 
 
               {/* Logos circuits Masters / PPF */}
               {ev.badge && (
-                <div className="flex items-center gap-3 mt-3">
+                <div className="flex flex-wrap gap-2 mt-2">
                   {(ev.badge === 'masters' || ev.badge === 'both') && (
-                    <div className="flex items-center gap-2 bg-black/30 rounded-xl px-3 py-2">
-                      <img src={CIRCUIT_LOGOS.masters} alt="Masters de Pétanque" className="h-8 w-auto object-contain" />
-                      <span className="text-[10px] font-black text-white/70 uppercase tracking-wider">Masters de Pétanque</span>
+                    <div className="flex items-center gap-2 bg-white/6 border border-white/10 rounded-lg px-2.5 py-1.5">
+                      <img src={CIRCUIT_LOGOS.masters} alt="Masters" className="h-5 w-auto object-contain" />
+                      <span className="text-[10px] font-bold text-white/60 tracking-wide">Masters de Pétanque</span>
                     </div>
                   )}
                   {(ev.badge === 'ppf' || ev.badge === 'both') && (
-                    <div className="flex items-center gap-2 bg-black/30 rounded-xl px-3 py-2">
-                      <img src={CIRCUIT_LOGOS.ppf} alt="PPF Tour 2026" className="h-8 w-auto object-contain" />
-                      <span className="text-[10px] font-black text-white/70 uppercase tracking-wider">PPF Tour 2026</span>
+                    <div className="flex items-center gap-2 bg-white/6 border border-white/10 rounded-lg px-2.5 py-1.5">
+                      <img src={CIRCUIT_LOGOS.ppf} alt="PPF" className="h-5 w-auto object-contain" />
+                      <span className="text-[10px] font-bold text-white/60 tracking-wide">PPF Tour 2026</span>
                     </div>
                   )}
                 </div>
@@ -940,19 +940,17 @@ const EventCard = ({ ev, onVideoSelect, onSelect }: { ev: UnifiedEvent; onVideoS
             {ev.format && <span className="text-[9px] text-white/20 uppercase">{ev.format}</span>}
           </div>
 
-          <div className="flex items-center gap-2 mb-1.5">
-            <p className="text-white font-bold text-[13px] leading-snug flex-1">{ev.title}</p>
-            {ev.badge && (
-              <div className="flex items-center gap-1 flex-shrink-0">
-                {(ev.badge === 'masters' || ev.badge === 'both') && (
-                  <img src={CIRCUIT_LOGOS.masters} alt="Masters de Pétanque" className="h-6 w-auto object-contain" title="Masters de Pétanque 2026" />
-                )}
-                {(ev.badge === 'ppf' || ev.badge === 'both') && (
-                  <img src={CIRCUIT_LOGOS.ppf} alt="PPF Tour 2026" className="h-6 w-auto object-contain" title="PPF Tour 2026" />
-                )}
-              </div>
-            )}
-          </div>
+          <p className="text-white font-bold text-[13px] leading-snug mb-1">{ev.title}</p>
+          {ev.badge && (
+            <div className="flex items-center gap-1.5 mb-1">
+              {(ev.badge === 'masters' || ev.badge === 'both') && (
+                <img src={CIRCUIT_LOGOS.masters} alt="Masters" className="h-4 w-auto object-contain opacity-90" />
+              )}
+              {(ev.badge === 'ppf' || ev.badge === 'both') && (
+                <img src={CIRCUIT_LOGOS.ppf} alt="PPF" className="h-4 w-auto object-contain opacity-90" />
+              )}
+            </div>
+          )}
 
           {ev.ville && (
             <div className="flex items-center gap-1 text-white/60 text-[11px] mb-0.5">
@@ -1238,17 +1236,18 @@ const MonthView = ({ events, allEvents, onVideoSelect, forcedMonth, user, onAuth
         ))}
       </div>
 
-      {/* Scroll-snap natif */}
+      {/* Scroll-snap natif — désactivé si 1 seul mois pour ne pas bloquer le scroll vertical */}
       <div
         ref={scrollRef}
         onScroll={onScroll}
         style={{
           display: 'flex',
-          overflowX: 'auto',
-          scrollSnapType: 'x mandatory',
+          overflowX: maxIdx > 0 ? 'auto' : 'hidden',
+          scrollSnapType: maxIdx > 0 ? 'x mandatory' : 'none',
           WebkitOverflowScrolling: 'touch',
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
+          touchAction: maxIdx > 0 ? 'pan-x' : 'auto',
         }}
       >
         {months.map((m, i) => (
@@ -1752,25 +1751,47 @@ const FilterPanel = ({ filters, onChange, onClose }: {
                 onChange={() => setLocal(l => ({ ...l, categories: new Set() }))}
                 label="Tout"
               />
-              {CAT_TYPES.map(c => (
-                <div key={c} className="flex items-center gap-2">
-                  <Checkbox checked={local.categories.has(c)}
-                    onChange={() => setLocal(l => ({...l, categories: toggleSet(l.categories, c)}))}
-                    label={c === 'Masters de Pétanque' || c === 'PPF Tour' ? '' : c}/>
-                  {c === 'Masters de Pétanque' && (
-                    <label className="flex items-center gap-2 cursor-pointer" onClick={() => setLocal(l => ({...l, categories: toggleSet(l.categories, c)}))}>
-                      <img src={CIRCUIT_LOGOS.masters} alt="Masters" className="h-5 w-auto object-contain" />
-                      <span className="text-white/70 text-xs font-bold">Masters de Pétanque</span>
-                    </label>
-                  )}
-                  {c === 'PPF Tour' && (
-                    <label className="flex items-center gap-2 cursor-pointer" onClick={() => setLocal(l => ({...l, categories: toggleSet(l.categories, c)}))}>
-                      <img src={CIRCUIT_LOGOS.ppf} alt="PPF" className="h-5 w-auto object-contain" />
-                      <span className="text-white/70 text-xs font-bold">PPF Tour 2026</span>
-                    </label>
-                  )}
-                </div>
-              ))}
+              {CAT_TYPES.map(c => {
+                const isMasters = c === 'Masters de Pétanque';
+                const isPPF = c === 'PPF Tour';
+                const isChecked = local.categories.has(c);
+                const toggle = () => setLocal(l => ({...l, categories: toggleSet(l.categories, c)}));
+
+                if (isMasters || isPPF) {
+                  return (
+                    <button
+                      key={c}
+                      onClick={toggle}
+                      className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-xl border transition-all text-left ${
+                        isChecked
+                          ? 'border-white/30 bg-white/10'
+                          : 'border-white/8 bg-white/3 hover:bg-white/6'
+                      }`}
+                    >
+                      {/* Checkbox custom */}
+                      <div className={`w-4 h-4 rounded flex items-center justify-center flex-shrink-0 transition-colors ${isChecked ? 'bg-red-600' : 'bg-white/10 border border-white/20'}`}>
+                        {isChecked && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                      </div>
+                      {/* Logo */}
+                      <img
+                        src={isMasters ? CIRCUIT_LOGOS.masters : CIRCUIT_LOGOS.ppf}
+                        alt={c}
+                        className="h-6 w-auto object-contain flex-shrink-0"
+                      />
+                      {/* Label */}
+                      <span className={`text-xs font-bold flex-1 ${isChecked ? 'text-white' : 'text-white/60'}`}>
+                        {isMasters ? 'Masters de Pétanque' : 'PPF Tour 2026'}
+                      </span>
+                    </button>
+                  );
+                }
+
+                return (
+                  <Checkbox key={c} checked={isChecked}
+                    onChange={toggle}
+                    label={c}/>
+                );
+              })}
             </div>
           </Section>
         </div>
