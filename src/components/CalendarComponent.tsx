@@ -1820,68 +1820,73 @@ const FilterPanel = ({ filters, onChange, onClose }: {
           </Section>
 
           <Section title="Catégorie de concours">
-            <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
-              {/* Tout */}
-              <Checkbox
-                checked={local.categories.size === 0}
-                onChange={() => setLocal(l => ({ ...l, categories: new Set() }))}
-                label="Tout"
-              />
-              {CAT_TYPES.map(c => {
-                const isMasters = c === 'Masters de Pétanque';
-                const isPPF = c === 'PPF Tour';
-                const isJeunes = c === 'Circuit National Jeunes';
-                const isChecked = local.categories.has(c);
-                const toggle = () => setLocal(l => ({...l, categories: toggleSet(l.categories, c)}));
+            <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
+              {['Tout', 'Départemental', 'Régional', 'National', 'Championnat'].map(c => (
+                <Checkbox
+                  key={c}
+                  checked={c === 'Tout' ? local.categories.size === 0 : local.categories.has(c)}
+                  onChange={() => {
+                    if (c === 'Tout') {
+                      setLocal(l => ({ ...l, categories: new Set() }));
+                    } else {
+                      setLocal(l => ({ ...l, categories: toggleSet(l.categories, c) }));
+                    }
+                  }}
+                  label={c}
+                />
+              ))}
+            </div>
+          </Section>
 
-                if (isMasters || isPPF || isJeunes) {
-                  const logo = isMasters ? CIRCUIT_LOGOS.masters : isPPF ? CIRCUIT_LOGOS.ppf : CIRCUIT_LOGOS.jeunes;
-                  const label = isMasters ? 'Masters de Pétanque' : isPPF ? 'PPF Tour 2026' : 'Circuit National Jeunes';
-                  return (
-                    <button
-                      key={c}
-                      onClick={toggle}
-                      className={`flex items-center gap-2 w-full px-3 py-2.5 rounded-xl border transition-all text-left ${
-                        isChecked ? 'border-white/30 bg-white/10' : 'border-white/8 bg-white/3 hover:bg-white/6'
-                      }`}
-                    >
-                      <div className={`w-4 h-4 rounded flex items-center justify-center flex-shrink-0 transition-colors ${isChecked ? 'bg-red-600' : 'bg-white/10 border border-white/20'}`}>
-                        {isChecked && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-                      </div>
-                      <img src={logo} alt={label} className="h-6 w-auto object-contain flex-shrink-0" />
-                      <span className={`text-[10px] font-bold flex-1 leading-tight ${isChecked ? 'text-white' : 'text-white/60'}`}>{label}</span>
-                    </button>
-                  );
-                }
-
+          <Section title="Circuits et événements">
+            <div className="flex flex-col gap-2">
+              {[
+                { key: 'Masters de Pétanque', logo: CIRCUIT_LOGOS.masters, label: 'Masters de Pétanque' },
+                { key: 'Circuit National Jeunes', logo: CIRCUIT_LOGOS.jeunes, label: 'Circuit National Jeunes' },
+                { key: 'PPF Tour', logo: CIRCUIT_LOGOS.ppf, label: 'PPF Tour 2026' },
+              ].map(({ key, logo, label }) => {
+                const isChecked = local.categories.has(key);
+                const toggle = () => setLocal(l => ({ ...l, categories: toggleSet(l.categories, key) }));
                 return (
-                  <Checkbox key={c} checked={isChecked} onChange={toggle} label={c}/>
+                  <button
+                    key={key}
+                    onClick={toggle}
+                    className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-xl border transition-all text-left ${
+                      isChecked ? 'border-white/30 bg-white/10' : 'border-white/8 bg-white/3 hover:bg-white/6'
+                    }`}
+                  >
+                    <div className={`w-4 h-4 rounded flex items-center justify-center flex-shrink-0 transition-colors ${isChecked ? 'bg-red-600' : 'bg-white/10 border border-white/20'}`}>
+                      {isChecked && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                    </div>
+                    <img src={logo} alt={label} className="h-6 w-auto object-contain flex-shrink-0" />
+                    <span className={`text-[11px] font-bold flex-1 leading-tight ${isChecked ? 'text-white' : 'text-white/60'}`}>{label}</span>
+                  </button>
                 );
               })}
-            </div>
 
-            {/* Mondial La Marseillaise — pleine largeur avec navigation auto */}
-            {(() => {
-              const isChecked = local.categories.has('Mondial La Marseillaise');
-              const toggle = () => setLocal(l => ({...l, categories: toggleSet(l.categories, 'Mondial La Marseillaise')}));
-              return (
-                <button
-                  onClick={toggle}
-                  className={`mt-2 flex items-center gap-3 w-full px-4 py-3 rounded-xl border transition-all ${
-                    isChecked ? 'border-white/30 bg-white/10' : 'border-white/8 bg-white/3 hover:bg-white/6'
-                  }`}
-                >
-                  <div className={`w-4 h-4 rounded flex items-center justify-center flex-shrink-0 transition-colors ${isChecked ? 'bg-red-600' : 'bg-white/10 border border-white/20'}`}>
-                    {isChecked && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-                  </div>
-                  <img src={CIRCUIT_LOGOS.marseillaise} alt="Mondial La Marseillaise" className="h-8 w-auto object-contain flex-shrink-0" />
-                  <div className="flex-1 text-left">
-                    <p className={`text-xs font-black uppercase tracking-wide ${isChecked ? 'text-white' : 'text-white/70'}`}>Mondial La Marseillaise</p>
-                    <p className="text-[10px] text-white/35 mt-0.5">3 – 8 juillet 2026 · Marseille</p>
-                  </div>
-                </button>
-              );
-            })()}
+              {/* Mondial La Marseillaise */}
+              {(() => {
+                const isChecked = local.categories.has('Mondial La Marseillaise');
+                const toggle = () => setLocal(l => ({ ...l, categories: toggleSet(l.categories, 'Mondial La Marseillaise') }));
+                return (
+                  <button
+                    onClick={toggle}
+                    className={`flex items-center gap-3 w-full px-4 py-3 rounded-xl border transition-all ${
+                      isChecked ? 'border-white/30 bg-white/10' : 'border-white/8 bg-white/3 hover:bg-white/6'
+                    }`}
+                  >
+                    <div className={`w-4 h-4 rounded flex items-center justify-center flex-shrink-0 transition-colors ${isChecked ? 'bg-red-600' : 'bg-white/10 border border-white/20'}`}>
+                      {isChecked && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                    </div>
+                    <img src={CIRCUIT_LOGOS.marseillaise} alt="Mondial La Marseillaise" className="h-8 w-auto object-contain flex-shrink-0" />
+                    <div className="flex-1 text-left">
+                      <p className={`text-xs font-black uppercase tracking-wide ${isChecked ? 'text-white' : 'text-white/70'}`}>Mondial La Marseillaise</p>
+                      <p className="text-[10px] text-white/35 mt-0.5">3 – 8 juillet 2026 · Marseille</p>
+                    </div>
+                  </button>
+                );
+              })()}
+            </div>
           </Section>
         </div>
 
