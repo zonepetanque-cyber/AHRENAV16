@@ -769,15 +769,30 @@ const EventDetailSheet = ({ ev, onClose, onVideoSelect, user, onAuthRequired }: 
 
               {/* Icônes joueurs + Format */}
               <div className="flex items-center gap-3 mb-2">
-                <div className="flex items-center gap-0.5">
-                  {Array.from({ length: players }).map((_, i) => (
-                    <div key={i} className="w-8 h-8 rounded-full flex items-center justify-center"
-                      style={{ background: color + '30', border: `2px solid ${color}50` }}>
-                      <svg viewBox="0 0 24 24" width="14" height="14" fill={color}>
-                        <circle cx="12" cy="7" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
-                      </svg>
-                    </div>
-                  ))}
+                <div className="flex items-center gap-1">
+                  {(() => {
+                    const cat = (ev.categorie || '').toLowerCase();
+                    const isFem = cat.includes('fém') || cat.includes('fem') || cat.includes('dame') || cat.includes('vétane');
+                    const isMix = cat.includes('mix');
+                    const femColor = '#f472b6';
+                    const icons = isFem
+                      ? Array.from({ length: players }).map((_, i) => ({ fem: true, key: i }))
+                      : isMix
+                        ? players === 3
+                          ? [{ fem: false, key: 0 }, { fem: false, key: 1 }, { fem: true, key: 2 }]
+                          : players === 2
+                            ? [{ fem: false, key: 0 }, { fem: true, key: 1 }]
+                            : [{ fem: false, key: 0 }]
+                        : Array.from({ length: players }).map((_, i) => ({ fem: false, key: i }));
+                    return icons.map(p => (
+                      <div key={p.key} className="w-8 h-8 rounded-full flex items-center justify-center"
+                        style={{ background: (p.fem ? femColor : color) + '30', border: `2px solid ${(p.fem ? femColor : color)}50` }}>
+                        {p.fem
+                          ? <WomanIcon color={femColor} size={13} />
+                          : <ManIcon color={color} size={13} />}
+                      </div>
+                    ));
+                  })()}
                 </div>
                 <div>
                   <p className="text-white font-black text-base uppercase tracking-wide leading-tight">
@@ -911,15 +926,61 @@ const EventDetailSheet = ({ ev, onClose, onVideoSelect, user, onAuthRequired }: 
 };
 
 // ── EventCard ─────────────────────────────────────────────────
-const FORMAT_ICON: Record<string, string> = {
-  'TRIPLETTE': '3️⃣', 'DOUBLETTE': '2️⃣', 'TÊTE À TÊTE': '1️⃣',
-  'INDIVIDUEL': '1️⃣', 'ENDURO': '⚡', 'AUTRE': '🎯',
+// Bonhomme masculin SVG
+const ManIcon = ({ color, size = 9 }: { color: string; size?: number }) => (
+  <svg width={size} height={Math.round(size * 1.33)} viewBox="0 0 9 12" fill="none">
+    <circle cx="4.5" cy="3" r="2.2" fill={color}/>
+    <path d="M1 11c0-2 1.6-3.5 3.5-3.5S8 9 8 11" stroke={color} strokeWidth="1.4" strokeLinecap="round"/>
+  </svg>
+);
+
+// Bonhomme féminin SVG (jupe triangulaire)
+const WomanIcon = ({ color, size = 9 }: { color: string; size?: number }) => (
+  <svg width={size} height={Math.round(size * 1.33)} viewBox="0 0 9 12" fill="none">
+    <circle cx="4.5" cy="2.8" r="2.0" fill={color}/>
+    <path d="M1.5 11.5L4.5 6.5L7.5 11.5" fill={color} opacity="0.9"/>
+    <line x1="4.5" y1="4.8" x2="4.5" y2="6.5" stroke={color} strokeWidth="1.3" strokeLinecap="round"/>
+  </svg>
+);
+
+// Icône joueurs verticaux selon format + catégorie
+const PlayerIcon = ({ count, color, categorie }: { count: number; color: string; categorie?: string }) => {
+  const cat = (categorie || '').toLowerCase();
+  const isFeminin = cat.includes('fém') || cat.includes('fem') || cat.includes('dame') || cat.includes('vétane');
+  const isMixte = cat.includes('mix');
+  const femColor = '#f472b6'; // rose pour les femmes
+
+  // Composition des joueurs selon la catégorie
+  let players: JSX.Element[] = [];
+  if (isFeminin) {
+    players = Array.from({ length: count }).map((_, i) => <WomanIcon key={i} color={femColor} />);
+  } else if (isMixte) {
+    if (count === 1) {
+      players = [<ManIcon key={0} color={color} />];
+    } else if (count === 2) {
+      players = [<ManIcon key={0} color={color} />, <WomanIcon key={1} color={femColor} />];
+    } else {
+      // Triplette mixte : 2 hommes + 1 femme
+      players = [<ManIcon key={0} color={color} />, <ManIcon key={1} color={color} />, <WomanIcon key={2} color={femColor} />];
+    }
+  } else {
+    players = Array.from({ length: count }).map((_, i) => <ManIcon key={i} color={color} />);
+  }
+
+  return (
+    <div className="flex flex-col items-center justify-center gap-0.5">
+      {players}
+    </div>
+  );
 };
 
 const EventCard = ({ ev, onVideoSelect, onSelect }: { ev: UnifiedEvent; onVideoSelect: (v: Video) => void; onSelect?: (ev: UnifiedEvent) => void }) => {
   const color = SOURCE_COLOR[ev.source];
   const past  = isPast(ev.date, ev.dateFin);
-  const icon  = ev.format ? (FORMAT_ICON[ev.format] || '🎯') : (ev.source === 'live' ? '📺' : '🎯');
+  const players = ev.format === 'TRIPLETTE' || ev.format?.includes('TRIPLETTE') ? 3
+                : ev.format === 'DOUBLETTE' || ev.format?.includes('DOUBLETTE') ? 2
+                : ev.format === 'TÊTE-À-TÊTE' || ev.format === 'INDIVIDUEL' || ev.format?.includes('TÊTE') ? 1
+                : 0;
 
   return (
     <div
@@ -928,11 +989,13 @@ const EventCard = ({ ev, onVideoSelect, onSelect }: { ev: UnifiedEvent; onVideoS
       onClick={() => onSelect ? onSelect(ev) : ev.video && onVideoSelect(ev.video)}
     >
       <div className="flex gap-3 p-3">
-        <div className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center text-base"
+        <div className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center"
           style={{ background: color + '20' }}>
           {ev.source === 'live' && ev.video?.isLive
             ? <Radio size={16} className="animate-pulse" style={{ color }}/>
-            : <span>{icon}</span>}
+            : players > 0
+              ? <PlayerIcon count={players} color={color} categorie={ev.categorie} />
+              : <span className="text-base">🎯</span>}
         </div>
 
         <div className="flex-1 min-w-0">
