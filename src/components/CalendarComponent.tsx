@@ -926,50 +926,67 @@ const EventDetailSheet = ({ ev, onClose, onVideoSelect, user, onAuthRequired }: 
 };
 
 // ── EventCard ─────────────────────────────────────────────────
-// Bonhomme masculin SVG
+// Alias pour compatibilité (utilisé dans le bottom sheet modal)
 const ManIcon = ({ color, size = 9 }: { color: string; size?: number }) => (
-  <svg width={size} height={Math.round(size * 1.33)} viewBox="0 0 9 12" fill="none">
+  <svg width={size * 1.5} height={Math.round(size * 2)} viewBox="0 0 9 12" fill="none">
     <circle cx="4.5" cy="3" r="2.2" fill={color}/>
     <path d="M1 11c0-2 1.6-3.5 3.5-3.5S8 9 8 11" stroke={color} strokeWidth="1.4" strokeLinecap="round"/>
   </svg>
 );
-
-// Bonhomme féminin SVG (jupe triangulaire)
 const WomanIcon = ({ color, size = 9 }: { color: string; size?: number }) => (
-  <svg width={size} height={Math.round(size * 1.33)} viewBox="0 0 9 12" fill="none">
+  <svg width={size * 1.5} height={Math.round(size * 2)} viewBox="0 0 9 12" fill="none">
     <circle cx="4.5" cy="2.8" r="2.0" fill={color}/>
     <path d="M1.5 11.5L4.5 6.5L7.5 11.5" fill={color} opacity="0.9"/>
     <line x1="4.5" y1="4.8" x2="4.5" y2="6.5" stroke={color} strokeWidth="1.3" strokeLinecap="round"/>
   </svg>
 );
 
-// Icône joueurs verticaux selon format + catégorie
+// Pion masculin SVG dans un cercle
+const ManPion = ({ color }: { color: string }) => (
+  <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background: color + '25', border: `1.5px solid ${color}55` }}>
+    <svg width="14" height="18" viewBox="0 0 9 12" fill="none">
+      <circle cx="4.5" cy="3" r="2.2" fill={color}/>
+      <path d="M1 11c0-2 1.6-3.5 3.5-3.5S8 9 8 11" stroke={color} strokeWidth="1.4" strokeLinecap="round"/>
+    </svg>
+  </div>
+);
+
+// Pion féminin SVG dans un cercle
+const WomanPion = ({ color }: { color: string }) => (
+  <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background: color + '25', border: `1.5px solid ${color}55` }}>
+    <svg width="14" height="18" viewBox="0 0 9 12" fill="none">
+      <circle cx="4.5" cy="2.8" r="2.0" fill={color}/>
+      <path d="M1.5 11.5L4.5 6.5L7.5 11.5" fill={color} opacity="0.9"/>
+      <line x1="4.5" y1="4.8" x2="4.5" y2="6.5" stroke={color} strokeWidth="1.3" strokeLinecap="round"/>
+    </svg>
+  </div>
+);
+
+// Icône joueurs — pions empilés verticalement selon format + catégorie
 const PlayerIcon = ({ count, color, categorie }: { count: number; color: string; categorie?: string }) => {
   const cat = (categorie || '').toLowerCase();
   const isFeminin = cat.includes('fém') || cat.includes('fem') || cat.includes('dame') || cat.includes('vétane');
   const isMixte = cat.includes('mix');
-  const femColor = '#f472b6'; // rose pour les femmes
+  const femColor = '#f472b6';
 
-  // Composition des joueurs selon la catégorie
-  let players: JSX.Element[] = [];
+  let pions: JSX.Element[] = [];
   if (isFeminin) {
-    players = Array.from({ length: count }).map((_, i) => <WomanIcon key={i} color={femColor} />);
+    pions = Array.from({ length: count }).map((_, i) => <WomanPion key={i} color={femColor} />);
   } else if (isMixte) {
     if (count === 1) {
-      players = [<ManIcon key={0} color={color} />];
+      pions = [<ManPion key={0} color={color} />];
     } else if (count === 2) {
-      players = [<ManIcon key={0} color={color} />, <WomanIcon key={1} color={femColor} />];
+      pions = [<ManPion key={0} color={color} />, <WomanPion key={1} color={femColor} />];
     } else {
-      // Triplette mixte : 2 hommes + 1 femme
-      players = [<ManIcon key={0} color={color} />, <ManIcon key={1} color={color} />, <WomanIcon key={2} color={femColor} />];
+      pions = [<ManPion key={0} color={color} />, <ManPion key={1} color={color} />, <WomanPion key={2} color={femColor} />];
     }
   } else {
-    players = Array.from({ length: count }).map((_, i) => <ManIcon key={i} color={color} />);
+    pions = Array.from({ length: count }).map((_, i) => <ManPion key={i} color={color} />);
   }
 
   return (
     <div className="flex flex-col items-center justify-center gap-0.5">
-      {players}
+      {pions}
     </div>
   );
 };
@@ -989,13 +1006,12 @@ const EventCard = ({ ev, onVideoSelect, onSelect }: { ev: UnifiedEvent; onVideoS
       onClick={() => onSelect ? onSelect(ev) : ev.video && onVideoSelect(ev.video)}
     >
       <div className="flex gap-3 p-3">
-        <div className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center"
-          style={{ background: color + '20' }}>
+        <div className="flex-shrink-0 w-8 flex items-center justify-center self-center">
           {ev.source === 'live' && ev.video?.isLive
-            ? <Radio size={16} className="animate-pulse" style={{ color }}/>
+            ? <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: color + '20' }}><Radio size={16} className="animate-pulse" style={{ color }}/></div>
             : players > 0
               ? <PlayerIcon count={players} color={color} categorie={ev.categorie} />
-              : <span className="text-base">🎯</span>}
+              : <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: color + '20' }}><span className="text-base">🎯</span></div>}
         </div>
 
         <div className="flex-1 min-w-0">
