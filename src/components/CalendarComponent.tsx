@@ -1332,12 +1332,12 @@ const MonthView = ({ events, allEvents, onVideoSelect, forcedMonth, user, onAuth
         onScroll={onScroll}
         style={{
           display: 'flex',
-          overflowX: 'hidden',  // navigation via flèches uniquement — pas de swipe natif
-          scrollSnapType: 'none',
+          overflowX: 'scroll',
+          scrollSnapType: 'x mandatory',
           WebkitOverflowScrolling: 'touch',
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
-          touchAction: 'pan-y',  // pan-y = scroll vertical libre, swipe horizontal via JS
+          touchAction: 'pan-x pan-y',
         }}
       >
         {months.map((m, i) => (
