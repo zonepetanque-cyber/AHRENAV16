@@ -386,14 +386,19 @@ function buildEvents(videos: Video[]): UnifiedEvent[] {
 function applyFilters(events: UnifiedEvent[], f: AdvancedFilters): UnifiedEvent[] {
   return events.filter(ev => {
     // Filtre source/département
-    // Sources vides = aucun dept sélectionné → afficher quand même national/régional/live
+    const wantsMasters = f.categories.has('Masters de Pétanque');
+    const wantsPPF = f.categories.has('PPF Tour');
+    const hasBadgeFilter = wantsMasters || wantsPPF;
+
     if (f.sources.size > 0) {
       const alwaysOn = new Set(['national', 'regional', 'jeunes', 'live']);
       if (!alwaysOn.has(ev.source) && !f.sources.has(ev.source)) return false;
-    } else {
-      // Aucun dept sélectionné → rien du tout
+    } else if (!hasBadgeFilter) {
+      // Aucun dept ET pas de filtre circuit → rien
       return false;
     }
+    // Si filtre Masters/PPF actif sans département : on laisse passer tous les events
+    // (le filtre catégories ci-dessous fera la sélection finale)
 
     // Filtre mois
     if (f.month !== null) {
@@ -1475,18 +1480,16 @@ const DeptAccordion = ({ sources, onChange }: {
                 if (!dept.available) {
                   return (
                     <div key={dept.key}
-                      className="flex items-center gap-4 px-5 py-3 mx-0 cursor-not-allowed select-none"
+                      className="relative flex items-center gap-4 px-5 py-3 mx-0 cursor-not-allowed select-none overflow-hidden"
                     >
-                      {/* Checkbox désactivée avec croix */}
-                      <div className="w-5 h-5 rounded-md border-2 border-white/15 flex-shrink-0 bg-zinc-900 flex items-center justify-center">
-                        <X size={10} className="text-white/25" />
-                      </div>
-                      {/* Dot couleur très estompé */}
-                      <div className="w-3 h-3 rounded-full flex-shrink-0 opacity-30" style={{ background: dept.color }}/>
-                      {/* Label grisé italique */}
-                      <span className="text-sm italic text-white/30 flex-1 text-left">{dept.label}</span>
-                      {/* Badge orange "Bientôt" bien visible */}
-                      <span className="text-[9px] font-black uppercase tracking-wider text-amber-400/80 bg-amber-400/10 border border-amber-400/25 px-2 py-0.5 rounded-full flex-shrink-0 whitespace-nowrap">
+                      {/* Checkbox désactivée */}
+                      <div className="w-5 h-5 rounded-md border-2 border-white/10 flex-shrink-0 bg-transparent" />
+                      {/* Dot couleur estompé */}
+                      <div className="w-3 h-3 rounded-full flex-shrink-0 opacity-25" style={{ background: dept.color }}/>
+                      {/* Label grisé + trait barré */}
+                      <span className="text-sm text-white/30 flex-1 text-left line-through decoration-white/20 decoration-1">{dept.label}</span>
+                      {/* Badge "Bientôt" */}
+                      <span className="text-[9px] font-black uppercase tracking-wider text-amber-400/70 bg-amber-400/8 border border-amber-400/20 px-2 py-0.5 rounded-full flex-shrink-0 whitespace-nowrap">
                         Bientôt
                       </span>
                     </div>
