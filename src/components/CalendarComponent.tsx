@@ -1242,12 +1242,12 @@ const MonthView = ({ events, allEvents, onVideoSelect, forcedMonth, user, onAuth
         onScroll={onScroll}
         style={{
           display: 'flex',
-          overflowX: maxIdx > 0 ? 'auto' : 'hidden',
-          scrollSnapType: maxIdx > 0 ? 'x mandatory' : 'none',
+          overflowX: 'hidden',  // navigation via flèches uniquement — pas de swipe natif
+          scrollSnapType: 'none',
           WebkitOverflowScrolling: 'touch',
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
-          touchAction: maxIdx > 0 ? 'pan-x' : 'auto',
+          touchAction: 'pan-y',  // pan-y = scroll vertical libre, swipe horizontal via JS
         }}
       >
         {months.map((m, i) => (
@@ -1471,31 +1471,16 @@ const DeptAccordion = ({ sources, onChange }: {
                 if (!dept.available) {
                   return (
                     <div key={dept.key}
-                      className="relative flex items-center gap-3 px-4 py-3 cursor-not-allowed overflow-hidden mx-2 my-0.5 rounded-lg"
-                      style={{
-                        background: `repeating-linear-gradient(
-                          135deg,
-                          #3f3f46 0px, #3f3f46 1px,
-                          #27272a 1px, #27272a 9px
-                        )`,
-                      }}>
-                      {/* Checkbox barrée non cochable */}
-                      <div className="w-5 h-5 rounded-md border-2 border-zinc-600 flex items-center justify-center flex-shrink-0 bg-zinc-800 relative z-10">
-                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                          <line x1="1" y1="1" x2="9" y2="9" stroke="#71717a" strokeWidth="2" strokeLinecap="round"/>
-                          <line x1="9" y1="1" x2="1" y2="9" stroke="#71717a" strokeWidth="2" strokeLinecap="round"/>
-                        </svg>
-                      </div>
-                      <div className="w-2.5 h-2.5 rounded-full flex-shrink-0 relative z-10" style={{ background: dept.color, opacity: 0.4 }}/>
-                      {/* Texte barré avec line-through natif + couleur rouge */}
-                      <div className="flex-1 relative z-10 min-w-0">
-                        <span className="text-[13px] font-bold text-zinc-500"
-                          style={{ textDecoration: 'line-through', textDecorationColor: '#ef4444', textDecorationThickness: '2px' }}>
-                          {dept.label}
-                        </span>
-                      </div>
-                      <span className="text-[8px] font-black uppercase text-zinc-500 border border-zinc-600 px-2 py-0.5 rounded flex-shrink-0 relative z-10 tracking-wider bg-zinc-800">
-                        Bientôt
+                      className="flex items-center gap-4 px-5 py-3 mx-0 opacity-40 cursor-not-allowed select-none"
+                    >
+                      {/* Checkbox désactivée */}
+                      <div className="w-5 h-5 rounded-md border-2 border-white/15 flex-shrink-0 bg-transparent" />
+                      {/* Dot couleur estompé */}
+                      <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: dept.color, opacity: 0.5 }}/>
+                      {/* Label + badge */}
+                      <span className="text-sm font-bold text-white/40 flex-1 text-left">{dept.label}</span>
+                      <span className="text-[9px] font-black uppercase tracking-widest text-white/30 border border-white/15 px-2 py-0.5 rounded-full flex-shrink-0">
+                        Prochainement
                       </span>
                     </div>
                   );

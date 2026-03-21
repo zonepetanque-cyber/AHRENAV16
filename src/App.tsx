@@ -1411,7 +1411,7 @@ export default function App() {
               <div className="flex-shrink-0 w-8 h-8 rounded-full bg-black/15 flex items-center justify-center">
                 {updateLoading
                   ? <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 0.8, ease: 'linear' }}><RefreshCw size={14} className="text-black" /></motion.div>
-                  : <span className="text-sm">🆕</span>
+                  : <Download size={14} className="text-black" />
                 }
               </div>
 
