@@ -754,7 +754,10 @@ export default function App() {
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
     navigator.serviceWorker.ready.then(reg => {
+      // Si un SW est déjà en attente au démarrage → mise à jour dispo
       if (reg.waiting) setShowUpdateBanner(true);
+
+      // Surveiller l'arrivée d'un nouveau SW pendant la session
       reg.addEventListener('updatefound', () => {
         const w = reg.installing;
         if (!w) return;
@@ -763,6 +766,20 @@ export default function App() {
             setShowUpdateBanner(true);
           }
         });
+      });
+
+      // Vérifier une mise à jour 1 seule fois par heure (pas à chaque visibilitychange)
+      const HOUR = 60 * 60 * 1000;
+      const CHECK_KEY = 'ahrena_sw_last_check';
+      const checkUpdate = () => {
+        const last = parseInt(localStorage.getItem(CHECK_KEY) || '0');
+        if (Date.now() - last > HOUR) {
+          localStorage.setItem(CHECK_KEY, Date.now().toString());
+          reg.update();
+        }
+      };
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') checkUpdate();
       });
     });
   }, []);
