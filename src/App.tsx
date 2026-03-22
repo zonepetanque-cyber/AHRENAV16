@@ -1379,9 +1379,6 @@ export default function App() {
 
       <Header onProfileClick={() => navigateTo('club')} onSearchClick={() => {}} onFavoritesClick={() => navigateTo('favorites')} onMultiplexClick={() => setShowMultiplex(true)} isPremium={isPremium} multiplexCount={multiplexVideos.length} />
 
-      {/* Bannière mise à jour disponible */}
-      <AnimatePresence>
-      
       {refreshing && (
         <div className="fixed top-20 left-0 right-0 z-[60] flex justify-center">
           <div className="bg-red-600 text-white text-[10px] font-black px-4 py-1 rounded-full shadow-lg animate-bounce">
