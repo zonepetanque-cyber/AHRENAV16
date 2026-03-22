@@ -37,7 +37,7 @@ const VideoCard = ({ item, onPlay, onRemove }: { item: FavVideo; onPlay: (v: any
     </div>
     <button
       onClick={() => onRemove(item.id)}
-      className="absolute top-2 right-2 w-7 h-7 bg-black/60 backdrop-blur-sm rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+      className="absolute top-2 right-2 w-7 h-7 bg-black/60 backdrop-blur-sm rounded-full flex items-center justify-center opacity-60 group-hover:opacity-100 transition-opacity hover:bg-red-600 active:bg-red-600"
     >
       <Trash2 size={11} className="text-white"/>
     </button>
@@ -151,7 +151,7 @@ const ConcoursCard = ({ item, onRemove }: { item: FavConcours; onRemove: (id: st
       </div>
       <button
         onClick={() => onRemove(item.id)}
-        className="absolute top-3 right-3 w-7 h-7 bg-zinc-800 rounded-full flex items-center justify-center opacity-60 group-hover:opacity-100 transition-opacity hover:bg-red-600 active:bg-red-600 border border-white/10"
+        className="absolute bottom-3 right-3 w-7 h-7 bg-zinc-800 rounded-full flex items-center justify-center opacity-60 group-hover:opacity-100 transition-opacity hover:bg-red-600 active:bg-red-600 border border-white/10"
       >
         <Trash2 size={11} className="text-white"/>
       </button>
@@ -313,13 +313,13 @@ const FavoritesComponent = ({ onVideoSelect, user, onAuthRequired }: {
         </div>
 
         {/* Onglets */}
-        <div className="flex gap-2 px-5 mb-5">
+        <div className="flex gap-2 px-5 mb-5 overflow-x-auto no-scrollbar">
           {TABS.map(t => {
             const active = tab === t.key;
             const count = counts[t.key];
             return (
               <button key={t.key} onClick={() => setTab(t.key)}
-                className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl font-black text-[11px] uppercase tracking-wider transition-all flex-1 justify-center border"
+                className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl font-black text-[11px] uppercase tracking-wider transition-all flex-shrink-0 justify-center border"
                 style={active
                   ? { background: t.color, borderColor: t.color, color: 'white' }
                   : { background: 'transparent', borderColor: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.4)' }}
