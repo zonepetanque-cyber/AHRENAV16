@@ -48,7 +48,6 @@ const COORDS: Record<string, [number, number]> = {
   "St-Vit":                [47.1869, 5.8178],
   "Pierrefontaine":        [47.1100, 6.5400],
   "PFC":                   [47.3892, 6.7581],
-  "Montbéliard":           [47.5100, 6.7986],
 };
 
 const c = (ville: string): [number, number] => COORDS[ville] || [47.2378, 6.0241];

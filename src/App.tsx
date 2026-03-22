@@ -25,7 +25,7 @@ import { CHANNELS } from './constants';
 // OneSignal App ID — géré via VITE_ONESIGNAL_APP_ID dans .env / Vercel
 import { NATIONAUX_2026 } from './data/nationaux2026';
 import { CONCOURS_REGIONAUX_2026 } from './data/regionaux2026';
-import { fetchAllVideos, Video } from './services/youtubeService';
+import { fetchAllVideos, invalidateLiveCache, Video } from './services/youtubeService';
 import { supabase } from './lib/supabase';
 import { isFav, toggleFav, FavVideo, syncLocalToSupabase } from './services/favoritesService';
 import { linkUserToOneSignal, unlinkUserFromOneSignal, setVIPTag } from './services/notificationService';
@@ -849,6 +849,8 @@ export default function App() {
   const loadData = async () => {
     setLoading(true);
     try {
+      // Forcer un refresh du cache live à chaque rechargement manuel
+      invalidateLiveCache();
       const data = await fetchAllVideos();
       setLiveVideos(data.lives || []);
       setChannelVideos(data.channelVideos || {});
@@ -859,6 +861,20 @@ export default function App() {
       setRefreshing(false);
     }
   };
+
+  // ── Polling live toutes les 5 min ────────────────────────────────────────
+  useEffect(() => {
+    const POLL_INTERVAL = 5 * 60 * 1000; // 5 min
+    const pollLive = async () => {
+      try {
+        invalidateLiveCache();
+        const data = await fetchAllVideos();
+        setLiveVideos(data.lives || []);
+      } catch {}
+    };
+    const timer = setInterval(pollLive, POLL_INTERVAL);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     loadData();
