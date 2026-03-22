@@ -459,18 +459,29 @@ function applyFilters(events: UnifiedEvent[], f: AdvancedFilters): UnifiedEvent[
     }
 
     // ── Filtre catégorie de concours ──────────────────────────
-    // SECTION 1 (indépendante) : Tout / Départemental / Régional / National / Championnat
-    // SECTION 2 (indépendante) : Circuits — chaque circuit est un filtre additif autonome
-    // Les deux sections sont totalement indépendantes l'une de l'autre.
-    // Un événement doit passer SECTION 1 OU être un circuit de SECTION 2 coché.
+    // SECTION 1 : Tout / Départemental / Régional / National / Championnat
+    //   → Filtre le TYPE d'événement (départemental, régional, etc.)
+    //   → N'affecte JAMAIS les circuits (Masters, PPF, Jeunes, Marseillaise)
+    //
+    // SECTION 2 : Circuits (Masters, PPF, Jeunes, Marseillaise)
+    //   → Chaque circuit est un "département virtuel" indépendant
+    //   → Cocher un circuit = ajouter ce circuit EN PLUS de la sélection existante
+    //   → Le filtre source (dept) ne s'applique PAS aux circuits : ils sont "toutes sources"
 
     const t = (ev.typeEvent || '').toLowerCase();
     const isMarseillaise = ev.ville === 'Marseille' && ev.raw?.organisateur?.toLowerCase().includes('marseillaise');
+    const isJeunesEvent = ev.source === 'jeunes';
 
-    // SECTION 2 : circuits cochés — filtre autonome
-    if (isCircuitMatch) return true; // court-circuit : si circuit coché et match → passe toujours
+    // SECTION 2 — Circuits : si l'event matche un circuit coché → passe directement
+    // (indépendant du filtre dept et du filtre catégorie section 1)
+    if (isCircuitMatch) return true;
 
-    // SECTION 1 : filtre catégorie standard
+    // À partir d'ici : l'event n'est PAS un circuit coché
+    // → Les events de type "circuit seul" (jeunes, marseillaise) sont masqués
+    if (isJeunesEvent) return false;
+    if (isMarseillaise) return false;
+
+    // SECTION 1 — Catégorie standard
     const hasStdFilter =
       f.categories.has('Départemental') ||
       f.categories.has('Régional') ||
@@ -478,18 +489,14 @@ function applyFilters(events: UnifiedEvent[], f: AdvancedFilters): UnifiedEvent[
       f.categories.has('Championnat');
 
     if (hasStdFilter) {
-      // Des catégories standard sont cochées → appliquer le filtre
       const passesStd =
         (f.categories.has('Départemental') && t === 'concours') ||
         (f.categories.has('Régional')      && t === 'régional') ||
         (f.categories.has('National')      && t === 'national') ||
         (f.categories.has('Championnat')   && (t === 'championnat' || t === 'qualificatif'));
       if (!passesStd) return false;
-    } else {
-      // Rien coché en section 1 (= "Tout") → masquer les circuits par défaut
-      if (ev.source === 'jeunes') return false;
-      if (isMarseillaise) return false;
     }
+    // Sinon : "Tout" = tous les types standard passent (jeunes/marseillaise déjà filtrés ci-dessus)
 
     return true;
   });
@@ -1415,6 +1422,54 @@ const MonthView = ({ events, allEvents, onVideoSelect, forcedMonth, user, onAuth
         ))}
       </div>
 
+      {/* ── Badges circuits du mois ── */}
+      {(() => {
+        // Calculer les circuits présents dans le mois affiché (sur allEvents, pas les filtrés)
+        const monthStart = `${current.year}-${String(current.month + 1).padStart(2, '0')}-01`;
+        const monthEnd   = `${current.year}-${String(current.month + 1).padStart(2, '0')}-${String(new Date(current.year, current.month + 1, 0).getDate()).padStart(2, '0')}`;
+
+        const hasMasters = allEvents.some(ev =>
+          ev.date >= monthStart && ev.date <= monthEnd &&
+          (ev.badge === 'masters' || ev.badge === 'both')
+        );
+        const hasPPF = allEvents.some(ev =>
+          ev.date >= monthStart && ev.date <= monthEnd &&
+          (ev.badge === 'ppf' || ev.badge === 'both')
+        );
+        const hasJeunes = allEvents.some(ev =>
+          ev.date >= monthStart && ev.date <= monthEnd &&
+          ev.source === 'jeunes'
+        );
+        const hasMarseillaise = allEvents.some(ev =>
+          ev.date >= monthStart && ev.date <= monthEnd &&
+          ev.ville === 'Marseille' && ev.raw?.organisateur?.toLowerCase().includes('marseillaise')
+        );
+
+        const badges = [
+          hasMasters      && { key: 'masters',      logo: CIRCUIT_LOGOS.masters,      label: 'Masters' },
+          hasPPF          && { key: 'ppf',           logo: CIRCUIT_LOGOS.ppf,          label: 'PPF Tour' },
+          hasJeunes       && { key: 'jeunes',        logo: CIRCUIT_LOGOS.jeunes,       label: 'Cir. Jeunes' },
+          hasMarseillaise && { key: 'marseillaise',  logo: CIRCUIT_LOGOS.marseillaise, label: 'La Marseillaise' },
+        ].filter(Boolean) as { key: string; logo: string; label: string }[];
+
+        if (badges.length === 0) return null;
+        return (
+          <div className="px-4 pt-3 pb-1">
+            <div className="flex flex-wrap gap-2">
+              {badges.map(b => (
+                <div
+                  key={b.key}
+                  className="flex items-center gap-1.5 bg-white/5 border border-white/10 rounded-full px-2.5 py-1.5"
+                >
+                  <img src={b.logo} alt={b.label} className="h-4 w-auto object-contain flex-shrink-0" />
+                  <span className="text-[10px] font-bold text-white/60 whitespace-nowrap">{b.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Bottom sheet événements du jour */}
       <AnimatePresence>
         {selected && selectedEvents.length > 0 && (
@@ -1651,20 +1706,30 @@ const DeptAccordion = ({ sources, onChange }: {
             {/* Bouton Appliquer */}
             <div className="px-5 pt-3 pb-5 border-t border-white/8 flex-shrink-0 space-y-2.5">
 
-              {/* Case à cocher INCLURE LES LIMITROPHES */}
-              {activeCount > 0 && (() => {
-                const limitrophes = getLimitrophes(sources);
+              {/* Case à cocher INCLURE LES LIMITROPHES — toujours visible */}
+              {(() => {
+                // Calculer les limitrophes depuis la sélection actuelle OU le dept mémorisé
+                const baseSources = activeCount > 0
+                  ? sources
+                  : localStorage.getItem('ahrena_saved_dept')
+                    ? new Set([localStorage.getItem('ahrena_saved_dept')!])
+                    : new Set<string>();
+                const limitrophes = getLimitrophes(baseSources);
                 const allIncluded = limitrophes.length > 0 && limitrophes.every(k => sources.has(k));
-                if (limitrophes.length === 0) return null;
+                const baseDeptLabel = activeCount === 0 && localStorage.getItem('ahrena_saved_dept')
+                  ? DEPT_OPTIONS.find(d => d.key === localStorage.getItem('ahrena_saved_dept'))?.label?.split(' (')[0]
+                  : null;
                 return (
                   <button
                     onClick={() => {
                       const next = new Set(sources);
+                      // Si aucun dept sélectionné mais dept mémorisé, l'ajouter aussi
+                      if (activeCount === 0 && localStorage.getItem('ahrena_saved_dept')) {
+                        next.add(localStorage.getItem('ahrena_saved_dept')!);
+                      }
                       if (allIncluded) {
-                        // Décocher → retirer les limitrophes
                         limitrophes.forEach(k => next.delete(k));
                       } else {
-                        // Cocher → ajouter les limitrophes
                         limitrophes.forEach(k => next.add(k));
                       }
                       onChange(next);
@@ -1678,12 +1743,17 @@ const DeptAccordion = ({ sources, onChange }: {
                     <div className={`w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 transition-colors ${allIncluded ? 'bg-amber-500' : 'bg-white/10 border border-white/20'}`}>
                       {allIncluded && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                     </div>
-                    <span className="flex-1 text-left text-[11px] font-black uppercase tracking-wide" style={{ color: '#fbbf24' }}>
-                      Inclure les limitrophes
-                    </span>
-                    {!allIncluded && (
-                      <span className="bg-amber-400/20 text-amber-300 text-[9px] px-2 py-0.5 rounded-full font-black">
-                        +{limitrophes.length} dept{limitrophes.length > 1 ? 's' : ''}
+                    <div className="flex-1 text-left">
+                      <span className="text-[11px] font-black uppercase tracking-wide" style={{ color: '#fbbf24' }}>
+                        Inclure les limitrophes
+                      </span>
+                      {baseDeptLabel && (
+                        <p className="text-[10px] text-amber-300/50 mt-0.5">Autour de {baseDeptLabel}</p>
+                      )}
+                    </div>
+                    {limitrophes.length > 0 && (
+                      <span className="bg-amber-400/20 text-amber-300 text-[9px] px-2 py-0.5 rounded-full font-black flex-shrink-0">
+                        {allIncluded ? '✓' : `+${limitrophes.length}`}
                       </span>
                     )}
                   </button>
