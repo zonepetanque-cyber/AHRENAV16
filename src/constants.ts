@@ -1,6 +1,7 @@
 // Les chaînes YouTube suivies par AHRENA
 export const CHANNELS = [
   { id: "UCZeAfPeaRc_es11c0YSOhGg", name: "Boulistenaute", url: "https://youtube.com/@boulistenautepetanque", avatar: "https://yt3.googleusercontent.com/ytc/AIdro_kCzBm7w9-vZ5ZFAFLRiHcEBMr4S4xHqRNVVPxF6w=s88-c-k-c0x00ffffff-no-rj" },
+  { id: "UCbleERWnsO3aZJiGMI1oarw", name: "Horizon Pétanque", url: "https://youtube.com/@horizonpetanque", avatar: "" },
   { id: "UCHVNyFEDNOq6q4OkG2YzIQQ", name: "Sportmag", url: "https://youtube.com/@tvsportmag", avatar: "https://yt3.googleusercontent.com/ytc/AIdro_lQnCXGQqAEFbJBCIWMxMTHVV_1sJPJMqxlGdnN=s88-c-k-c0x00ffffff-no-rj" },
   { id: "UCvSPMtEs1EtxC_Ik0KgoClQ", name: "Sportmediamat", url: "https://youtube.com/@sportmediamat", avatar: "https://yt3.googleusercontent.com/ytc/AIdro_nzxV7vLa6KZwjVn_DkPgTRALGGBkHCLhxZwDFo=s88-c-k-c0x00ffffff-no-rj" },
   { id: "UCQX6vA1lYtP6nv8XROK56pQ", name: "Petanque Academy", url: "https://youtube.com/@petanqueacademy", avatar: "https://yt3.googleusercontent.com/ytc/AIdro_lx6cAl8SZMh4ZkZOOkILe9CUdFQx0GTAfvHuFj=s88-c-k-c0x00ffffff-no-rj" },

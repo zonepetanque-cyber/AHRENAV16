@@ -5,9 +5,9 @@
 //   2. Les 10 dernières vidéos de chaque chaîne (RSS gratuit, 0 quota)
 //   3. Les avatars des chaînes (1 appel channels, cache 24h)
 //
-// Coût : 9 chaînes × 1 appel upcoming × 100 = 900 unités
+// Coût : 10 chaînes × 1 appel upcoming × 100 = 1000 unités
 //        + 1 appel avatars (~1 unité)
-//        = ~901 unités × 1 refresh/jour = ~901 unités/jour ✅
+//        = ~1001 unités × 1 refresh/jour ✅
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
@@ -22,6 +22,7 @@ const CHANNELS = [
   { id: "UCyQAL0ZOE9YLXfkndhlgJMQ", name: "PPF" },
   { id: "UCAcERCZ6CKxXEnwQTiaooBw", name: "FFPJP" },
   { id: "UCs5dyTykvpzwSyL5EsjcXNg", name: "FFSB" },
+  { id: "UCbleERWnsO3aZJiGMI1oarw", name: "Horizon Pétanque" },
 ];
 
 const API_KEY = process.env.YOUTUBE_API_KEY || '';
@@ -37,8 +38,6 @@ async function fetchChannelRSS(channelId: string, channelName: string) {
     const xml = await res.text();
     const ids = [...xml.matchAll(/<yt:videoId>([^<]+)<\/yt:videoId>/g)].map(m => m[1].trim());
     const titles = [...xml.matchAll(/<title>([^<]*)<\/title>/g)].map(m => m[1].trim()).slice(1);
-    // On récupère 25 vidéos en tampon — l'app filtrera les blacklistées
-    // et affichera toujours les 10 premières non-masquées
     return ids.slice(0, 25).map((id, i) => ({
       id,
       title: titles[i] || 'Vidéo pétanque',
@@ -57,7 +56,6 @@ async function fetchUpcoming() {
     const channelNameMap: Record<string, string> = {};
     CHANNELS.forEach(ch => { channelNameMap[ch.id] = ch.name; });
 
-    // 1 appel upcoming par chaîne en parallèle
     const results = await Promise.all(
       CHANNELS.map(async (channel) => {
         try {
@@ -77,13 +75,11 @@ async function fetchUpcoming() {
     const allItems = results.flat();
     if (allItems.length === 0) return [];
 
-    // Dédoublonner
     const uniqueMap = new Map();
     allItems.forEach((item: any) => {
       if (item?.id?.videoId) uniqueMap.set(item.id.videoId, item);
     });
 
-    // 1 seul appel details pour avoir scheduledStartTime et filtrer les dates passées
     const ids = Array.from(uniqueMap.keys()).join(',');
     const resDetails = await fetch(
       `https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails,snippet&id=${ids}&key=${API_KEY}`,
@@ -96,11 +92,8 @@ async function fetchUpcoming() {
 
     const upcoming = (details.items || [])
       .filter((item: any) => {
-        // Garder uniquement les vrais à venir non terminés
         if (item.liveStreamingDetails?.actualEndTime) return false;
-        // Accepter aussi les lives qui viennent de démarrer (liveBroadcastContent peut passer à 'live' avec délai RSS)
         if (item.snippet.liveBroadcastContent !== 'upcoming' && item.snippet.liveBroadcastContent !== 'live') return false;
-        // Exclure uniquement si l'heure prévue est passée depuis plus de 30 min (tolérance démarrage tardif)
         const scheduledTime = item.liveStreamingDetails?.scheduledStartTime || item.snippet.publishedAt;
         if (scheduledTime && new Date(scheduledTime).getTime() < now - 30 * 60 * 1000) return false;
         return true;
@@ -118,7 +111,6 @@ async function fetchUpcoming() {
         publishedAt: item.snippet.publishedAt,
       }));
 
-    // Tri chronologique + interleave des chaînes
     const sorted = upcoming.sort((a: any, b: any) => {
       const dateA = new Date(a.scheduledStartTime || 0).getTime();
       const dateB = new Date(b.scheduledStartTime || 0).getTime();
@@ -166,7 +158,6 @@ async function fetchChannelAvatars(): Promise<Record<string, string>> {
 // ── Handler principal ────────────────────────────────────────────────────────
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Cache 24h — 1 refresh/jour
-  // Coût : 9 × 100 (upcoming) + 1 (details) + 1 (avatars) = ~902 unités/jour ✅
   res.setHeader('Cache-Control', 's-maxage=86400');
   res.setHeader('Access-Control-Allow-Origin', '*');
 
@@ -182,7 +173,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       channelVideos[ch.id] = channelResults[i];
     });
 
-    // Attacher les avatars aux lives à venir
     const upcomingWithAvatars = (upcomingLives as any[]).map(video => ({
       ...video,
       channelAvatar: (channelAvatars as Record<string, string>)[video.channelId || ''] || '',

@@ -34,6 +34,10 @@ import { CONCOURS_DROME_2026, DEPT_DROME } from '../data/drome2026';
 import { CONCOURS_EURE_2026, DEPT_EURE } from '../data/eure2026';
 import { CONCOURS_EURE_ET_LOIR_2026, DEPT_EURE_ET_LOIR } from '../data/eureetloir2026';
 import { CONCOURS_DOUBS_2026, DEPT_DOUBS } from '../data/doubs2026';
+import { CONCOURS_FINISTERE_2026, DEPT_FINISTERE } from '../data/finistere2026';
+import { CONCOURS_VETERANS_FINISTERE_2026 } from '../data/veteransfinistere2026';
+import { CONCOURS_GARD_2026, DEPT_GARD } from '../data/gard2026';
+import { CONCOURS_HG_2026, DEPT_HG } from '../data/hg2026';
 import {
   Calendar as CalendarIcon, Clock,
   List, MapPin, SlidersHorizontal, X, RotateCcw, Check, Radio, ChevronDown, Heart
@@ -54,19 +58,19 @@ const MONTHS_SHORT = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','O
 const DAYS_FR   = ['L','M','M','J','V','S','D'];
 
 // ── Source meta ───────────────────────────────────────────────
-type EventSource = 'live' | 'national' | 'allier' | 'nievre' | 'ain' | 'aisne' | 'ahp' | 'am' | 'ardeche' | 'ariege' | 'aube' | 'aude' | 'aveyron' | 'bdr' | 'calvados' | 'cantal' | 'charente_maritime' | 'cher' | 'correze' | 'corse2a' | 'corse2b' | 'cotedor' | 'cotesdarmor' | 'creuse' | 'dordogne' | 'doubs' | 'drome' | 'eure' | 'eureetloir' | 'jeunes' | 'regional';
+type EventSource = 'live' | 'national' | 'allier' | 'nievre' | 'ain' | 'aisne' | 'ahp' | 'am' | 'ardeche' | 'ariege' | 'aube' | 'aude' | 'aveyron' | 'bdr' | 'calvados' | 'cantal' | 'charente_maritime' | 'cher' | 'correze' | 'corse2a' | 'corse2b' | 'cotedor' | 'cotesdarmor' | 'creuse' | 'dordogne' | 'doubs' | 'drome' | 'eure' | 'eureetloir' | 'finistere' | 'gard' | 'hg' | 'jeunes' | 'regional';
 
 const SOURCE_COLOR: Record<EventSource, string> = {
   live: '#dc2626', national: '#3b82f6', allier: '#10b981',
   nievre: '#f97316', ain: '#8b5cf6', aisne: '#06b6d4',
   ahp: '#84cc16', am: '#0066CC', ardeche: '#f97316', ariege: '#e11d48',
-  aube: '#f43f5e', aude: '#a855f7', aveyron: '#f97316', bdr: '#ef4444', calvados: '#3b82f6', cantal: '#d97706', charente_maritime: '#0891b2', cher: '#dc2626', correze: '#7e22ce', corse2a: '#e8a020', corse2b: '#9333ea', cotedor: '#c2410c', cotesdarmor: '#0369a1', creuse: '#7e22ce', dordogne: '#16a34a', doubs: '#6366f1', drome: '#f97316', eure: '#8b5cf6', eureetloir: '#10b981', jeunes: '#10b981', regional: '#f59e0b',
+  aube: '#f43f5e', aude: '#a855f7', aveyron: '#f97316', bdr: '#ef4444', calvados: '#3b82f6', cantal: '#d97706', charente_maritime: '#0891b2', cher: '#dc2626', correze: '#7e22ce', corse2a: '#e8a020', corse2b: '#9333ea', cotedor: '#c2410c', cotesdarmor: '#0369a1', creuse: '#7e22ce', dordogne: '#16a34a', doubs: '#6366f1', drome: '#f97316', eure: '#8b5cf6', eureetloir: '#10b981', finistere: '#0ea5e9', gard: '#ef4444', hg: '#8b5cf6', jeunes: '#10b981', regional: '#f59e0b',
 };
 const SOURCE_LABEL: Record<EventSource, string> = {
   live: 'Direct', national: 'National', allier: 'Allier (03)',
   nievre: 'Nièvre (58)', ain: 'Ain (01)', aisne: 'Aisne (02)',
   ahp: 'Alpes-de-Haute-Provence (04)', am: 'Alpes-Mar. (06)', ardeche: 'Ardèche (07)',
-  ariege: 'Ariège (09)', aube: 'Aube (10)', aude: 'Aude (11)', aveyron: 'Aveyron (12)', bdr: 'Bouches-du-Rhône (13)', calvados: 'Calvados (14)', cantal: 'Cantal (15)', charente_maritime: 'Charente-Maritime (17)', cher: 'Cher (18)', correze: 'Corrèze (19)', corse2a: 'Corse-du-Sud (2A)', corse2b: 'Haute-Corse (2B)', cotedor: 'Côte-d\'Or (21)', cotesdarmor: 'Côtes-d\'Armor (22)', creuse: 'Creuse (23)', dordogne: 'Dordogne (24)', doubs: 'Doubs (25)', drome: 'Drôme (26)', eure: 'Eure (27)', eureetloir: 'Eure-et-Loir (28)', jeunes: 'Circuit National Jeunes', regional: 'Régionaux',
+  ariege: 'Ariège (09)', aube: 'Aube (10)', aude: 'Aude (11)', aveyron: 'Aveyron (12)', bdr: 'Bouches-du-Rhône (13)', calvados: 'Calvados (14)', cantal: 'Cantal (15)', charente_maritime: 'Charente-Maritime (17)', cher: 'Cher (18)', correze: 'Corrèze (19)', corse2a: 'Corse-du-Sud (2A)', corse2b: 'Haute-Corse (2B)', cotedor: 'Côte-d\'Or (21)', cotesdarmor: 'Côtes-d\'Armor (22)', creuse: 'Creuse (23)', dordogne: 'Dordogne (24)', doubs: 'Doubs (25)', drome: 'Drôme (26)', eure: 'Eure (27)', eureetloir: 'Eure-et-Loir (28)', finistere: 'Finistère (29)', gard: 'Gard (30)', hg: 'Haute-Garonne (31)', jeunes: 'Circuit National Jeunes', regional: 'Régionaux',
 };
 
 const DEPT_LINKS: Record<string, { facebook: string; site: string; code: string } | null> = {
@@ -98,6 +102,9 @@ const DEPT_LINKS: Record<string, { facebook: string; site: string; code: string 
   drome:              { facebook: DEPT_DROME.facebook,              site: DEPT_DROME.site,              code: '26' },
   eure:               { facebook: DEPT_EURE.facebook,               site: DEPT_EURE.site,               code: '27' },
   eureetloir:         { facebook: DEPT_EURE_ET_LOIR.facebook,         site: DEPT_EURE_ET_LOIR.site,         code: '28' },
+  finistere:          { facebook: DEPT_FINISTERE.facebook,          site: DEPT_FINISTERE.site,          code: '29' },
+  gard:               { facebook: DEPT_GARD.facebook,               site: DEPT_GARD.site,               code: '30' },
+  hg:                 { facebook: DEPT_HG.facebook,                 site: DEPT_HG.site,                 code: '31' },
   jeunes:             { facebook: SOURCE_JEUNES.facebook,            site: SOURCE_JEUNES.site,           code: 'FR' },
 };
 
@@ -133,6 +140,9 @@ const DEPT_DATA: { key: EventSource | string; label: string; color: string; last
   { key: 'drome',               label: 'Drôme (26)',                 color: '#f97316' },
   { key: 'eure',                label: 'Eure (27)',                   color: '#8b5cf6' },
   { key: 'eureetloir',          label: 'Eure-et-Loir (28)',           color: '#10b981' },
+  { key: 'finistere',           label: 'Finistère (29)',              color: '#0ea5e9' },
+  { key: 'gard',                label: 'Gard (30)',                   color: '#ef4444' },
+  { key: 'hg',                  label: 'Haute-Garonne (31)',           color: '#8b5cf6' },
   { key: 'nievre',  label: 'Nièvre (58)',         color: '#ea580c' },
 ];
 
@@ -167,6 +177,9 @@ const DEPT_LAST_DATE: Record<string, string> = {
   drome:             '2026-12-31',
   eure:              '2026-12-31',
   eureetloir:        '2026-12-31',
+  finistere:         '2026-12-31', // calendrier complet jan-déc
+  gard:              '2026-12-31',
+  hg:                '2026-12-31',
   nievre:            '2026-12-31',
   national:          '2027-12-31',
   regional:          '2027-12-31',
@@ -216,6 +229,9 @@ const DEPT_BBOX: Record<string, [number, number, number, number]> = {
   drome:             [44.12, 45.32, 4.64,  5.58],
   eure:              [48.67, 49.51, 0.44,  1.88],
   eureetloir:        [47.96, 48.95, 0.79,  2.01],
+  finistere:         [47.65, 48.75, -5.15, -3.45],
+  gard:              [43.45, 44.45,  3.55,  4.85],
+  hg:                [42.68, 44.03,  0.30,  2.05],
   nievre:            [46.56, 47.58, 3.07,  4.10],
 };
 
@@ -255,6 +271,7 @@ const LIMITROPHES: Record<string, string[]> = {
   drome:             ['ardeche', 'vaucluse', 'hautes_alpes', 'isere', 'ain'],
   eure:              ['seine_maritime', 'oise', 'seine_et_marne', 'eure_et_loir', 'calvados'],
   eureetloir:        ['eure', 'yvelines', 'essonne', 'loiret', 'loir_et_cher', 'sarthe', 'orne'],
+  finistere:         ['cotesdarmor'],
   corse2a:           ['corse2b'],
   corse2b:           ['corse2a'],
   cotedor:           ['aube', 'yonne', 'nievre', 'saone_loire', 'jura', 'hte_saone'],
@@ -374,6 +391,10 @@ function buildEvents(videos: Video[]): UnifiedEvent[] {
     addDept(CONCOURS_DROME_2026 as any[], 'drome');
     addDept(CONCOURS_EURE_2026 as any[], 'eure');
     addDept(CONCOURS_EURE_ET_LOIR_2026 as any[], 'eureetloir');
+    addDept(CONCOURS_FINISTERE_2026 as any[], 'finistere');
+    addDept(CONCOURS_VETERANS_FINISTERE_2026 as any[], 'finistere');
+    addDept(CONCOURS_GARD_2026 as any[], 'gard');
+    addDept(CONCOURS_HG_2026 as any[], 'hg');
   addDept(CONCOURS_JEUNES_2026            as any[], 'jeunes');
 
   CONCOURS_REGIONAUX_2026.forEach(c => events.push({
