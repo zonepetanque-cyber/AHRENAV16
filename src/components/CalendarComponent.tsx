@@ -1,8 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { isFav, toggleFav, FavConcours } from '../services/favoritesService';
-const CalendarMapView = React.lazy(() => import('./CalendarMapView'));
-
 import { motion, AnimatePresence } from 'motion/react';
 import { Video } from '../services/youtubeService';
 import { NATIONAUX_2026, National } from '../data/nationaux2026';
@@ -40,6 +38,9 @@ import {
   Calendar as CalendarIcon, Clock,
   List, MapPin, SlidersHorizontal, X, RotateCcw, Check, Radio, ChevronDown, Heart
 } from 'lucide-react';
+
+// Carte — chargement lazy pour isoler leaflet du reste
+const CalendarMapView = React.lazy(() => import('./CalendarMapView'));
 
 // ── Helpers ───────────────────────────────────────────────────
 const isoDate = (d: Date) => d.toISOString().split('T')[0];
