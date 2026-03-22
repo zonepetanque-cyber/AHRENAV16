@@ -1491,9 +1491,8 @@ export default function App() {
                 </h2>
                 <p className="text-white/40 text-sm leading-relaxed">
                   {updateLoading
-                    ? 'Installation en cours, l'application va redémarrer.'
-                    : 'Une nouvelle version d'AHRENA est disponible.
-Mettez à jour pour profiter des dernières améliorations.'}
+                    ? "Installation en cours, l'application va redémarrer."
+                    : "Une nouvelle version d'AHRENA est disponible. Mettez à jour pour profiter des dernières améliorations."}
                 </p>
               </motion.div>
 
