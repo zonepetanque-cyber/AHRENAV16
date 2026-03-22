@@ -1429,21 +1429,25 @@ const MonthView = ({ events, allEvents, onVideoSelect, forcedMonth, user, onAuth
         const monthStart = `${current.year}-${String(current.month + 1).padStart(2, '0')}-01`;
         const monthEnd   = `${current.year}-${String(current.month + 1).padStart(2, '0')}-${String(new Date(current.year, current.month + 1, 0).getDate()).padStart(2, '0')}`;
 
+        // Un event est "dans le mois" si sa date de début OU sa date de fin est dans le mois
+        // (couvre les events multi-jours qui commencent le mois précédent)
+        const inMonth = (ev: UnifiedEvent) => {
+          const start = ev.date;
+          const end = ev.dateFin || ev.date;
+          return start <= monthEnd && end >= monthStart;
+        };
+
         const hasMasters = events.some(ev =>
-          ev.date >= monthStart && ev.date <= monthEnd &&
-          (ev.badge === 'masters' || ev.badge === 'both')
+          inMonth(ev) && (ev.badge === 'masters' || ev.badge === 'both')
         );
         const hasPPF = events.some(ev =>
-          ev.date >= monthStart && ev.date <= monthEnd &&
-          (ev.badge === 'ppf' || ev.badge === 'both')
+          inMonth(ev) && (ev.badge === 'ppf' || ev.badge === 'both')
         );
         const hasJeunes = events.some(ev =>
-          ev.date >= monthStart && ev.date <= monthEnd &&
-          ev.source === 'jeunes'
+          inMonth(ev) && ev.source === 'jeunes'
         );
         const hasMarseillaise = events.some(ev =>
-          ev.date >= monthStart && ev.date <= monthEnd &&
-          ev.ville === 'Marseille' && ev.raw?.organisateur?.toLowerCase().includes('marseillaise')
+          inMonth(ev) && ev.ville === 'Marseille' && ev.raw?.organisateur?.toLowerCase().includes('marseillaise')
         );
 
         const badges = [
