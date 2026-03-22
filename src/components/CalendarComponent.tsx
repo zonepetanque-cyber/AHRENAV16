@@ -1,8 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { isFav, toggleFav, FavConcours } from '../services/favoritesService';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
-import L from 'leaflet';
+const CalendarMapView = React.lazy(() => import('./CalendarMapView'));
 
 import { motion, AnimatePresence } from 'motion/react';
 import { Video } from '../services/youtubeService';
@@ -1865,48 +1864,11 @@ const DeptAccordion = ({ sources, onChange }: {
 
 
 // ── MapView — carte interactive des concours ──────────────────
-const FitBounds = ({ mappable }: { mappable: UnifiedEvent[] }) => {
-  const map = useMap();
-  React.useEffect(() => {
-    if (mappable.length === 0) return;
-    const pts: [number,number][] = mappable.map(e => [e.raw.lat, e.raw.lng]);
-    try { map.fitBounds(pts, { padding: [40,40], maxZoom: 10 }); } catch {}
-  }, [mappable.length]);
-  return null;
-};
-
-const createMarkerIcon = (color: string, type: string) => {
-  const size = type === 'NATIONAL' ? 20 : (type === 'RÉGIONAL' || type === 'REGIONAL') ? 16 : 12;
-  const shape = type === 'NATIONAL'
-    ? `<polygon points="10,1 12,7 19,7 13,12 15,19 10,14 5,19 7,12 1,7 8,7" fill="${color}" stroke="white" stroke-width="1.5"/>`
-    : (type === 'RÉGIONAL' || type === 'REGIONAL')
-      ? `<rect x="3" y="3" width="14" height="14" transform="rotate(45 10 10)" fill="${color}" stroke="white" stroke-width="1.5"/>`
-      : `<circle cx="10" cy="10" r="8" fill="${color}" stroke="white" stroke-width="1.5"/>`;
-  return L.divIcon({
-    className: '',
-    html: `<svg width="${size}" height="${size}" viewBox="0 0 20 20">${shape}</svg>`,
-    iconSize: [size, size], iconAnchor: [size/2, size/2], popupAnchor: [0, -size/2],
-  });
-};
-
 const MapView = ({ events, onVideoSelect, user, onAuthRequired }: {
   events: UnifiedEvent[]; onVideoSelect: (v: Video) => void; user?: any; onAuthRequired?: () => void;
 }) => {
   const [detailEv, setDetailEv] = React.useState<UnifiedEvent | null>(null);
-
-  const mappable = React.useMemo(() =>
-    events.filter(ev => ev.raw?.lat && ev.raw?.lng && !isNaN(Number(ev.raw.lat)) && !isNaN(Number(ev.raw.lng))),
-  [events]);
-
-  const grouped = React.useMemo(() => {
-    const map = new Map<string, UnifiedEvent[]>();
-    mappable.forEach(ev => {
-      const key = `${Number(ev.raw.lat).toFixed(3)},${Number(ev.raw.lng).toFixed(3)}`;
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(ev);
-    });
-    return map;
-  }, [mappable]);
+  const mappable = events.filter(ev => ev.raw?.lat && ev.raw?.lng && !isNaN(Number(ev.raw.lat)));
 
   return (
     <div className="relative flex flex-col" style={{ height: 'calc(100vh - 200px)' }}>
@@ -1914,47 +1876,11 @@ const MapView = ({ events, onVideoSelect, user, onAuthRequired }: {
         <MapPin size={11} className="text-white/40"/>
         <span className="text-white/40 text-[11px]">{mappable.length} concours localisés</span>
       </div>
-
       <div className="flex-1 mx-3 rounded-2xl overflow-hidden border border-white/10">
-        <MapContainer center={[46.8, 2.3]} zoom={6} style={{ width: '100%', height: '100%' }} zoomControl={true}>
-          <TileLayer
-            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-            attribution="© CARTO"
-          />
-          <FitBounds mappable={mappable} />
-          {Array.from(grouped.entries()).map(([key, evs]) => {
-            const ev = evs[0];
-            const color = SOURCE_COLOR[ev.source] || '#dc2626';
-            return (
-              <Marker
-                key={key}
-                position={[ev.raw.lat, ev.raw.lng]}
-                icon={createMarkerIcon(color, ev.typeEvent || 'CONCOURS')}
-                eventHandlers={{ click: () => evs.length === 1 && setDetailEv(ev) }}
-              >
-                {evs.length > 1 && (
-                  <Popup>
-                    <div style={{ background: '#18181b', borderRadius: 10, padding: 8, minWidth: 180 }}>
-                      <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, margin: '0 0 6px' }}>
-                        {evs.length} concours · {ev.ville}
-                      </p>
-                      {evs.map(e => (
-                        <button key={e.id} onClick={() => setDetailEv(e)}
-                          style={{ display: 'block', width: '100%', textAlign: 'left', padding: '4px 0',
-                            borderBottom: '1px solid rgba(255,255,255,0.05)', color: 'white', fontSize: 11, fontWeight: 700 }}>
-                          {e.title}
-                          <span style={{ color: SOURCE_COLOR[e.source], fontSize: 9, marginLeft: 6 }}>{SOURCE_LABEL[e.source]}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </Popup>
-                )}
-              </Marker>
-            );
-          })}
-        </MapContainer>
+        <React.Suspense fallback={<div className="w-full h-full flex items-center justify-center bg-zinc-900"><span className="text-white/30 text-sm">Chargement de la carte...</span></div>}>
+          <CalendarMapView events={events} onSelect={setDetailEv} />
+        </React.Suspense>
       </div>
-
       <div className="flex items-center gap-4 px-4 py-2">
         {([['NATIONAL','polygon'],['RÉGIONAL','rect'],['DÉPART.','circle']] as [string,string][]).map(([label, shape]) => (
           <div key={label} className="flex items-center gap-1">
@@ -1967,13 +1893,13 @@ const MapView = ({ events, onVideoSelect, user, onAuthRequired }: {
           </div>
         ))}
       </div>
-
       {detailEv && (
         <EventDetailSheet ev={detailEv} onClose={() => setDetailEv(null)} onVideoSelect={onVideoSelect} user={user} onAuthRequired={onAuthRequired}/>
       )}
     </div>
   );
 };
+
 
 // ── MonthStrip — filtre par mois ──────────────────────────────
 const MonthStrip = ({ selectedMonth, onChange, availableMonths }: {
