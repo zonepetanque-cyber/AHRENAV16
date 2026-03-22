@@ -17,10 +17,9 @@ type Tab = 'live' | 'videos';
 const MultiplexView: React.FC<MultiplexViewProps> = ({
   videos, availableLives, availableVideos, onRemove, onAdd, onClose
 }) => {
-  const [showPicker, setShowPicker] = useState(false);
+  // Ouvrir le picker directement si aucune vidéo (accès via icône header)
+  const [showPicker, setShowPicker] = useState(videos.length === 0);
   const [tab, setTab] = useState<Tab>('live');
-
-  if (videos.length === 0) return null;
 
   const alreadyIds = new Set(videos.map(v => v.id));
   const addableLives  = availableLives.filter(v => !alreadyIds.has(v.id));
@@ -61,52 +60,93 @@ const MultiplexView: React.FC<MultiplexViewProps> = ({
         </div>
       </div>
 
-      {/* Grille vidéos */}
-      <div className={`flex-1 grid ${videos.length > 1 ? 'grid-rows-2' : 'grid-rows-1'} gap-2 p-2`}>
-        {videos.map((video) => (
-          <div key={video.id} className="relative bg-zinc-900 rounded-lg overflow-hidden border border-white/5">
-            <iframe
-              src={`https://www.youtube.com/embed/${video.id}?autoplay=1&mute=1`}
-              className="w-full h-full"
-              allow="autoplay; encrypted-media"
-              allowFullScreen
-            />
+      {/* Contenu principal */}
+      {videos.length === 0 ? (
+        /* ── Écran vide — invitation à choisir ── */
+        <div className="flex-1 flex flex-col items-center justify-center gap-6 p-8">
+          <div className="w-20 h-20 rounded-3xl bg-red-600/15 border border-red-600/30 flex items-center justify-center">
+            <Maximize2 size={32} className="text-red-500" />
+          </div>
+          <div className="text-center">
+            <h3 className="text-white font-black text-lg uppercase tracking-wide mb-2">Mode Multiplex</h3>
+            <p className="text-white/40 text-sm leading-relaxed">
+              Regardez jusqu'à 2 vidéos simultanément.<br/>
+              Choisissez vos flux ci-dessous.
+            </p>
+          </div>
+          <div className="flex flex-col gap-3 w-full max-w-xs">
             <button
-              onClick={() => onRemove(video.id)}
-              className="absolute top-2 right-2 p-1.5 bg-black/60 rounded-full text-white backdrop-blur-md hover:bg-black/80 transition-colors"
+              onClick={() => { setTab('live'); setShowPicker(true); }}
+              className="flex items-center gap-3 px-5 py-4 rounded-2xl bg-red-600/15 border border-red-600/30 hover:bg-red-600/25 transition-colors"
             >
-              <X size={14} />
+              <Radio size={18} className="text-red-500 flex-shrink-0" />
+              <div className="text-left">
+                <p className="text-white font-black text-sm uppercase tracking-wide">Ajouter un live</p>
+                <p className="text-white/40 text-[11px] mt-0.5">{availableLives.length} live{availableLives.length !== 1 ? 's' : ''} en cours</p>
+              </div>
+              <Plus size={16} className="text-white/40 ml-auto" />
             </button>
-            <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 to-transparent">
-              <p className="text-[10px] font-bold text-white uppercase truncate">{video.title}</p>
+            <button
+              onClick={() => { setTab('videos'); setShowPicker(true); }}
+              className="flex items-center gap-3 px-5 py-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
+            >
+              <Tv size={18} className="text-white/60 flex-shrink-0" />
+              <div className="text-left">
+                <p className="text-white font-black text-sm uppercase tracking-wide">Ajouter une vidéo</p>
+                <p className="text-white/40 text-[11px] mt-0.5">{availableVideos.length} vidéos disponibles</p>
+              </div>
+              <Plus size={16} className="text-white/40 ml-auto" />
+            </button>
+          </div>
+        </div>
+      ) : (
+        /* ── Grille vidéos ── */
+        <div className={`flex-1 grid ${videos.length > 1 ? 'grid-rows-2' : 'grid-rows-1'} gap-2 p-2`}>
+          {videos.map((video) => (
+            <div key={video.id} className="relative bg-zinc-900 rounded-lg overflow-hidden border border-white/5">
+              <iframe
+                src={`https://www.youtube.com/embed/${video.id}?autoplay=1&mute=1`}
+                className="w-full h-full"
+                allow="autoplay; encrypted-media"
+                allowFullScreen
+              />
+              <button
+                onClick={() => onRemove(video.id)}
+                className="absolute top-2 right-2 p-1.5 bg-black/60 rounded-full text-white backdrop-blur-md hover:bg-black/80 transition-colors"
+              >
+                <X size={14} />
+              </button>
+              <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 to-transparent">
+                <p className="text-[10px] font-bold text-white uppercase truncate">{video.title}</p>
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
 
-        {/* Slot vide */}
-        {videos.length === 1 && (
-          <div
-            className={`flex flex-col items-center justify-center border-2 border-dashed rounded-lg transition-colors ${
-              canAdd ? 'border-red-600/40 cursor-pointer hover:border-red-600/70 hover:bg-red-600/5' : 'border-white/10'
-            }`}
-            onClick={() => canAdd && setShowPicker(true)}
-          >
-            {canAdd ? (
-              <>
-                <div className="w-10 h-10 rounded-full bg-red-600/20 flex items-center justify-center mb-2">
-                  <Plus size={20} className="text-red-500" />
-                </div>
-                <p className="text-xs uppercase tracking-widest font-black text-red-500/70">Ajouter un flux</p>
-              </>
-            ) : (
-              <>
-                <Radio size={20} className="text-white/20 mb-2" />
-                <p className="text-xs uppercase tracking-widest font-black text-white/20">Aucune vidéo disponible</p>
-              </>
-            )}
-          </div>
-        )}
-      </div>
+          {/* Slot vide */}
+          {videos.length === 1 && (
+            <div
+              className={`flex flex-col items-center justify-center border-2 border-dashed rounded-lg transition-colors ${
+                canAdd ? 'border-red-600/40 cursor-pointer hover:border-red-600/70 hover:bg-red-600/5' : 'border-white/10'
+              }`}
+              onClick={() => canAdd && setShowPicker(true)}
+            >
+              {canAdd ? (
+                <>
+                  <div className="w-10 h-10 rounded-full bg-red-600/20 flex items-center justify-center mb-2">
+                    <Plus size={20} className="text-red-500" />
+                  </div>
+                  <p className="text-xs uppercase tracking-widest font-black text-red-500/70">Ajouter un flux</p>
+                </>
+              ) : (
+                <>
+                  <Radio size={20} className="text-white/20 mb-2" />
+                  <p className="text-xs uppercase tracking-widest font-black text-white/20">Aucune vidéo disponible</p>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Picker */}
       <AnimatePresence>

@@ -139,6 +139,9 @@ const DEPT_DATA: { key: EventSource | string; label: string; color: string; last
 // Dernière date connue par département (mise à jour automatiquement à chaque nouveau calendrier)
 const DEPT_LAST_DATE: Record<string, string> = {
   ain:               '2027-01-01', // calendrier 2026-2027
+  hpa:               '2020-01-01', // pas de calendrier intégré
+  ardennes:          '2020-01-01', // pas de calendrier intégré
+  charente:          '2020-01-01', // pas de calendrier intégré
   aisne:             '2026-12-31',
   allier:            '2027-02-28',
   ahp:               '2026-11-30',
@@ -160,10 +163,10 @@ const DEPT_LAST_DATE: Record<string, string> = {
   cotesdarmor:       '2026-12-13',
   creuse:            '2026-12-20',
   dordogne:          '2026-09-24',
-  doubs:             '2026-03-21',
-  drome:             '2026-03-21',
-  eure:              '2026-03-21',
-  eureetloir:        '2026-03-21',
+  doubs:             '2026-12-31',
+  drome:             '2026-12-31',
+  eure:              '2026-12-31',
+  eureetloir:        '2026-12-31',
   nievre:            '2026-12-31',
   national:          '2027-12-31',
   regional:          '2027-12-31',
@@ -389,17 +392,29 @@ function applyFilters(events: UnifiedEvent[], f: AdvancedFilters): UnifiedEvent[
     const wantsMasters = f.categories.has('Masters de Pétanque');
     const wantsPPF = f.categories.has('PPF Tour');
     const wantsMarseillaise = f.categories.has('Mondial La Marseillaise');
-    const hasBadgeFilter = wantsMasters || wantsPPF || wantsMarseillaise;
+    const wantsJeunes = f.categories.has('Circuit National Jeunes');
+    const hasBadgeFilter = wantsMasters || wantsPPF || wantsMarseillaise || wantsJeunes;
+
+    // Filtre "Tout" (aucune catégorie cochée) = Départemental + Régional + National + Championnat
+    // Les circuits (Masters, PPF, Jeunes, Marseillaise) ne s'affichent QUE si explicitement cochés
+    if (f.categories.size === 0) {
+      if (ev.source === 'jeunes') return false;
+      if (ev.source === 'live') return true; // les lives passent toujours
+      const isMarseillaise = ev.ville === 'Marseille' && ev.raw?.organisateur?.toLowerCase().includes('marseillaise');
+      if (isMarseillaise) return false;
+      // Les events avec badge masters/ppf restent visibles dans "Tout" car ce sont aussi des concours normaux
+    }
 
     if (f.sources.size > 0) {
       const alwaysOn = new Set(['national', 'regional', 'jeunes', 'live']);
       if (!alwaysOn.has(ev.source) && !f.sources.has(ev.source)) return false;
+      // Si Jeunes non voulu explicitement et filtre "Tout" → cacher
+      if (ev.source === 'jeunes' && f.categories.size === 0) return false;
     } else if (!hasBadgeFilter) {
       // Aucun dept ET pas de filtre circuit → rien
       return false;
     }
     // Si filtre Masters/PPF actif sans département : on laisse passer tous les events
-    // (le filtre catégories ci-dessous fera la sélection finale)
 
     // Filtre mois
     if (f.month !== null) {
@@ -470,14 +485,13 @@ const Checkbox = ({ checked, onChange, label }: { checked: boolean; onChange: ()
 // ── GeoPrompt — popup de détection département ────────────────
 const MAX_DEPTS = 7; // limite max de départements sélectionnables simultanément
 
-const GeoPrompt = ({ deptKey, deptAvailable = true, onConfirm, onDecline, isSaved }: {
+const GeoPrompt = ({ deptKey, deptAvailable = true, onConfirm, onDecline }: {
   deptKey: string | null;
   deptAvailable?: boolean;
-  onConfirm: (memorize: boolean) => void;
+  onConfirm: (memorize: boolean, withLimitrophes: boolean) => void;
   onDecline: () => void;
-  isSaved?: boolean;
 }) => {
-  const [memorize, setMemorize] = React.useState(!isSaved); // coché par défaut si pas encore mémorisé
+  const [includeLimitrophes, setIncludeLimitrophes] = React.useState(false);
   const dept = deptKey ? DEPT_OPTIONS.find(d => d.key === deptKey) : null;
   const color = (!deptKey || !dept) ? '#dc2626' : !deptAvailable ? '#6b7280' : (SOURCE_COLOR[deptKey] || '#dc2626');
   const limitrophes = (deptKey && deptAvailable) ? getLimitrophes(new Set([deptKey])) : [];
@@ -610,20 +624,23 @@ const GeoPrompt = ({ deptKey, deptAvailable = true, onConfirm, onDecline, isSave
                 </p>
 
                 {limitropheLabels.length > 0 && (
-                  <div className="bg-amber-400/8 border border-amber-400/20 rounded-xl px-3 py-2.5 mb-4 flex items-center gap-2">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" strokeWidth="2.5">
-                      <circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
-                    </svg>
-                    <p className="text-amber-300/70 text-[10px] flex-1">
-                      Les concours limitrophes seront aussi inclus :
-                      <span className="font-bold text-amber-300/90"> {limitropheLabels.join(', ')}{limitrophes.length > 3 ? '…' : ''}</span>
+                  <button
+                    onClick={() => setIncludeLimitrophes(v => !v)}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 mb-4 rounded-xl border border-amber-400/20 bg-amber-400/5 hover:bg-amber-400/10 transition-colors"
+                  >
+                    <div className={`w-4 h-4 rounded flex items-center justify-center flex-shrink-0 transition-colors ${includeLimitrophes ? 'bg-amber-500' : 'bg-white/10 border border-white/20'}`}>
+                      {includeLimitrophes && <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                    </div>
+                    <p className="text-amber-300/70 text-[10px] flex-1 text-left">
+                      Inclure les départements limitrophes
+                      <span className="font-bold text-amber-300/90"> ({limitropheLabels.join(', ')}{limitrophes.length > 3 ? '…' : ''})</span>
                     </p>
-                  </div>
+                  </button>
                 )}
 
                 {/* Bouton Par défaut */}
                 <button
-                  onClick={() => onConfirm(true)}
+                  onClick={() => onConfirm(true, includeLimitrophes)}
                   className="w-full py-4 rounded-2xl font-black text-[13px] uppercase tracking-wider text-white transition-colors mb-2.5"
                   style={{ background: color }}
                 >
@@ -632,7 +649,7 @@ const GeoPrompt = ({ deptKey, deptAvailable = true, onConfirm, onDecline, isSave
 
                 {/* Bouton Juste aujourd'hui */}
                 <button
-                  onClick={() => onConfirm(false)}
+                  onClick={() => onConfirm(false, includeLimitrophes)}
                   className="w-full py-3.5 rounded-2xl border border-white/12 text-white/70 font-bold text-[12px] uppercase tracking-wider hover:bg-white/5 transition-colors mb-2"
                 >
                   📅 Juste pour aujourd'hui
@@ -1628,32 +1645,43 @@ const DeptAccordion = ({ sources, onChange }: {
             {/* Bouton Appliquer */}
             <div className="px-5 pt-3 pb-5 border-t border-white/8 flex-shrink-0 space-y-2.5">
 
-              {/* Bouton INCLURE LES LIMITROPHES — visible seulement si des depts sont sélectionnés */}
+              {/* Case à cocher INCLURE LES LIMITROPHES */}
               {activeCount > 0 && (() => {
                 const limitrophes = getLimitrophes(sources);
-                if (limitrophes.length === 0) return null;
+                const hasLimitrophes = limitrophes.length === 0;
+                // Détecter si les limitrophes sont déjà tous inclus
+                const allIncluded = limitrophes.every(k => sources.has(k));
+                if (limitrophes.length === 0 && allIncluded) return null;
                 return (
                   <button
                     onClick={() => {
                       const next = new Set(sources);
-                      limitrophes.forEach(k => next.add(k));
+                      if (allIncluded) {
+                        // Décocher → retirer les limitrophes
+                        limitrophes.forEach(k => next.delete(k));
+                      } else {
+                        // Cocher → ajouter les limitrophes
+                        limitrophes.forEach(k => next.add(k));
+                      }
                       onChange(next);
                     }}
-                    className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-black text-[11px] uppercase tracking-widest transition-all border"
+                    className="w-full flex items-center gap-3 py-3 px-4 rounded-2xl transition-all border"
                     style={{
-                      background: 'linear-gradient(135deg, rgba(251,191,36,0.12) 0%, rgba(245,158,11,0.08) 100%)',
-                      borderColor: 'rgba(251,191,36,0.35)',
-                      color: '#fbbf24',
+                      background: allIncluded ? 'rgba(251,191,36,0.12)' : 'rgba(251,191,36,0.05)',
+                      borderColor: allIncluded ? 'rgba(251,191,36,0.4)' : 'rgba(251,191,36,0.2)',
                     }}
                   >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="12" cy="12" r="3"/>
-                      <path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/>
-                    </svg>
-                    Inclure les limitrophes
-                    <span className="ml-1 bg-amber-400/20 text-amber-300 text-[9px] px-2 py-0.5 rounded-full font-black">
-                      +{limitrophes.length} dept{limitrophes.length > 1 ? 's' : ''}
+                    <div className={`w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 transition-colors ${allIncluded ? 'bg-amber-500' : 'bg-white/10 border border-white/20'}`}>
+                      {allIncluded && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                    </div>
+                    <span className="flex-1 text-left text-[11px] font-black uppercase tracking-wide" style={{ color: '#fbbf24' }}>
+                      Inclure les limitrophes
                     </span>
+                    {!allIncluded && (
+                      <span className="bg-amber-400/20 text-amber-300 text-[9px] px-2 py-0.5 rounded-full font-black">
+                        +{limitrophes.length} dept{limitrophes.length > 1 ? 's' : ''}
+                      </span>
+                    )}
                   </button>
                 );
               })()}
@@ -1980,8 +2008,11 @@ const CalendarComponent = ({ videos, onVideoSelect, user, onAuthRequired }: { vi
 
         const isFirstTime = !lastDept && !savedDept;
         const deptChanged = currentKey && lastDept && currentKey !== lastDept;
+        // Ne pas re-afficher si déjà répondu "juste pour aujourd'hui" dans cette session
+        const sessionDept = sessionStorage.getItem('ahrena_geo_session_dept');
+        const alreadyHandledThisSession = sessionDept === currentKey;
 
-        if (isFirstTime || deptChanged) {
+        if ((isFirstTime || deptChanged) && !alreadyHandledThisSession) {
           // Nouveau département ou 1ère fois → afficher le popup
           setGeoDeptKey(currentKey);
           setGeoDeptAvailable(result?.available ?? false);
@@ -2001,15 +2032,22 @@ const CalendarComponent = ({ videos, onVideoSelect, user, onAuthRequired }: { vi
     );
   }, []);
 
-  const handleGeoConfirm = (memorize: boolean) => {
+  const handleGeoConfirm = (memorize: boolean, withLimitrophes: boolean = false) => {
     if (!geoDeptKey) return;
-    const next = new Set([geoDeptKey, ...getLimitrophes(new Set([geoDeptKey]))]);
+    // Appliquer le département + optionnellement ses limitrophes
+    const base = new Set([geoDeptKey]);
+    const next = withLimitrophes ? new Set([geoDeptKey, ...getLimitrophes(base)]) : base;
     setFilters(f => ({ ...f, sources: next }));
     if (memorize) {
-      // Par défaut → mémoriser pour toutes les prochaines consultations
+      // "Par défaut" → mémorisé pour toutes les prochaines consultations
       localStorage.setItem('ahrena_saved_dept', geoDeptKey);
+    } else {
+      // "Juste pour aujourd'hui" → si un dept par défaut existait, on le conserve
+      // mais on ne le remplace pas par le dept actuel
+      // On note quand même le dept actuel comme "vu" pour ne pas re-popup cette session
+      sessionStorage.setItem('ahrena_geo_session_dept', geoDeptKey);
     }
-    // Toujours mémoriser le dernier dept détecté pour détecter les futurs changements
+    // Mémoriser le dernier dept détecté pour détecter les futurs changements
     localStorage.setItem('ahrena_last_dept', geoDeptKey);
     setGeoPrompt(false);
   };
@@ -2150,7 +2188,6 @@ const CalendarComponent = ({ videos, onVideoSelect, user, onAuthRequired }: { vi
           deptAvailable={geoDeptAvailable}
           onConfirm={handleGeoConfirm}
           onDecline={handleGeoDecline}
-          isSaved={!!localStorage.getItem('ahrena_saved_dept')}
         />
       )}
 
