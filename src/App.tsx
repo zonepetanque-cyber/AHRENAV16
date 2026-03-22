@@ -1439,65 +1439,93 @@ export default function App() {
 
       {/* Bannière mise à jour disponible */}
       <AnimatePresence>
-        {showUpdateBanner && (
-          <motion.div
-            initial={{ y: -80, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: -80, opacity: 0 }}
-            transition={{ type: 'spring', damping: 28, stiffness: 320 }}
-            className="fixed top-0 left-0 right-0 z-[200] shadow-2xl"
-            style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #b8922a 100%)' }}
-          >
-            {/* Barre de progression simulée pendant la mise à jour */}
-            {updateLoading && (
+        {/* ── Écran de mise à jour plein écran ── */}
+        <AnimatePresence>
+          {showUpdateBanner && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[9999] flex flex-col items-center justify-center px-8"
+              style={{ background: 'radial-gradient(ellipse at center, #1a0a00 0%, #000000 100%)' }}
+            >
+              {/* Logo */}
               <motion.div
-                initial={{ scaleX: 0 }}
-                animate={{ scaleX: 1 }}
-                transition={{ duration: 3.5, ease: 'linear' }}
-                className="absolute bottom-0 left-0 right-0 h-0.5 bg-black/30 origin-left"
-              />
-            )}
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.1, type: 'spring', damping: 20 }}
+                className="mb-8"
+              >
+                <img
+                  src="https://cdn.shopify.com/s/files/1/0915/3760/4942/files/Logo_AHRENA.png?v=1773386123"
+                  alt="AHRENA"
+                  className="h-20 w-auto drop-shadow-[0_0_30px_rgba(212,175,55,0.4)]"
+                />
+              </motion.div>
 
-            <div className="px-4 py-3 flex items-center gap-3">
-              {/* Icône */}
-              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-black/15 flex items-center justify-center">
+              {/* Icône mise à jour */}
+              <motion.div
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.2, type: 'spring', damping: 18 }}
+                className="w-20 h-20 rounded-3xl flex items-center justify-center mb-6"
+                style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #b8922a 100%)' }}
+              >
                 {updateLoading
-                  ? <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 0.8, ease: 'linear' }}><RefreshCw size={14} className="text-black" /></motion.div>
-                  : <Download size={14} className="text-black" />
+                  ? <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}>
+                      <RefreshCw size={32} className="text-black" />
+                    </motion.div>
+                  : <Download size={32} className="text-black" />
                 }
-              </div>
+              </motion.div>
 
               {/* Texte */}
-              <div className="flex-1 min-w-0">
-                <p className="text-black font-black text-[12px] uppercase tracking-[0.1em] leading-none">
-                  {updateLoading ? 'Mise à jour en cours…' : 'Nouvelle version disponible'}
+              <motion.div
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.3 }}
+                className="text-center mb-10"
+              >
+                <h2 className="text-white font-black text-2xl uppercase tracking-wide mb-2">
+                  {updateLoading ? 'Mise à jour…' : 'Nouvelle version'}
+                </h2>
+                <p className="text-white/40 text-sm leading-relaxed">
+                  {updateLoading
+                    ? 'Installation en cours, l'application va redémarrer.'
+                    : 'Une nouvelle version d'AHRENA est disponible.
+Mettez à jour pour profiter des dernières améliorations.'}
                 </p>
-                <p className="text-black/60 text-[10px] mt-0.5">
-                  {updateLoading ? 'Rechargement imminent' : 'Une mise à jour AHRENA est prête à être installée'}
-                </p>
-              </div>
+              </motion.div>
 
-              {/* Boutons */}
+              {/* Bouton */}
               {!updateLoading && (
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <button
-                    onClick={handleUpdate}
-                    className="flex items-center gap-1.5 bg-black text-[#D4AF37] font-black text-[11px] uppercase tracking-wider px-3.5 py-2 rounded-lg active:scale-95 transition-transform"
-                  >
-                    <Download size={11} />
-                    Mettre à jour
-                  </button>
-                  <button
-                    onClick={() => setShowUpdateBanner(false)}
-                    className="w-7 h-7 rounded-full bg-black/15 flex items-center justify-center active:bg-black/30 transition-colors"
-                  >
-                    <X size={13} className="text-black/70" />
-                  </button>
-                </div>
+                <motion.button
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.4 }}
+                  onClick={handleUpdate}
+                  className="w-full max-w-xs py-4 rounded-2xl font-black text-black text-base uppercase tracking-widest active:scale-95 transition-transform shadow-lg"
+                  style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #b8922a 100%)' }}
+                >
+                  Mettre à jour maintenant
+                </motion.button>
               )}
-            </div>
-          </motion.div>
-        )}
+
+              {/* Barre de progression */}
+              {updateLoading && (
+                <motion.div className="w-full max-w-xs h-1 bg-white/10 rounded-full overflow-hidden mt-4">
+                  <motion.div
+                    initial={{ scaleX: 0 }}
+                    animate={{ scaleX: 1 }}
+                    transition={{ duration: 4, ease: 'linear' }}
+                    className="h-full rounded-full origin-left"
+                    style={{ background: 'linear-gradient(90deg, #D4AF37, #b8922a)' }}
+                  />
+                </motion.div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </AnimatePresence>
       
       {refreshing && (
@@ -1531,7 +1559,7 @@ export default function App() {
             exit={{ y: -80, opacity: 0 }}
             transition={{ type: 'spring', damping: 20, stiffness: 300 }}
             className="fixed left-0 right-0 z-[190] px-3 pt-3"
-            style={{ top: showUpdateBanner ? '52px' : '0px' }}
+            style={{ top: '0px' }}
           >
             <div className="flex items-center gap-3 bg-red-600 rounded-2xl px-4 py-3 shadow-2xl shadow-red-900/50">
               <div className="w-2 h-2 rounded-full bg-white animate-pulse flex-shrink-0"/>
