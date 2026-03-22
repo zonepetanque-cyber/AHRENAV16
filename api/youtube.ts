@@ -167,7 +167,7 @@ async function fetchChannelAvatars(): Promise<Record<string, string>> {
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Cache 24h — 1 refresh/jour
   // Coût : 9 × 100 (upcoming) + 1 (details) + 1 (avatars) = ~902 unités/jour ✅
-  res.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate=3600');
+  res.setHeader('Cache-Control', 's-maxage=86400');
   res.setHeader('Access-Control-Allow-Origin', '*');
 
   try {

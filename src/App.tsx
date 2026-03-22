@@ -48,7 +48,10 @@ import AdminDashboard from './components/AdminDashboard';
 
 // --- Components ---
 
-const Header = ({ onProfileClick, onSearchClick, onFavoritesClick }: { onProfileClick: () => void, onSearchClick: () => void, onFavoritesClick: () => void }) => (
+const Header = ({ onProfileClick, onSearchClick, onFavoritesClick, onMultiplexClick, isPremium, multiplexCount }: { 
+  onProfileClick: () => void, onSearchClick: () => void, onFavoritesClick: () => void,
+  onMultiplexClick: () => void, isPremium: boolean, multiplexCount: number
+}) => (
   <header className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-b from-black/95 via-black/50 to-transparent">
     <div className="mx-auto max-w-[1400px] px-6 py-4 flex items-center justify-between">
     <div className="flex-none">
@@ -63,6 +66,16 @@ const Header = ({ onProfileClick, onSearchClick, onFavoritesClick }: { onProfile
       <button onClick={onFavoritesClick} className="p-2 text-white/70 hover:text-white transition-colors">
         <Heart size={22} />
       </button>
+      {isPremium && (
+        <button onClick={onMultiplexClick} className="relative p-2 text-white/70 hover:text-white transition-colors">
+          <PictureInPicture2 size={22} />
+          {multiplexCount > 0 && (
+            <span className="absolute top-1 right-1 w-4 h-4 bg-red-600 rounded-full text-[9px] font-black text-white flex items-center justify-center">
+              {multiplexCount}
+            </span>
+          )}
+        </button>
+      )}
       <button onClick={onSearchClick} className="p-2 text-white/70 hover:text-white transition-colors">
         <Search size={22} />
       </button>
@@ -702,10 +715,39 @@ const Skeleton = () => (
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [activeTab, setActiveTab] = useState('live');
+
+  // ── Bouton retour Android (popstate) ─────────────────────────────────────
+  // On pousse un état dans l'history à chaque changement d'onglet
+  // pour que le bouton retour navigue dans l'app au lieu de la fermer
+  const navigateTo = React.useCallback((tab: string) => {
+    if (tab !== activeTab) {
+      window.history.pushState({ tab }, '', window.location.pathname);
+    }
+    setActiveTab(tab);
+  }, [activeTab]);
+
+  useEffect(() => {
+    // État initial dans l'history
+    window.history.replaceState({ tab: 'live' }, '', window.location.pathname);
+
+    const onPopState = (e: PopStateEvent) => {
+      const tab = e.state?.tab || 'live';
+      setActiveTab(tab);
+      // Fermer les modaux ouverts si bouton retour pressé
+      setSelectedVideo(null);
+      setInfoVideo(null);
+      setShowMultiplex(false);
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
   const [showNews, setShowNews] = useState(false);
   const [showNewsPopup, setShowNewsPopup] = useState(false);
   const [popupNews, setPopupNews] = useState<any[]>([]);
   const [paymentStatus, setPaymentStatus] = useState<'success' | 'cancelled' | null>(null);
+  // Si on vient de faire une mise à jour (juste rechargé), ne pas ré-afficher la bannière
+  const justUpdated = localStorage.getItem('ahrena_sw_just_updated') === '1';
+  if (justUpdated) localStorage.removeItem('ahrena_sw_just_updated');
   const [showUpdateBanner, setShowUpdateBanner] = useState(false);
 
   // Détection mise à jour Service Worker
@@ -713,6 +755,8 @@ export default function App() {
     if (!('serviceWorker' in navigator)) return;
 
     const shouldShow = () => {
+      // Ne pas afficher si l'utilisateur vient de faire la mise à jour
+      if (localStorage.getItem('ahrena_sw_just_updated') === '1') return false;
       // Ne pas ré-afficher si l'utilisateur a déjà fermé cette bannière dans la session
       return sessionStorage.getItem('ahrena_update_dismissed') !== '1';
     };
@@ -757,6 +801,8 @@ export default function App() {
 
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       clearTimeout(fallback);
+      // Marquer que la mise à jour vient d'être appliquée → ne plus afficher la bannière après reload
+      localStorage.setItem('ahrena_sw_just_updated', '1');
       window.location.reload();
     }, { once: true });
 
@@ -776,7 +822,7 @@ export default function App() {
     const tab = params.get('tab');
     const payment = params.get('payment');
     if (tab === 'club') {
-      setActiveTab('club');
+      navigateTo('club');
       if (payment === 'success') setPaymentStatus('success');
       if (payment === 'cancelled') setPaymentStatus('cancelled');
       // Nettoyer l'URL
@@ -1015,7 +1061,7 @@ export default function App() {
               onPlay={handleHeroPlay}
               onInfo={handleHeroInfo}
               heroVideos={heroVideos} 
-              onClubClick={() => setActiveTab('club')}
+              onClubClick={() => navigateTo('club')}
             />
 
             <main className="relative z-10 -mt-12 md:max-w-[1400px] md:mx-auto pb-28">
@@ -1364,17 +1410,17 @@ export default function App() {
       case 'programme':
         return <ProgrammeComponent videos={liveVideos} onVideoSelect={setSelectedVideo} />;
       case 'calendar':
-        return <CalendarComponent videos={liveVideos} onVideoSelect={setSelectedVideo} user={user} onAuthRequired={() => setActiveTab('club')} />;
+        return <CalendarComponent videos={liveVideos} onVideoSelect={setSelectedVideo} user={user} onAuthRequired={() => navigateTo('club')} />;
       case 'club':
-        return <ClubComponent onTabChange={setActiveTab} />;
+        return <ClubComponent onTabChange={navigateTo} />;
       case 'favorites':
-        return <FavoritesComponent onVideoSelect={setSelectedVideo} user={user} onAuthRequired={() => setActiveTab('club')} />;
+        return <FavoritesComponent onVideoSelect={setSelectedVideo} user={user} onAuthRequired={() => navigateTo('club')} />;
       case 'news':
-        return <NewsComponent user={user} onAuthRequired={() => setActiveTab('club')} />;
+        return <NewsComponent user={user} onAuthRequired={() => navigateTo('club')} />;
       case 'admin_disabled':
         return null;
       case 'legal':
-        return <LegalComponent onTabChange={setActiveTab} />;
+        return <LegalComponent onTabChange={navigateTo} />;
       case 'cgu':
         return <CGUComponent />;
       case 'privacy':
@@ -1404,7 +1450,7 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      <Header onProfileClick={() => setActiveTab('club')} onSearchClick={() => {}} onFavoritesClick={() => setActiveTab('favorites')} />
+      <Header onProfileClick={() => navigateTo('club')} onSearchClick={() => {}} onFavoritesClick={() => navigateTo('favorites')} onMultiplexClick={() => setShowMultiplex(true)} isPremium={isPremium} multiplexCount={multiplexVideos.length} />
 
       {/* Bannière mise à jour disponible */}
       <AnimatePresence>
@@ -1519,7 +1565,7 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      <Navbar activeTab={activeTab} onTabChange={setActiveTab} />
+      <Navbar activeTab={activeTab} onTabChange={navigateTo} />
 
       {/* Bannière retour paiement Stripe */}
       <AnimatePresence>
@@ -1637,7 +1683,7 @@ export default function App() {
         }}
         onBecomeVIP={() => {
           setSelectedVideo(null);
-          setActiveTab('club');
+          navigateTo('club');
         }}
       />
 
@@ -1666,7 +1712,7 @@ export default function App() {
               </div>
             </div>
 
-            <NewsComponent user={user} onAuthRequired={() => setActiveTab('club')} />
+            <NewsComponent user={user} onAuthRequired={() => navigateTo('club')} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -1674,7 +1720,14 @@ export default function App() {
       {showMultiplex && (
         <MultiplexView 
           videos={multiplexVideos}
+          availableLives={liveVideos.filter(v => v.isLive)}
+          availableVideos={Object.values(channelVideos).flat().filter(v => !blacklistedIds.has(v.id)).slice(0, 30)}
           onRemove={(id) => setMultiplexVideos(prev => prev.filter(v => v.id !== id))}
+          onAdd={(video) => {
+            if (multiplexVideos.length < 2 && !multiplexVideos.find(v => v.id === video.id)) {
+              setMultiplexVideos(prev => [...prev, video]);
+            }
+          }}
           onClose={() => setShowMultiplex(false)}
         />
       )}

@@ -470,12 +470,14 @@ const Checkbox = ({ checked, onChange, label }: { checked: boolean; onChange: ()
 // ── GeoPrompt — popup de détection département ────────────────
 const MAX_DEPTS = 7; // limite max de départements sélectionnables simultanément
 
-const GeoPrompt = ({ deptKey, deptAvailable = true, onConfirm, onDecline }: {
+const GeoPrompt = ({ deptKey, deptAvailable = true, onConfirm, onDecline, isSaved }: {
   deptKey: string | null;
   deptAvailable?: boolean;
-  onConfirm: () => void;
+  onConfirm: (memorize: boolean) => void;
   onDecline: () => void;
+  isSaved?: boolean;
 }) => {
+  const [memorize, setMemorize] = React.useState(!isSaved); // coché par défaut si pas encore mémorisé
   const dept = deptKey ? DEPT_OPTIONS.find(d => d.key === deptKey) : null;
   const color = (!deptKey || !dept) ? '#dc2626' : !deptAvailable ? '#6b7280' : (SOURCE_COLOR[deptKey] || '#dc2626');
   const limitrophes = (deptKey && deptAvailable) ? getLimitrophes(new Set([deptKey])) : [];
@@ -597,40 +599,52 @@ const GeoPrompt = ({ deptKey, deptAvailable = true, onConfirm, onDecline }: {
                 <p className="text-white/50 text-[11px] uppercase tracking-widest font-bold text-center mb-1">
                   Votre position détectée
                 </p>
-                <h2 className="text-white font-black text-xl text-center mb-1">
+                <h2 className="text-white font-black text-xl text-center mb-2">
                   {dept!.label.split(' (')[0]}
                 </h2>
-                <p className="text-white/30 text-xs text-center mb-5">
+                <p className="text-white/50 text-[12px] text-center mb-1 font-medium">
                   Êtes-vous bien dans ce département ?
+                </p>
+                <p className="text-white/30 text-[11px] text-center mb-5 leading-relaxed">
+                  Voulez-vous le mettre par défaut pour vos prochaines consultations,<br/>ou juste le consulter pour aujourd'hui ?
                 </p>
 
                 {limitropheLabels.length > 0 && (
-                  <div className="bg-amber-400/8 border border-amber-400/20 rounded-xl px-3 py-2.5 mb-5 flex items-center gap-2">
+                  <div className="bg-amber-400/8 border border-amber-400/20 rounded-xl px-3 py-2.5 mb-4 flex items-center gap-2">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" strokeWidth="2.5">
                       <circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
                     </svg>
                     <p className="text-amber-300/70 text-[10px] flex-1">
-                      Les limitrophes seront aussi inclus :
+                      Les concours limitrophes seront aussi inclus :
                       <span className="font-bold text-amber-300/90"> {limitropheLabels.join(', ')}{limitrophes.length > 3 ? '…' : ''}</span>
                     </p>
                   </div>
                 )}
 
-                <div className="flex gap-2.5">
-                  <button
-                    onClick={onDecline}
-                    className="flex-1 py-3.5 rounded-2xl border border-white/12 text-white/50 font-bold text-[12px] uppercase tracking-wider hover:bg-white/5 transition-colors"
-                  >
-                    Non
-                  </button>
-                  <button
-                    onClick={onConfirm}
-                    className="flex-[2] py-3.5 rounded-2xl font-black text-[13px] uppercase tracking-wider text-white transition-colors"
-                    style={{ background: color }}
-                  >
-                    Oui, c'est le mien
-                  </button>
-                </div>
+                {/* Bouton Par défaut */}
+                <button
+                  onClick={() => onConfirm(true)}
+                  className="w-full py-4 rounded-2xl font-black text-[13px] uppercase tracking-wider text-white transition-colors mb-2.5"
+                  style={{ background: color }}
+                >
+                  ✅ Oui, mettre par défaut
+                </button>
+
+                {/* Bouton Juste aujourd'hui */}
+                <button
+                  onClick={() => onConfirm(false)}
+                  className="w-full py-3.5 rounded-2xl border border-white/12 text-white/70 font-bold text-[12px] uppercase tracking-wider hover:bg-white/5 transition-colors mb-2"
+                >
+                  📅 Juste pour aujourd'hui
+                </button>
+
+                {/* Bouton Non / autre département */}
+                <button
+                  onClick={onDecline}
+                  className="w-full py-2.5 text-white/25 font-bold text-[11px] uppercase tracking-wider hover:text-white/40 transition-colors"
+                >
+                  Non, choisir un autre département
+                </button>
               </>
             )}
           </div>
@@ -1926,19 +1940,34 @@ const CalendarComponent = ({ videos, onVideoSelect, user, onAuthRequired }: { vi
   });
   const [todayKey, setTodayKey]   = useState(isoDate(new Date()));
 
-  // ── Géolocalisation ──
-  const [geoDeptKey, setGeoDeptKey]         = useState<string | null>(null);
+  // ── Géolocalisation ──────────────────────────────────────────────────────
+  // Logique :
+  //  - 1ère ouverture → popup toujours
+  //  - Même département mémorisé → jamais de popup
+  //  - Département différent détecté → popup réapparaît
+  //  - 2 choix : "Par défaut" (mémorisé) ou "Juste aujourd'hui" (session)
+  //  - Clés localStorage :
+  //      ahrena_saved_dept  → département mémorisé par l'utilisateur
+  //      ahrena_last_dept   → dernier département détecté (pour détecter les changements)
+  // ─────────────────────────────────────────────────────────────────────────
+  const [geoDeptKey, setGeoDeptKey]             = useState<string | null>(null);
   const [geoDeptAvailable, setGeoDeptAvailable] = useState(true);
-  const [geoPrompt, setGeoPrompt]           = useState(false);
+  const [geoPrompt, setGeoPrompt]               = useState(false);
 
   useEffect(() => {
+    // 1. Appliquer le département mémorisé comme filtre par défaut
+    const savedDept = localStorage.getItem('ahrena_saved_dept');
+    if (savedDept) {
+      const next = new Set([savedDept, ...getLimitrophes(new Set([savedDept]))]);
+      setFilters(f => ({ ...f, sources: next }));
+    }
+
+    // 2. Décider si le popup doit s'afficher
     if (!navigator.geolocation) {
-      // Pas de géoloc dispo → demander une seule fois manuellement
-      const asked = localStorage.getItem('ahrena_geo_asked');
-      if (!asked) {
+      // Pas de géoloc dispo → popup manuel uniquement si jamais vu
+      if (!savedDept && !localStorage.getItem('ahrena_last_dept')) {
         setGeoPrompt(true);
         setGeoDeptKey(null);
-        localStorage.setItem('ahrena_geo_asked', '1');
       }
       return;
     }
@@ -1947,50 +1976,46 @@ const CalendarComponent = ({ videos, onVideoSelect, user, onAuthRequired }: { vi
       (pos) => {
         const result = getDeptFromCoords(pos.coords.latitude, pos.coords.longitude);
         const currentKey = result?.key ?? null;
-        const lastKey = localStorage.getItem('ahrena_last_dept');
+        const lastDept = localStorage.getItem('ahrena_last_dept');
 
-        if (!lastKey) {
-          // Premier lancement — toujours afficher le popup
+        const isFirstTime = !lastDept && !savedDept;
+        const deptChanged = currentKey && lastDept && currentKey !== lastDept;
+
+        if (isFirstTime || deptChanged) {
+          // Nouveau département ou 1ère fois → afficher le popup
           setGeoDeptKey(currentKey);
           setGeoDeptAvailable(result?.available ?? false);
           setGeoPrompt(true);
-          if (currentKey) localStorage.setItem('ahrena_last_dept', currentKey);
-        } else if (currentKey && currentKey !== lastKey) {
-          // Changement de département détecté
-          setGeoDeptKey(currentKey);
-          setGeoDeptAvailable(result?.available ?? false);
-          setGeoPrompt(true);
-          localStorage.setItem('ahrena_last_dept', currentKey);
         }
-        // Même département qu'avant → rien, pas de popup
+        // Même département → rien, pas de popup
       },
       () => {
-        // Refus géoloc → demander manuellement une seule fois
-        const asked = localStorage.getItem('ahrena_geo_asked');
-        if (!asked) {
+        // Refus géoloc → popup manuel uniquement si jamais configuré
+        if (!savedDept && !localStorage.getItem('ahrena_last_dept')) {
           setGeoPrompt(true);
           setGeoDeptKey(null);
           setGeoDeptAvailable(false);
-          localStorage.setItem('ahrena_geo_asked', '1');
         }
       },
       { timeout: 6000, maximumAge: 300000 }
     );
   }, []);
 
-  const handleGeoConfirm = () => {
+  const handleGeoConfirm = (memorize: boolean) => {
     if (!geoDeptKey) return;
-    // Activer le département détecté + ses limitrophes
     const next = new Set([geoDeptKey, ...getLimitrophes(new Set([geoDeptKey]))]);
     setFilters(f => ({ ...f, sources: next }));
-    // Mémoriser ce dept comme "connu" pour ne plus redemander
+    if (memorize) {
+      // Par défaut → mémoriser pour toutes les prochaines consultations
+      localStorage.setItem('ahrena_saved_dept', geoDeptKey);
+    }
+    // Toujours mémoriser le dernier dept détecté pour détecter les futurs changements
     localStorage.setItem('ahrena_last_dept', geoDeptKey);
     setGeoPrompt(false);
   };
 
   const handleGeoDecline = () => {
     setGeoPrompt(false);
-    // Ouvrir directement le sélecteur de département
     setTimeout(() => {
       document.getElementById('dept-selector-btn')?.click();
     }, 300);
@@ -2125,6 +2150,7 @@ const CalendarComponent = ({ videos, onVideoSelect, user, onAuthRequired }: { vi
           deptAvailable={geoDeptAvailable}
           onConfirm={handleGeoConfirm}
           onDecline={handleGeoDecline}
+          isSaved={!!localStorage.getItem('ahrena_saved_dept')}
         />
       )}
 
