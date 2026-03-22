@@ -39,8 +39,6 @@ import {
   List, MapPin, SlidersHorizontal, X, RotateCcw, Check, Radio, ChevronDown, Heart
 } from 'lucide-react';
 
-// Carte — chargement lazy pour isoler leaflet du reste
-const CalendarMapView = React.lazy(() => import('./CalendarMapView'));
 
 // ── Helpers ───────────────────────────────────────────────────
 const isoDate = (d: Date) => d.toISOString().split('T')[0];
@@ -1864,43 +1862,6 @@ const DeptAccordion = ({ sources, onChange }: {
 };
 
 
-// ── MapView — carte interactive des concours ──────────────────
-const MapView = ({ events, onVideoSelect, user, onAuthRequired }: {
-  events: UnifiedEvent[]; onVideoSelect: (v: Video) => void; user?: any; onAuthRequired?: () => void;
-}) => {
-  const [detailEv, setDetailEv] = React.useState<UnifiedEvent | null>(null);
-  const mappable = events.filter(ev => ev.raw?.lat && ev.raw?.lng && !isNaN(Number(ev.raw.lat)));
-
-  return (
-    <div className="relative flex flex-col" style={{ height: 'calc(100vh - 200px)' }}>
-      <div className="px-4 py-1.5 flex items-center gap-2">
-        <MapPin size={11} className="text-white/40"/>
-        <span className="text-white/40 text-[11px]">{mappable.length} concours localisés</span>
-      </div>
-      <div className="flex-1 mx-3 rounded-2xl overflow-hidden border border-white/10">
-        <React.Suspense fallback={<div className="w-full h-full flex items-center justify-center bg-zinc-900"><span className="text-white/30 text-sm">Chargement de la carte...</span></div>}>
-          <CalendarMapView events={events} onSelect={setDetailEv} />
-        </React.Suspense>
-      </div>
-      <div className="flex items-center gap-4 px-4 py-2">
-        {([['NATIONAL','polygon'],['RÉGIONAL','rect'],['DÉPART.','circle']] as [string,string][]).map(([label, shape]) => (
-          <div key={label} className="flex items-center gap-1">
-            <svg width="10" height="10" viewBox="0 0 20 20">
-              {shape === 'polygon' && <polygon points="10,1 12,7 19,7 13,12 15,19 10,14 5,19 7,12 1,7 8,7" fill="rgba(255,255,255,0.4)"/>}
-              {shape === 'rect' && <rect x="3" y="3" width="14" height="14" transform="rotate(45 10 10)" fill="rgba(255,255,255,0.4)"/>}
-              {shape === 'circle' && <circle cx="10" cy="10" r="8" fill="rgba(255,255,255,0.4)"/>}
-            </svg>
-            <span className="text-white/30 text-[9px] uppercase tracking-wider">{label}</span>
-          </div>
-        ))}
-      </div>
-      {detailEv && (
-        <EventDetailSheet ev={detailEv} onClose={() => setDetailEv(null)} onVideoSelect={onVideoSelect} user={user} onAuthRequired={onAuthRequired}/>
-      )}
-    </div>
-  );
-};
-
 
 // ── MonthStrip — filtre par mois ──────────────────────────────
 const MonthStrip = ({ selectedMonth, onChange, availableMonths }: {
@@ -2127,7 +2088,7 @@ const FilterPanel = ({ filters, onChange, onClose }: {
 
 // ── Composant principal ───────────────────────────────────────
 const CalendarComponent = ({ videos, onVideoSelect, user, onAuthRequired }: { videos: Video[]; onVideoSelect: (v: Video) => void; user?: any; onAuthRequired?: () => void }) => {
-  const [view, setView]           = useState<'month' | 'list' | 'map'>('month');
+  const [view, setView]           = useState<'month' | 'list'>('month');
   const [showFilters, setShowFilters] = useState(false);
   // Par défaut : aucun département sélectionné — l'utilisateur doit choisir
   const [filters, setFilters]     = useState<AdvancedFilters>({
@@ -2308,10 +2269,7 @@ const CalendarComponent = ({ videos, onVideoSelect, user, onAuthRequired }: { vi
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wide transition-all ${view === 'list' ? 'bg-white text-black' : 'text-white/40 hover:text-white'}`}>
               <List size={11}/> <span className="hidden sm:inline">Agenda</span>
             </button>
-            <button onClick={() => setView('map')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wide transition-all ${view === 'map' ? 'bg-white text-black' : 'text-white/40 hover:text-white'}`}>
-              <Map size={11}/> <span className="hidden sm:inline">Carte</span>
-            </button>
+
           </div>
 
           {/* Accordéon département */}
@@ -2364,12 +2322,10 @@ const CalendarComponent = ({ videos, onVideoSelect, user, onAuthRequired }: { vi
       )}
 
       {/* Zone scrollable — prend tout l'espace restant */}
-      <div className={`flex-1 ${view === 'map' ? 'overflow-hidden' : 'overflow-y-auto overscroll-contain pb-36'}`}>
+      <div className="flex-1 overflow-y-auto overscroll-contain pb-36">
         {view === 'month'
           ? <MonthView events={filteredEvents} allEvents={allEvents} onVideoSelect={onVideoSelect} forcedMonth={filters.month} onMonthChange={updateMonth} user={user} onAuthRequired={onAuthRequired}/>
-          : view === 'list'
-            ? <ListView events={filteredEvents} onVideoSelect={onVideoSelect} user={user} onAuthRequired={onAuthRequired}/>
-            : <MapView events={filteredEvents} onVideoSelect={onVideoSelect} user={user} onAuthRequired={onAuthRequired}/>
+          : <ListView events={filteredEvents} onVideoSelect={onVideoSelect} user={user} onAuthRequired={onAuthRequired}/>
         }
       </div>
 
