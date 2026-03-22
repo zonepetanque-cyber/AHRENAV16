@@ -1,5 +1,6 @@
 // AHRENA Service Worker
-// Les notifications push sont gérées par OneSignalSDKWorker.js
+// Mise à jour silencieuse : skipWaiting automatique à l'install
+// Le nouveau SW prend le contrôle au prochain chargement naturel de la page
 const CACHE_NAME = 'ahrena-v' + (self.__APP_VERSION__ || '1');
 const STATIC_CACHE = ['/', '/index.html', '/manifest.json'];
 
@@ -7,29 +8,19 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => cache.addAll(STATIC_CACHE))
   );
-  // NE PAS appeler skipWaiting() ici — on attend que le client décide
+  // Activation immédiate — pas d'attente, pas de bannière
+  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     Promise.all([
-      // Nettoyer les anciens caches
       caches.keys().then(keys =>
         Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
       ),
       clients.claim(),
     ])
-    // PAS de SW_UPDATED message — la détection se fait côté client via reg.waiting
   );
-});
-
-self.addEventListener('message', (event) => {
-  if (event.data?.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
-  if (event.data?.type === 'GET_VERSION') {
-    event.ports?.[0]?.postMessage({ version: CACHE_NAME });
-  }
 });
 
 self.addEventListener('fetch', (event) => {

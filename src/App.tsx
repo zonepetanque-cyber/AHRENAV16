@@ -11,8 +11,6 @@ import {
   ChevronLeft,
   Radio,
   Search,
-  Download,
-  RefreshCw,
   User,
   Maximize2,
   ChevronDown,
@@ -745,62 +743,6 @@ export default function App() {
   const [showNewsPopup, setShowNewsPopup] = useState(false);
   const [popupNews, setPopupNews] = useState<any[]>([]);
   const [paymentStatus, setPaymentStatus] = useState<'success' | 'cancelled' | null>(null);
-  const [showUpdateBanner, setShowUpdateBanner] = useState(false);
-  const [updateLoading, setUpdateLoading] = React.useState(false);
-
-  // ── Détection mise à jour Service Worker ─────────────────────────────────
-  // Basé uniquement sur reg.waiting — source de vérité fiable.
-  // reg.waiting existe = nouveau SW prêt = bannière. Sinon = silence.
-  useEffect(() => {
-    if (!('serviceWorker' in navigator)) return;
-    navigator.serviceWorker.ready.then(reg => {
-      // Si un SW est déjà en attente au démarrage → mise à jour dispo
-      if (reg.waiting) setShowUpdateBanner(true);
-
-      // Surveiller l'arrivée d'un nouveau SW pendant la session
-      reg.addEventListener('updatefound', () => {
-        const w = reg.installing;
-        if (!w) return;
-        w.addEventListener('statechange', () => {
-          if (w.state === 'installed' && navigator.serviceWorker.controller) {
-            setShowUpdateBanner(true);
-          }
-        });
-      });
-
-      // Vérifier une mise à jour 1 seule fois par heure (pas à chaque visibilitychange)
-      const HOUR = 60 * 60 * 1000;
-      const CHECK_KEY = 'ahrena_sw_last_check';
-      const checkUpdate = () => {
-        const last = parseInt(localStorage.getItem(CHECK_KEY) || '0');
-        if (Date.now() - last > HOUR) {
-          localStorage.setItem(CHECK_KEY, Date.now().toString());
-          reg.update();
-        }
-      };
-      document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') checkUpdate();
-      });
-    });
-  }, []);
-
-  const handleUpdate = () => {
-    if (!('serviceWorker' in navigator)) return;
-    setUpdateLoading(true);
-    setShowUpdateBanner(false);
-    navigator.serviceWorker.ready.then(reg => {
-      if (reg.waiting) {
-        navigator.serviceWorker.addEventListener('controllerchange', () => {
-          window.location.reload();
-        }, { once: true });
-        reg.waiting.postMessage({ type: 'SKIP_WAITING' });
-        setTimeout(() => window.location.reload(), 4000);
-      } else {
-        window.location.reload();
-      }
-    });
-  }
-
   // Détecter le retour depuis Stripe Checkout
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -1439,93 +1381,6 @@ export default function App() {
 
       {/* Bannière mise à jour disponible */}
       <AnimatePresence>
-        {/* ── Écran de mise à jour plein écran ── */}
-        <AnimatePresence>
-          {showUpdateBanner && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[9999] flex flex-col items-center justify-center px-8"
-              style={{ background: 'radial-gradient(ellipse at center, #1a0a00 0%, #000000 100%)' }}
-            >
-              {/* Logo */}
-              <motion.div
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ delay: 0.1, type: 'spring', damping: 20 }}
-                className="mb-8"
-              >
-                <img
-                  src="https://cdn.shopify.com/s/files/1/0915/3760/4942/files/Logo_AHRENA.png?v=1773386123"
-                  alt="AHRENA"
-                  className="h-20 w-auto drop-shadow-[0_0_30px_rgba(212,175,55,0.4)]"
-                />
-              </motion.div>
-
-              {/* Icône mise à jour */}
-              <motion.div
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ delay: 0.2, type: 'spring', damping: 18 }}
-                className="w-20 h-20 rounded-3xl flex items-center justify-center mb-6"
-                style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #b8922a 100%)' }}
-              >
-                {updateLoading
-                  ? <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}>
-                      <RefreshCw size={32} className="text-black" />
-                    </motion.div>
-                  : <Download size={32} className="text-black" />
-                }
-              </motion.div>
-
-              {/* Texte */}
-              <motion.div
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.3 }}
-                className="text-center mb-10"
-              >
-                <h2 className="text-white font-black text-2xl uppercase tracking-wide mb-2">
-                  {updateLoading ? 'Mise à jour…' : 'Nouvelle version'}
-                </h2>
-                <p className="text-white/40 text-sm leading-relaxed">
-                  {updateLoading
-                    ? "Installation en cours, l'application va redémarrer."
-                    : "Une nouvelle version d'AHRENA est disponible. Mettez à jour pour profiter des dernières améliorations."}
-                </p>
-              </motion.div>
-
-              {/* Bouton */}
-              {!updateLoading && (
-                <motion.button
-                  initial={{ y: 20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ delay: 0.4 }}
-                  onClick={handleUpdate}
-                  className="w-full max-w-xs py-4 rounded-2xl font-black text-black text-base uppercase tracking-widest active:scale-95 transition-transform shadow-lg"
-                  style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #b8922a 100%)' }}
-                >
-                  Mettre à jour maintenant
-                </motion.button>
-              )}
-
-              {/* Barre de progression */}
-              {updateLoading && (
-                <motion.div className="w-full max-w-xs h-1 bg-white/10 rounded-full overflow-hidden mt-4">
-                  <motion.div
-                    initial={{ scaleX: 0 }}
-                    animate={{ scaleX: 1 }}
-                    transition={{ duration: 4, ease: 'linear' }}
-                    className="h-full rounded-full origin-left"
-                    style={{ background: 'linear-gradient(90deg, #D4AF37, #b8922a)' }}
-                  />
-                </motion.div>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </AnimatePresence>
       
       {refreshing && (
         <div className="fixed top-20 left-0 right-0 z-[60] flex justify-center">
