@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { isFav, toggleFav, FavConcours } from '../services/favoritesService';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import L from 'leaflet';
 
 import { motion, AnimatePresence } from 'motion/react';
 import { Video } from '../services/youtubeService';
@@ -1861,6 +1863,141 @@ const DeptAccordion = ({ sources, onChange }: {
   );
 };
 
+
+// ── MapView — carte interactive des concours ──────────────────
+// Composant interne pour recentrer la carte sur les marqueurs filtrés
+const FitBounds = ({ events }: { events: UnifiedEvent[] }) => {
+  const map = useMap();
+  React.useEffect(() => {
+    const pts = events.filter(e => e.raw?.lat && e.raw?.lng).map(e => [e.raw.lat, e.raw.lng] as [number,number]);
+    if (pts.length > 0) {
+      try { map.fitBounds(pts, { padding: [40, 40], maxZoom: 10 }); } catch {}
+    }
+  }, [events.length]);
+  return null;
+};
+
+const createCalendarIcon = (color: string, type: string) => {
+  const size = type === 'NATIONAL' ? 18 : type === 'REGIONAL' ? 14 : 10;
+  const shape = type === 'NATIONAL'
+    ? `<polygon points="9,1 11,7 17,7 12,11 14,17 9,13 4,17 6,11 1,7 7,7" fill="${color}" stroke="white" stroke-width="1.5"/>`
+    : type === 'REGIONAL' || type === 'RÉGIONAL'
+      ? `<rect x="2" y="2" width="14" height="14" rx="2" transform="rotate(45 9 9)" fill="${color}" stroke="white" stroke-width="1.5"/>`
+      : `<circle cx="9" cy="9" r="7" fill="${color}" stroke="white" stroke-width="1.5"/>`;
+  return L.divIcon({
+    className: '',
+    html: `<svg width="${size+2}" height="${size+2}" viewBox="0 0 18 18">${shape}</svg>`,
+    iconSize: [size+2, size+2],
+    iconAnchor: [(size+2)/2, (size+2)/2],
+    popupAnchor: [0, -(size+2)/2],
+  });
+};
+
+const MapView = ({ events, onVideoSelect, user, onAuthRequired }: {
+  events: UnifiedEvent[]; onVideoSelect: (v: Video) => void; user?: any; onAuthRequired?: () => void;
+}) => {
+  const [detailEv, setDetailEv] = React.useState<UnifiedEvent | null>(null);
+
+  // Garder uniquement les events avec coordonnées
+  const mappable = React.useMemo(() =>
+    events.filter(ev => ev.raw?.lat && ev.raw?.lng && !isNaN(ev.raw.lat) && !isNaN(ev.raw.lng)),
+  [events]);
+
+  // Grouper les events au même endroit
+  const grouped = React.useMemo(() => {
+    const map = new Map<string, UnifiedEvent[]>();
+    mappable.forEach(ev => {
+      const key = `${ev.raw.lat.toFixed(3)},${ev.raw.lng.toFixed(3)}`;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(ev);
+    });
+    return map;
+  }, [mappable]);
+
+  return (
+    <div className="relative flex flex-col" style={{ height: 'calc(100vh - 200px)' }}>
+      {/* Compteur */}
+      <div className="px-4 py-1.5 flex items-center gap-2">
+        <MapPin size={11} className="text-white/40"/>
+        <span className="text-white/40 text-[11px]">{mappable.length} concours localisés</span>
+      </div>
+
+      <div className="flex-1 mx-3 rounded-2xl overflow-hidden border border-white/10">
+        <MapContainer
+          center={[46.8, 2.3]}
+          zoom={6}
+          style={{ width: '100%', height: '100%' }}
+          zoomControl={false}
+        >
+          <TileLayer
+            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+            attribution='&copy; <a href="https://carto.com">CARTO</a>'
+          />
+          <FitBounds events={mappable} />
+          {Array.from(grouped.entries()).map(([key, evs]) => {
+            const ev = evs[0];
+            const color = SOURCE_COLOR[ev.source] || '#dc2626';
+            const type = ev.typeEvent || 'CONCOURS';
+            return (
+              <Marker
+                key={key}
+                position={[ev.raw.lat, ev.raw.lng]}
+                icon={createCalendarIcon(color, type)}
+                eventHandlers={{ click: () => setDetailEv(evs.length === 1 ? evs[0] : null) }}
+              >
+                {evs.length > 1 ? (
+                  <Popup>
+                    <div style={{ background: '#18181b', borderRadius: 12, padding: 8, minWidth: 200 }}>
+                      <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10, marginBottom: 6 }}>
+                        {evs.length} concours · {ev.ville}
+                      </p>
+                      {evs.map(e => (
+                        <button
+                          key={e.id}
+                          onClick={() => setDetailEv(e)}
+                          style={{ display: 'block', width: '100%', textAlign: 'left', padding: '4px 0', color: 'white', fontSize: 11, fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,0.05)' }}
+                        >
+                          {e.title}
+                          <span style={{ color: SOURCE_COLOR[e.source], fontSize: 9, marginLeft: 6 }}>{SOURCE_LABEL[e.source]}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </Popup>
+                ) : null}
+              </Marker>
+            );
+          })}
+        </MapContainer>
+      </div>
+
+      {/* Légende */}
+      <div className="flex items-center gap-3 px-4 py-2">
+        {[['NATIONAL','polygon'],['REGIONAL','rect'],['CONCOURS','circle']].map(([type, shape]) => (
+          <div key={type} className="flex items-center gap-1">
+            <svg width="12" height="12" viewBox="0 0 18 18">
+              {shape === 'polygon' && <polygon points="9,1 11,7 17,7 12,11 14,17 9,13 4,17 6,11 1,7 7,7" fill="rgba(255,255,255,0.5)"/>}
+              {shape === 'rect' && <rect x="2" y="2" width="14" height="14" rx="2" transform="rotate(45 9 9)" fill="rgba(255,255,255,0.5)"/>}
+              {shape === 'circle' && <circle cx="9" cy="9" r="7" fill="rgba(255,255,255,0.5)"/>}
+            </svg>
+            <span className="text-white/30 text-[9px] uppercase tracking-wider">{type === 'CONCOURS' ? 'Départ.' : type === 'REGIONAL' ? 'Rég.' : 'Nat.'}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Détail concours sélectionné */}
+      {detailEv && (
+        <EventDetailSheet
+          ev={detailEv}
+          onClose={() => setDetailEv(null)}
+          onVideoSelect={onVideoSelect}
+          user={user}
+          onAuthRequired={onAuthRequired}
+        />
+      )}
+    </div>
+  );
+};
+
 // ── MonthStrip — filtre par mois ──────────────────────────────
 const MonthStrip = ({ selectedMonth, onChange, availableMonths }: {
   selectedMonth: { month: number; year: number } | null;
@@ -2086,7 +2223,7 @@ const FilterPanel = ({ filters, onChange, onClose }: {
 
 // ── Composant principal ───────────────────────────────────────
 const CalendarComponent = ({ videos, onVideoSelect, user, onAuthRequired }: { videos: Video[]; onVideoSelect: (v: Video) => void; user?: any; onAuthRequired?: () => void }) => {
-  const [view, setView]           = useState<'month' | 'list'>('month');
+  const [view, setView]           = useState<'month' | 'list' | 'map'>('month');
   const [showFilters, setShowFilters] = useState(false);
   // Par défaut : aucun département sélectionné — l'utilisateur doit choisir
   const [filters, setFilters]     = useState<AdvancedFilters>({
@@ -2267,6 +2404,10 @@ const CalendarComponent = ({ videos, onVideoSelect, user, onAuthRequired }: { vi
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wide transition-all ${view === 'list' ? 'bg-white text-black' : 'text-white/40 hover:text-white'}`}>
               <List size={11}/> <span className="hidden sm:inline">Agenda</span>
             </button>
+            <button onClick={() => setView('map')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wide transition-all ${view === 'map' ? 'bg-white text-black' : 'text-white/40 hover:text-white'}`}>
+              <Map size={11}/> <span className="hidden sm:inline">Carte</span>
+            </button>
           </div>
 
           {/* Accordéon département */}
@@ -2319,10 +2460,12 @@ const CalendarComponent = ({ videos, onVideoSelect, user, onAuthRequired }: { vi
       )}
 
       {/* Zone scrollable — prend tout l'espace restant */}
-      <div className="flex-1 overflow-y-auto overscroll-contain pb-36">
+      <div className={`flex-1 ${view === 'map' ? 'overflow-hidden' : 'overflow-y-auto overscroll-contain pb-36'}`}>
         {view === 'month'
           ? <MonthView events={filteredEvents} allEvents={allEvents} onVideoSelect={onVideoSelect} forcedMonth={filters.month} onMonthChange={updateMonth} user={user} onAuthRequired={onAuthRequired}/>
-          : <ListView  events={filteredEvents} onVideoSelect={onVideoSelect} user={user} onAuthRequired={onAuthRequired}/>
+          : view === 'list'
+            ? <ListView events={filteredEvents} onVideoSelect={onVideoSelect} user={user} onAuthRequired={onAuthRequired}/>
+            : <MapView events={filteredEvents} onVideoSelect={onVideoSelect} user={user} onAuthRequired={onAuthRequired}/>
         }
       </div>
 
