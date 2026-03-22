@@ -749,49 +749,18 @@ export default function App() {
   const [updateLoading, setUpdateLoading] = React.useState(false);
 
   // ── Détection mise à jour Service Worker ─────────────────────────────────
-  // Stratégie : comparer la version du SW en attente avec la version active connue.
-  // SEEN_KEY = version du SW actif après la dernière mise à jour appliquée.
-  // Au démarrage : si reg.waiting existe ET sa version != SEEN_KEY → bannière.
-  // Au clic "Mettre à jour" : sauvegarder la version du SW en attente IMMÉDIATEMENT
-  //   (avant le reload, dans le même tick) → au prochain démarrage, SW actif = SEEN_KEY → silence.
+  // Basé uniquement sur reg.waiting — source de vérité fiable.
+  // reg.waiting existe = nouveau SW prêt = bannière. Sinon = silence.
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
-
-    const SEEN_KEY = 'ahrena_sw_seen_version';
-
-    const getSwVersion = (sw: ServiceWorker): Promise<string | null> =>
-      new Promise(resolve => {
-        const ch = new MessageChannel();
-        const timer = setTimeout(() => resolve(null), 800);
-        ch.port1.onmessage = (e) => { clearTimeout(timer); resolve(e.data?.version || null); };
-        sw.postMessage({ type: 'GET_VERSION' }, [ch.port2]);
-      });
-
-    const checkForUpdate = async (reg: ServiceWorkerRegistration) => {
-      if (!reg.waiting) return;
-      const newVersion = await getSwVersion(reg.waiting);
-      const seenVersion = localStorage.getItem(SEEN_KEY);
-      // Afficher seulement si c'est une vraie nouvelle version non encore appliquée
-      if (newVersion && newVersion !== seenVersion) {
-        setShowUpdateBanner(true);
-      }
-    };
-
     navigator.serviceWorker.ready.then(reg => {
-      // Vérifier immédiatement au chargement
-      checkForUpdate(reg);
-
-      // Surveiller les nouvelles mises à jour pendant la session
+      if (reg.waiting) setShowUpdateBanner(true);
       reg.addEventListener('updatefound', () => {
-        const newWorker = reg.installing;
-        if (!newWorker) return;
-        newWorker.addEventListener('statechange', async () => {
-          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-            const newVersion = await getSwVersion(newWorker);
-            const seenVersion = localStorage.getItem(SEEN_KEY);
-            if (!newVersion || newVersion !== seenVersion) {
-              setShowUpdateBanner(true);
-            }
+        const w = reg.installing;
+        if (!w) return;
+        w.addEventListener('statechange', () => {
+          if (w.state === 'installed' && navigator.serviceWorker.controller) {
+            setShowUpdateBanner(true);
           }
         });
       });
@@ -801,33 +770,19 @@ export default function App() {
   const handleUpdate = () => {
     if (!('serviceWorker' in navigator)) return;
     setUpdateLoading(true);
-
-    navigator.serviceWorker.ready.then(async reg => {
+    setShowUpdateBanner(false);
+    navigator.serviceWorker.ready.then(reg => {
       if (reg.waiting) {
-        // Sauvegarder la version du SW en attente MAINTENANT, avant le reload
-        const SEEN_KEY = 'ahrena_sw_seen_version';
-        const newVersion = await new Promise<string | null>(resolve => {
-          const ch = new MessageChannel();
-          const timer = setTimeout(() => resolve(null), 800);
-          ch.port1.onmessage = (e) => { clearTimeout(timer); resolve(e.data?.version || null); };
-          reg.waiting!.postMessage({ type: 'GET_VERSION' }, [ch.port2]);
-        });
-        if (newVersion) localStorage.setItem(SEEN_KEY, newVersion);
-
-        // Écouter le changement de controller puis recharger
         navigator.serviceWorker.addEventListener('controllerchange', () => {
           window.location.reload();
         }, { once: true });
-
         reg.waiting.postMessage({ type: 'SKIP_WAITING' });
-
-        // Fallback si controllerchange ne se déclenche pas
         setTimeout(() => window.location.reload(), 4000);
       } else {
         window.location.reload();
       }
     });
-  };
+  }
 
   // Détecter le retour depuis Stripe Checkout
   useEffect(() => {
