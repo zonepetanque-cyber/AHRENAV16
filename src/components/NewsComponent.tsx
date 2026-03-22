@@ -409,10 +409,11 @@ const NewsComponent = ({ user, onAuthRequired }: { user?: any; onAuthRequired?: 
         )}
 
         {!loading && news.length > 0 && (
-          <div className="flex items-start gap-2.5 bg-white/4 border border-white/8 rounded-xl px-3 py-2.5 mb-4">
-            <span className="text-base flex-shrink-0 mt-0.5">ℹ️</span>
+          <div className="bg-white/4 border border-white/8 rounded-xl px-4 py-3 mb-4">
+            <p className="text-white/70 text-[12px] font-bold mb-1">📢 Vous gérez un site d'actualités pétanque ?</p>
             <p className="text-white/40 text-[11px] leading-relaxed">
-              Les actualités proviennent des sites officiels des comités départementaux et des médias pétanque. Certains comités ne publient pas encore de flux d'actualités en ligne — leurs articles n'apparaissent pas ici, mais leur calendrier reste disponible dans l'onglet <span className="text-white/60 font-bold">Calendrier</span>.
+              Si vous souhaitez que votre site d'actualités sur la pétanque, le jeu provençal ou le sport-boules apparaisse ici, contactez-nous pour intégrer votre flux :{' '}
+              <a href="mailto:support@ahrena.com" className="text-red-400 font-bold underline underline-offset-2">support@ahrena.com</a>
             </p>
           </div>
         )}
