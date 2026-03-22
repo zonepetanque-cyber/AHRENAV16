@@ -21,7 +21,7 @@
     "vite": "^6.2.0",
     "web-push": "^3.6.7",
     "leaflet": "^1.9.4",
-    "react-leaflet": "^4.2.1"
+    "react-leaflet": "^5.0.0"
   },
   "devDependencies": {
     "@vercel/node": "^3.0.0",
