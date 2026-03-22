@@ -410,9 +410,8 @@ const NewsComponent = ({ user, onAuthRequired }: { user?: any; onAuthRequired?: 
 
         {!loading && news.length > 0 && (
           <div className="bg-white/4 border border-white/8 rounded-xl px-4 py-3 mb-4">
-            <p className="text-white/70 text-[12px] font-bold mb-1">📢 Vous gérez un site d'actualités pétanque ?</p>
             <p className="text-white/40 text-[11px] leading-relaxed">
-              Si vous souhaitez que votre site d'actualités sur la pétanque, le jeu provençal ou le sport-boules apparaisse ici, contactez-nous pour intégrer votre flux :{' '}
+              Votre site de pétanque, jeu provençal ou sport boules ici ? Contactez-nous pour intégrer votre flux :{' '}
               <a href="mailto:support@ahrena.com" className="text-red-400 font-bold underline underline-offset-2">support@ahrena.com</a>
             </p>
           </div>
