@@ -1272,8 +1272,11 @@ const MonthGrid = ({
 };
 
 // ── MonthView — scroll-snap CSS natif, sans saut ──────────────
-const MonthView = ({ events, allEvents, onVideoSelect, forcedMonth, user, onAuthRequired }: {
-  events: UnifiedEvent[]; allEvents: UnifiedEvent[]; onVideoSelect: (v: Video) => void; forcedMonth: { month: number; year: number } | null; user?: any; onAuthRequired?: () => void;
+const MonthView = ({ events, allEvents, onVideoSelect, forcedMonth, onMonthChange, user, onAuthRequired }: {
+  events: UnifiedEvent[]; allEvents: UnifiedEvent[]; onVideoSelect: (v: Video) => void;
+  forcedMonth: { month: number; year: number } | null;
+  onMonthChange?: (m: { month: number; year: number }) => void;
+  user?: any; onAuthRequired?: () => void;
 }) => {
   const todayDate = today();
   const minYear   = todayDate.getFullYear();
@@ -1366,6 +1369,12 @@ const MonthView = ({ events, allEvents, onVideoSelect, forcedMonth, user, onAuth
         }
         setIdx(clamped);
         setSelected(null);
+        // Synchroniser la strip avec le nouveau mois swipé
+        // (seulement si un mois était déjà actif — ne pas activer de mois si "TOUS" était sélectionné)
+        if (forcedMonth !== null) {
+          const newMonth = addMonths(minYear, minMonth, clamped);
+          onMonthChange?.(newMonth);
+        }
       }
     }, 80);
   };
@@ -2278,7 +2287,7 @@ const CalendarComponent = ({ videos, onVideoSelect, user, onAuthRequired }: { vi
       {/* Zone scrollable — prend tout l'espace restant */}
       <div className="flex-1 overflow-y-auto overscroll-contain pb-36">
         {view === 'month'
-          ? <MonthView events={filteredEvents} allEvents={allEvents} onVideoSelect={onVideoSelect} forcedMonth={filters.month} user={user} onAuthRequired={onAuthRequired}/>
+          ? <MonthView events={filteredEvents} allEvents={allEvents} onVideoSelect={onVideoSelect} forcedMonth={filters.month} onMonthChange={updateMonth} user={user} onAuthRequired={onAuthRequired}/>
           : <ListView  events={filteredEvents} onVideoSelect={onVideoSelect} user={user} onAuthRequired={onAuthRequired}/>
         }
       </div>
