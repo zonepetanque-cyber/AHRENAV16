@@ -1055,13 +1055,40 @@ const PlayerIcon = ({ count, color, categorie }: { count: number; color: string;
   );
 };
 
-const EventCard = ({ ev, onVideoSelect, onSelect }: { ev: UnifiedEvent; onVideoSelect: (v: Video) => void; onSelect?: (ev: UnifiedEvent) => void }) => {
+const EventCard = ({ ev, onVideoSelect, onSelect, user, onAuthRequired }: { ev: UnifiedEvent; onVideoSelect: (v: Video) => void; onSelect?: (ev: UnifiedEvent) => void; user?: any; onAuthRequired?: () => void }) => {
   const color = SOURCE_COLOR[ev.source];
   const past  = isPast(ev.date, ev.dateFin);
   const players = ev.format === 'TRIPLETTE' || ev.format?.includes('TRIPLETTE') ? 3
                 : ev.format === 'DOUBLETTE' || ev.format?.includes('DOUBLETTE') ? 2
                 : ev.format === 'TÊTE-À-TÊTE' || ev.format === 'INDIVIDUEL' || ev.format?.includes('TÊTE') ? 1
                 : 0;
+  const [faved, setFaved] = React.useState(() => isFav('concours-' + ev.id));
+
+  const handleFav = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!user) { onAuthRequired?.(); return; }
+    const dept = DEPT_LINKS[ev.source];
+    const favItem: FavConcours = {
+      id: 'concours-' + ev.id,
+      category: 'concours',
+      title: ev.title,
+      date: ev.date,
+      dateFin: ev.dateFin,
+      ville: ev.ville || '',
+      format: ev.format,
+      categorie: ev.categorie,
+      source: ev.source,
+      deptColor: color,
+      deptCode: dept?.code,
+      facebook: dept?.facebook,
+      site: dept?.site,
+      info: ev.info,
+      addedAt: new Date().toISOString(),
+    };
+    const added = await toggleFav(favItem);
+    setFaved(added);
+    window.dispatchEvent(new Event('ahrena_fav_changed'));
+  };
 
   return (
     <div
@@ -1131,9 +1158,16 @@ const EventCard = ({ ev, onVideoSelect, onSelect }: { ev: UnifiedEvent; onVideoS
           </div>
         </div>
 
-        <div className="flex-shrink-0 self-center">
-          <div className="w-6 h-6 rounded-full flex items-center justify-center bg-white/8">
-            <svg width="7" height="7" viewBox="0 0 8 8" fill="rgba(255,255,255,0.4)"><polygon points="2,1 7,4 2,7"/></svg>
+        <div className="flex-shrink-0 self-center flex flex-col items-center gap-1.5">
+          <button
+            onClick={handleFav}
+            className="w-7 h-7 rounded-full flex items-center justify-center transition-colors"
+            style={{ background: faved ? 'rgba(220,38,38,0.15)' : 'rgba(255,255,255,0.05)' }}
+          >
+            <Heart size={13} fill={faved ? '#ef4444' : 'none'} stroke={faved ? '#ef4444' : 'rgba(255,255,255,0.4)'} strokeWidth={2}/>
+          </button>
+          <div className="w-5 h-5 rounded-full flex items-center justify-center bg-white/8">
+            <svg width="6" height="6" viewBox="0 0 8 8" fill="rgba(255,255,255,0.4)"><polygon points="2,1 7,4 2,7"/></svg>
           </div>
         </div>
       </div>
@@ -1214,7 +1248,7 @@ const ListView = ({ events, onVideoSelect, user, onAuthRequired }: { events: Uni
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              {evs.map(ev => <EventCard key={ev.id} ev={ev} onVideoSelect={onVideoSelect} onSelect={setDetailEv}/>)}
+              {evs.map(ev => <EventCard key={ev.id} ev={ev} onVideoSelect={onVideoSelect} onSelect={setDetailEv} user={user} onAuthRequired={onAuthRequired}/>)}
             </div>
           </div>
         );
@@ -1532,7 +1566,7 @@ const MonthView = ({ events, allEvents, onVideoSelect, forcedMonth, onMonthChang
               {/* Liste scrollable */}
               <div className="overflow-y-auto px-4 pb-6 space-y-2 flex-1">
                 {selectedEvents.map(ev => (
-                  <EventCard key={ev.id} ev={ev} onVideoSelect={(v) => { setSelected(null); onVideoSelect(v); }} onSelect={(e) => { setSelected(null); setDetailEv(e); }} />
+                  <EventCard key={ev.id} ev={ev} onVideoSelect={(v) => { setSelected(null); onVideoSelect(v); }} onSelect={(e) => { setSelected(null); setDetailEv(e); }} user={user} onAuthRequired={onAuthRequired}/>
                 ))}
               </div>
             </motion.div>
