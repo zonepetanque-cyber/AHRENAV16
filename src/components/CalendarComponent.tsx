@@ -1352,6 +1352,7 @@ const MonthView = ({ events, allEvents, onVideoSelect, forcedMonth, onMonthChang
   const [idx, setIdx]       = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
   const [detailEv, setDetailEv] = useState<UnifiedEvent | null>(null);
+  const [circuitPopup, setCircuitPopup] = useState<{ key: string; label: string; logo: string; events: UnifiedEvent[] } | null>(null);
   const scrollRef   = React.useRef<HTMLDivElement>(null);
   const isScrolling = React.useRef(false);
 
@@ -1501,22 +1502,85 @@ const MonthView = ({ events, allEvents, onVideoSelect, forcedMonth, onMonthChang
         ].filter(Boolean) as { key: string; logo: string; label: string }[];
 
         if (badges.length === 0) return null;
+
+        // Filtrer les events du mois par circuit
+        const getCircuitEvents = (key: string) => events.filter(ev => {
+          if (!inMonth(ev)) return false;
+          if (key === 'masters') return ev.badge === 'masters' || ev.badge === 'both';
+          if (key === 'ppf')     return ev.badge === 'ppf'     || ev.badge === 'both';
+          if (key === 'jeunes')  return ev.source === 'jeunes';
+          if (key === 'marseillaise') return ev.ville === 'Marseille' && ev.raw?.organisateur?.toLowerCase().includes('marseillaise');
+          return false;
+        });
+
         return (
           <div className="px-4 pt-3 pb-1">
             <div className="flex flex-wrap gap-2">
               {badges.map(b => (
-                <div
+                <button
                   key={b.key}
-                  className="flex items-center gap-1.5 bg-white/5 border border-white/10 rounded-full px-2.5 py-1.5"
+                  onClick={() => setCircuitPopup({ key: b.key, label: b.label, logo: b.logo, events: getCircuitEvents(b.key) })}
+                  className="flex items-center gap-1.5 bg-white/5 border border-white/10 rounded-full px-2.5 py-1.5 hover:bg-white/10 hover:border-white/25 active:scale-95 transition-all"
                 >
                   <img src={b.logo} alt={b.label} className="h-4 w-auto object-contain flex-shrink-0" />
                   <span className="text-[10px] font-bold text-white/60 whitespace-nowrap">{b.label}</span>
-                </div>
+                  <span className="text-[9px] text-white/30 font-bold">{getCircuitEvents(b.key).length}</span>
+                </button>
               ))}
             </div>
           </div>
         );
       })()}
+
+      {/* Popup circuit */}
+      <AnimatePresence>
+        {circuitPopup && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[300] flex items-center justify-center px-4"
+            onClick={() => setCircuitPopup(null)}
+          >
+            <div className="absolute inset-0 bg-black/75 backdrop-blur-md" />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.92, y: 16 }}
+              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+              className="relative w-full max-w-lg bg-zinc-950 border border-white/10 rounded-2xl shadow-2xl max-h-[80vh] flex flex-col"
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 py-4 border-b border-white/8 flex-shrink-0">
+                <div className="flex items-center gap-3">
+                  <img src={circuitPopup.logo} alt={circuitPopup.label} className="h-7 w-auto object-contain" />
+                  <div>
+                    <p className="text-white font-black text-sm uppercase tracking-wide">{circuitPopup.label}</p>
+                    <p className="text-white/40 text-[10px]">{circuitPopup.events.length} concours ce mois</p>
+                  </div>
+                </div>
+                <button onClick={() => setCircuitPopup(null)} className="w-8 h-8 rounded-full bg-white/8 flex items-center justify-center hover:bg-white/15 transition-colors">
+                  <X size={14} className="text-white/60" />
+                </button>
+              </div>
+              {/* Liste */}
+              <div className="overflow-y-auto flex-1 px-3 py-3 space-y-2">
+                {circuitPopup.events.map(ev => (
+                  <EventCard
+                    key={ev.id}
+                    ev={ev}
+                    onVideoSelect={onVideoSelect}
+                    onSelect={(e) => { setCircuitPopup(null); setDetailEv(e); }}
+                    user={user}
+                    onAuthRequired={onAuthRequired}
+                  />
+                ))}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Bottom sheet événements du jour */}
       <AnimatePresence>
