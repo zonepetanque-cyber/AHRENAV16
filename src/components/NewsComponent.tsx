@@ -46,7 +46,7 @@ const NewsCard = ({ item, user, onAuthRequired }: { item: NewsItem; user?: any; 
   const [imgError, setImgError] = useState(false);
   const [faved, setFaved] = useState(() => isFav('article-' + item.link));
 
-  const handleFav = (e: React.MouseEvent) => {
+  const handleFav = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     // Bloquer si non connecté
@@ -64,7 +64,7 @@ const NewsCard = ({ item, user, onAuthRequired }: { item: NewsItem; user?: any; 
       date: item.date,
       addedAt: new Date().toISOString(),
     };
-    const added = toggleFav(favItem);
+    const added = await toggleFav(favItem);
     setFaved(added);
     window.dispatchEvent(new Event('ahrena_fav_changed'));
   };

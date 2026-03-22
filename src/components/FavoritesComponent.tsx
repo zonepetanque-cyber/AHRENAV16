@@ -71,7 +71,7 @@ const ArticleCard = ({ item, onRemove }: { item: FavArticle; onRemove: (id: stri
     </a>
     <button
       onClick={() => onRemove(item.id)}
-      className="absolute top-2 right-2 w-7 h-7 bg-zinc-800 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 border border-white/10"
+      className="absolute top-2 right-2 w-7 h-7 bg-zinc-800 rounded-full flex items-center justify-center opacity-60 group-hover:opacity-100 transition-opacity hover:bg-red-600 active:bg-red-600 border border-white/10"
     >
       <Trash2 size={11} className="text-white"/>
     </button>
@@ -133,7 +133,7 @@ const ConcoursCard = ({ item, onRemove }: { item: FavConcours; onRemove: (id: st
 
         {/* Liens comité */}
         {(item.facebook || item.site) && (
-          <div className="flex gap-2 mt-3 pt-3 border-t border-white/6">
+          <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-white/6">
             {item.facebook && (
               <a href={item.facebook} target="_blank" rel="noopener noreferrer"
                 className="flex items-center gap-1.5 bg-blue-600/12 border border-blue-600/20 text-blue-400 text-[9px] font-bold px-2.5 py-1.5 rounded-xl hover:bg-blue-600/20 transition-colors">
@@ -151,7 +151,7 @@ const ConcoursCard = ({ item, onRemove }: { item: FavConcours; onRemove: (id: st
       </div>
       <button
         onClick={() => onRemove(item.id)}
-        className="absolute top-3 right-3 w-7 h-7 bg-zinc-800 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 border border-white/10"
+        className="absolute top-3 right-3 w-7 h-7 bg-zinc-800 rounded-full flex items-center justify-center opacity-60 group-hover:opacity-100 transition-opacity hover:bg-red-600 active:bg-red-600 border border-white/10"
       >
         <Trash2 size={11} className="text-white"/>
       </button>
