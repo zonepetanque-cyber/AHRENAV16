@@ -407,16 +407,17 @@ function applyFilters(events: UnifiedEvent[], f: AdvancedFilters): UnifiedEvent[
 
     if (f.sources.size > 0) {
       // Des départements sont sélectionnés
-      const alwaysOn = new Set(['national', 'regional', 'live']);
+      // live passe toujours (lives en cours/à venir)
+      // national et regional NE passent plus automatiquement :
+      // ils ne s'affichent que si leur source est dans la sélection
+      const alwaysOn = new Set(['live']);
       const passesSource = alwaysOn.has(ev.source) || f.sources.has(ev.source);
-      // Jeunes masqués sauf si explicitement coché
       const jeunesBlocked = ev.source === 'jeunes' && !wantsJeunes;
       if (!passesSource && !isCircuitMatch) return false;
       if (jeunesBlocked) return false;
     } else {
-      // Aucun département sélectionné
-      // Cacher les lives vidéo si aucun filtre actif
-      if (ev.source === 'jeunes' && !wantsJeunes) return false;
+      // Aucun département sélectionné → rien n'apparaît (sauf circuits explicitement cochés)
+      if (!isCircuitMatch) return false;
     }
 
     // ── Filtre mois ───────────────────────────────────────────
@@ -1546,9 +1547,8 @@ const DeptAccordion = ({ sources, onChange }: {
     if (next.has(key)) {
       next.delete(key);
     } else {
-      // Compter seulement les vrais depts (pas les sources permanentes)
       const deptCount = Array.from(next).filter(k => !ALWAYS_ON.has(k)).length;
-      if (!ALWAYS_ON.has(key) && deptCount >= MAX_DEPTS) return; // limite atteinte
+      if (!ALWAYS_ON.has(key) && deptCount >= MAX_DEPTS) return;
       next.add(key);
     }
     onChange(next);
@@ -1564,6 +1564,17 @@ const DeptAccordion = ({ sources, onChange }: {
     : activeCount === 1
       ? availableDepts.find(d => sources.has(d.key))?.label?.split(' (')[0] || '1 département'
       : `${activeCount} département${activeCount > 1 ? 's' : ''}`;
+
+  // Département principal = dept mémorisé s'il est sélectionné, sinon 1er dept actif
+  const savedDept = localStorage.getItem('ahrena_saved_dept');
+  const activeDeptKeys = DEPT_OPTIONS.filter(d => sources.has(d.key)).map(d => d.key);
+  const primaryDept = (savedDept && sources.has(savedDept))
+    ? savedDept
+    : activeDeptKeys[0] || null;
+  // Limitrophes du dept principal (pour les colorier en doré)
+  const primaryLimitrophes = primaryDept
+    ? new Set(getLimitrophes(new Set([primaryDept])))
+    : new Set<string>();
 
   // Bloquer le scroll du body quand le sheet est ouvert
   useEffect(() => {
@@ -1669,29 +1680,37 @@ const DeptAccordion = ({ sources, onChange }: {
                   );
                 }
 
+                const isPrimary    = active && dept.key === primaryDept;
+                const isLimitrophe = active && primaryLimitrophes.has(dept.key);
+                const checkColor   = isPrimary ? 'bg-red-600 border-red-600'
+                                   : isLimitrophe ? 'bg-amber-500 border-amber-500'
+                                   : active ? 'bg-red-600/60 border-red-600/60'
+                                   : 'border-white/25';
+                const rowBg        = isPrimary ? 'bg-red-600/12'
+                                   : isLimitrophe ? 'bg-amber-500/8'
+                                   : active ? 'bg-white/5'
+                                   : limitReached ? 'opacity-35 cursor-not-allowed'
+                                   : 'hover:bg-white/4';
                 return (
                   <button
                     key={dept.key}
                     onClick={() => toggleSource(dept.key)}
                     disabled={limitReached && !active}
-                    className={`w-full flex items-center gap-4 px-5 py-3.5 transition-all
-                      ${active ? 'bg-red-600/8' : limitReached ? 'opacity-35 cursor-not-allowed' : 'hover:bg-white/4'}`}
+                    className={`w-full flex items-center gap-4 px-5 py-3.5 transition-all ${rowBg}`}
                   >
                     {/* Checkbox */}
-                    <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all
-                      ${active ? 'bg-red-600 border-red-600' : 'border-white/25'}`}>
+                    <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all ${checkColor}`}>
                       {active && <Check size={12} className="text-white" strokeWidth={3}/>}
                     </div>
                     {/* Dot couleur */}
                     <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: dept.color }}/>
                     {/* Label */}
                     <span className={`text-sm font-bold flex-1 text-left transition-colors
-                      ${active ? 'text-white' : 'text-white/55'}`}>
+                      ${isPrimary ? 'text-white font-black' : isLimitrophe ? 'text-amber-200/80' : active ? 'text-white' : 'text-white/55'}`}>
                       {dept.label}
                     </span>
-                    {active && (
-                      <span className="text-red-500 text-[10px] font-black uppercase tracking-wider">✓</span>
-                    )}
+                    {isPrimary && <span className="text-red-400 text-[9px] font-black uppercase tracking-wider">Principal</span>}
+                    {isLimitrophe && <span className="text-amber-400 text-[9px] font-black uppercase tracking-wider">Limitrophe</span>}
                   </button>
                 );
               })}
@@ -1707,26 +1726,16 @@ const DeptAccordion = ({ sources, onChange }: {
             <div className="px-5 pt-3 pb-5 border-t border-white/8 flex-shrink-0 space-y-2.5">
 
               {/* Case à cocher INCLURE LES LIMITROPHES — toujours visible */}
-              {(() => {
-                // Calculer les limitrophes depuis la sélection actuelle OU le dept mémorisé
-                const baseSources = activeCount > 0
-                  ? sources
-                  : localStorage.getItem('ahrena_saved_dept')
-                    ? new Set([localStorage.getItem('ahrena_saved_dept')!])
-                    : new Set<string>();
-                const limitrophes = getLimitrophes(baseSources);
-                const allIncluded = limitrophes.length > 0 && limitrophes.every(k => sources.has(k));
-                const baseDeptLabel = activeCount === 0 && localStorage.getItem('ahrena_saved_dept')
-                  ? DEPT_OPTIONS.find(d => d.key === localStorage.getItem('ahrena_saved_dept'))?.label?.split(' (')[0]
-                  : null;
+              {/* Bouton Inclure les limitrophes — basé sur le dept principal */}
+              {primaryDept && (() => {
+                const limitrophes = Array.from(primaryLimitrophes);
+                if (limitrophes.length === 0) return null;
+                const allIncluded = limitrophes.every(k => sources.has(k));
+                const primaryLabel = DEPT_OPTIONS.find(d => d.key === primaryDept)?.label?.split(' (')[0] || '';
                 return (
                   <button
                     onClick={() => {
                       const next = new Set(sources);
-                      // Si aucun dept sélectionné mais dept mémorisé, l'ajouter aussi
-                      if (activeCount === 0 && localStorage.getItem('ahrena_saved_dept')) {
-                        next.add(localStorage.getItem('ahrena_saved_dept')!);
-                      }
                       if (allIncluded) {
                         limitrophes.forEach(k => next.delete(k));
                       } else {
@@ -1747,15 +1756,13 @@ const DeptAccordion = ({ sources, onChange }: {
                       <span className="text-[11px] font-black uppercase tracking-wide" style={{ color: '#fbbf24' }}>
                         Inclure les limitrophes
                       </span>
-                      {baseDeptLabel && (
-                        <p className="text-[10px] text-amber-300/50 mt-0.5">Autour de {baseDeptLabel}</p>
-                      )}
+                      <p className="text-[10px] text-amber-300/50 mt-0.5">
+                        Autour de {primaryLabel} · {limitrophes.length} dept{limitrophes.length > 1 ? 's' : ''}
+                      </p>
                     </div>
-                    {limitrophes.length > 0 && (
-                      <span className="bg-amber-400/20 text-amber-300 text-[9px] px-2 py-0.5 rounded-full font-black flex-shrink-0">
-                        {allIncluded ? '✓' : `+${limitrophes.length}`}
-                      </span>
-                    )}
+                    <span className="bg-amber-400/20 text-amber-300 text-[9px] px-2 py-0.5 rounded-full font-black flex-shrink-0">
+                      {allIncluded ? '✓ Inclus' : `+${limitrophes.length}`}
+                    </span>
                   </button>
                 );
               })()}
