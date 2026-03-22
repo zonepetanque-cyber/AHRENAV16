@@ -482,8 +482,6 @@ function applyFilters(events: UnifiedEvent[], f: AdvancedFilters): UnifiedEvent[
       const isMarseillaise = ev.ville === 'Marseille' && ev.raw?.organisateur?.toLowerCase().includes('marseillaise');
       if (isMarseillaise) return false;
     }
-      if (!ok) return false;
-    }
 
     return true;
   });
