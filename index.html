@@ -2,25 +2,33 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>AHRENA - Pétanque Live</title>
-    <meta name="description" content="L'univers de la pétanque en direct et en replay." />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>AHRENA</title>
+    <meta name="description" content="L'univers de la petanque en direct et en replay." />
     <meta name="theme-color" content="#000000" />
     <link rel="manifest" href="/manifest.json" />
+
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="AHRENA" />
     <link rel="apple-touch-icon" href="https://lh3.googleusercontent.com/d/1WXS-2iVgWywPUBSYMrwffrNqg8lEdY_Z" />
+
+    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
     <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then(reg => console.log('SW registered!', reg))
-            .catch(err => console.log('SW registration failed:', err));
+      window.OneSignalDeferred = window.OneSignalDeferred || [];
+      window.OneSignalDeferred.push(async function(OneSignal) {
+        await OneSignal.init({
+          appId: "16553768-beae-4032-b5aa-2433398f0fed",
+          serviceWorkerPath: "/OneSignalSDKWorker.js",
+          notifyButton: { enable: false },
+          allowLocalhostAsSecureOrigin: false,
         });
-      }
+        console.log('[OneSignal] Initialise, token:', OneSignal.User?.PushSubscription?.token);
+      });
     </script>
-  </head>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+</head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>

@@ -5,8 +5,8 @@ import { Send, Lock, MessageSquare } from 'lucide-react';
 interface Message {
   id: string;
   user_id: string;
-  user_email: string;
-  content: string;
+  email?: string;
+  message: string;
   created_at: string;
 }
 
@@ -20,41 +20,62 @@ const ChatComponent: React.FC<ChatProps> = ({ videoId, isPremium, onBecomeVIP })
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [userEmail, setUserEmail] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Récupérer l'email de l'utilisateur connecté
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user?.email) setUserEmail(data.user.email);
+    });
+  }, []);
 
   useEffect(() => {
     if (!isPremium) return;
 
-    // Fetch initial messages
+    // Charger les messages existants
     const fetchMessages = async () => {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('chat_messages')
-        .select('*')
+        .select('id, user_id, message, created_at, profiles(email)')
         .eq('video_id', videoId)
         .order('created_at', { ascending: true })
-        .limit(50);
+        .limit(100);
 
-      if (data) setMessages(data);
+      if (data) {
+        setMessages(data.map((m: any) => ({
+          ...m,
+          email: m.profiles?.email || '',
+        })));
+      }
     };
 
     fetchMessages();
 
-    // Subscribe to new messages
+    // Écoute en temps réel des nouveaux messages
     const channel = supabase
       .channel(`chat:${videoId}`)
-      .on('postgres_changes', { 
-        event: 'INSERT', 
-        schema: 'public', 
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
         table: 'chat_messages',
         filter: `video_id=eq.${videoId}`
-      }, (payload) => {
-        setMessages((prev) => [...prev, payload.new as Message]);
+      }, async (payload) => {
+        // Récupérer l'email du nouveau message
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('email')
+          .eq('id', payload.new.user_id)
+          .single();
+
+        setMessages(prev => [...prev, {
+          ...payload.new as Message,
+          email: profile?.email || '',
+        }]);
       })
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [videoId, isPremium]);
 
   useEffect(() => {
@@ -63,28 +84,32 @@ const ChatComponent: React.FC<ChatProps> = ({ videoId, isPremium, onBecomeVIP })
     }
   }, [messages]);
 
-  const handleSendMessage = async (e: React.FormEvent) => {
+  const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !isPremium) return;
+    if (!newMessage.trim() || !isPremium || loading) return;
 
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
-    
+
     if (user) {
-      const { error } = await supabase.from('chat_messages').insert({
+      await supabase.from('chat_messages').insert({
         video_id: videoId,
         user_id: user.id,
-        user_email: user.email,
-        content: newMessage.trim()
+        message: newMessage.trim(),
       });
-
-      if (!error) setNewMessage('');
+      setNewMessage('');
     }
     setLoading(false);
   };
 
+  const getDisplayName = (email: string) => {
+    if (!email) return 'Anonyme';
+    return email.split('@')[0];
+  };
+
   return (
     <div className="flex flex-col h-[400px] bg-black border-t border-white/10 relative">
+      {/* Header */}
       <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
         <h3 className="text-[10px] uppercase tracking-widest font-black text-white/60 flex items-center gap-2">
           <MessageSquare size={12} className="text-red-600" />
@@ -96,9 +121,10 @@ const ChatComponent: React.FC<ChatProps> = ({ videoId, isPremium, onBecomeVIP })
         </div>
       </div>
 
-      <div 
+      {/* Messages */}
+      <div
         ref={scrollRef}
-        className={`flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar ${!isPremium ? 'blur-sm pointer-events-none select-none opacity-50' : ''}`}
+        className={`flex-1 overflow-y-auto p-4 space-y-3 no-scrollbar ${!isPremium ? 'blur-sm pointer-events-none select-none opacity-30' : ''}`}
       >
         {messages.length === 0 && isPremium && (
           <div className="text-center py-8">
@@ -106,17 +132,18 @@ const ChatComponent: React.FC<ChatProps> = ({ videoId, isPremium, onBecomeVIP })
           </div>
         )}
         {messages.map((msg) => (
-          <div key={msg.id} className="flex flex-col gap-1">
-            <span className="text-[10px] font-black text-white/40 uppercase tracking-tight">
-              {msg.user_email.split('@')[0]}
+          <div key={msg.id} className="flex flex-col gap-0.5">
+            <span className="text-[10px] font-black text-[#D4AF37] uppercase tracking-tight">
+              {getDisplayName(msg.email || '')}
             </span>
-            <p className="text-sm text-white/90 leading-snug">{msg.content}</p>
+            <p className="text-sm text-white/90 leading-snug">{msg.message}</p>
           </div>
         ))}
       </div>
 
+      {/* Overlay VIP */}
       {!isPremium && (
-        <div className="absolute inset-x-0 bottom-0 top-10 flex flex-col items-center justify-center bg-black/40 backdrop-blur-md z-10 p-6 text-center">
+        <div className="absolute inset-x-0 bottom-0 top-10 flex flex-col items-center justify-center bg-black/60 backdrop-blur-md z-10 p-6 text-center">
           <div className="w-12 h-12 bg-red-600 rounded-full flex items-center justify-center text-white mb-4 shadow-xl">
             <Lock size={24} />
           </div>
@@ -124,7 +151,7 @@ const ChatComponent: React.FC<ChatProps> = ({ videoId, isPremium, onBecomeVIP })
           <p className="text-white/60 text-xs mb-6 max-w-[200px]">
             Rejoignez le Club pour discuter en direct avec les passionnés.
           </p>
-          <button 
+          <button
             onClick={onBecomeVIP}
             className="bg-white text-black text-[10px] font-black px-6 py-3 rounded-full uppercase tracking-widest hover:bg-zinc-200 transition-colors"
           >
@@ -133,20 +160,23 @@ const ChatComponent: React.FC<ChatProps> = ({ videoId, isPremium, onBecomeVIP })
         </div>
       )}
 
-      <form onSubmit={handleSendMessage} className="p-4 border-t border-white/5 flex gap-2">
-        <input 
+      {/* Input */}
+      <form onSubmit={handleSend} className="p-3 border-t border-white/5 flex gap-2">
+        <input
           type="text"
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
-          disabled={!isPremium}
-          placeholder={isPremium ? "Votre message..." : "Chat réservé aux VIP"}
-          className="flex-1 bg-zinc-900 border border-white/10 rounded-full px-4 py-2 text-sm text-white focus:border-red-600 outline-none disabled:opacity-50"
-        />
-        <button 
           disabled={!isPremium || loading}
-          className="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center text-white hover:bg-red-700 transition-colors disabled:opacity-50"
+          placeholder={isPremium ? "Votre message..." : "Chat réservé aux membres VIP"}
+          maxLength={300}
+          className="flex-1 bg-zinc-900 border border-white/10 rounded-full px-4 py-2 text-sm text-white focus:border-red-600 outline-none disabled:opacity-40"
+        />
+        <button
+          type="submit"
+          disabled={!isPremium || loading || !newMessage.trim()}
+          className="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center text-white hover:bg-red-700 transition-colors disabled:opacity-40 flex-shrink-0"
         >
-          <Send size={18} />
+          <Send size={16} />
         </button>
       </form>
     </div>

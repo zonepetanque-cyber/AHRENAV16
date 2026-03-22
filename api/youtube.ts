@@ -37,7 +37,9 @@ async function fetchChannelRSS(channelId: string, channelName: string) {
     const xml = await res.text();
     const ids = [...xml.matchAll(/<yt:videoId>([^<]+)<\/yt:videoId>/g)].map(m => m[1].trim());
     const titles = [...xml.matchAll(/<title>([^<]*)<\/title>/g)].map(m => m[1].trim()).slice(1);
-    return ids.slice(0, 10).map((id, i) => ({
+    // On récupère 25 vidéos en tampon — l'app filtrera les blacklistées
+    // et affichera toujours les 10 premières non-masquées
+    return ids.slice(0, 25).map((id, i) => ({
       id,
       title: titles[i] || 'Vidéo pétanque',
       thumbnail: `https://img.youtube.com/vi/${id}/mqdefault.jpg`,
@@ -96,10 +98,11 @@ async function fetchUpcoming() {
       .filter((item: any) => {
         // Garder uniquement les vrais à venir non terminés
         if (item.liveStreamingDetails?.actualEndTime) return false;
-        if (item.snippet.liveBroadcastContent !== 'upcoming') return false;
-        // Exclure les dates déjà passées
+        // Accepter aussi les lives qui viennent de démarrer (liveBroadcastContent peut passer à 'live' avec délai RSS)
+        if (item.snippet.liveBroadcastContent !== 'upcoming' && item.snippet.liveBroadcastContent !== 'live') return false;
+        // Exclure uniquement si l'heure prévue est passée depuis plus de 30 min (tolérance démarrage tardif)
         const scheduledTime = item.liveStreamingDetails?.scheduledStartTime || item.snippet.publishedAt;
-        if (scheduledTime && new Date(scheduledTime).getTime() < now) return false;
+        if (scheduledTime && new Date(scheduledTime).getTime() < now - 30 * 60 * 1000) return false;
         return true;
       })
       .map((item: any) => ({
@@ -164,7 +167,7 @@ async function fetchChannelAvatars(): Promise<Record<string, string>> {
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Cache 24h — 1 refresh/jour
   // Coût : 9 × 100 (upcoming) + 1 (details) + 1 (avatars) = ~902 unités/jour ✅
-  res.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate=3600');
+  res.setHeader('Cache-Control', 's-maxage=86400');
   res.setHeader('Access-Control-Allow-Origin', '*');
 
   try {
