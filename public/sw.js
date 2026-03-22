@@ -23,7 +23,7 @@ self.addEventListener('activate', (event) => {
         if (!isRealUpdate) return;
         clients.matchAll({ includeUncontrolled: true, type: 'window' }).then(clientList => {
           clientList.forEach(client => {
-            client.postMessage({ type: 'SW_UPDATED' });
+            client.postMessage({ type: 'SW_UPDATED', version: CACHE_NAME });
           });
         });
       });
@@ -34,6 +34,12 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
+  }
+  // Répondre avec la version du SW (pour que le client sache quelle version est en attente)
+  if (event.data && event.data.type === 'GET_VERSION') {
+    if (event.ports && event.ports[0]) {
+      event.ports[0].postMessage({ version: CACHE_NAME });
+    }
   }
 });
 

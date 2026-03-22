@@ -388,40 +388,46 @@ function buildEvents(videos: Video[]): UnifiedEvent[] {
 // ── Appliquer filtres ─────────────────────────────────────────
 function applyFilters(events: UnifiedEvent[], f: AdvancedFilters): UnifiedEvent[] {
   return events.filter(ev => {
-    // Filtre source/département
-    const wantsMasters = f.categories.has('Masters de Pétanque');
-    const wantsPPF = f.categories.has('PPF Tour');
+    const wantsMasters      = f.categories.has('Masters de Pétanque');
+    const wantsPPF          = f.categories.has('PPF Tour');
     const wantsMarseillaise = f.categories.has('Mondial La Marseillaise');
-    const wantsJeunes = f.categories.has('Circuit National Jeunes');
-    const hasBadgeFilter = wantsMasters || wantsPPF || wantsMarseillaise || wantsJeunes;
+    const wantsJeunes       = f.categories.has('Circuit National Jeunes');
 
-    // Filtre "Tout" (aucune catégorie cochée) = Départemental + Régional + National + Championnat
-    // Les circuits (Masters, PPF, Jeunes, Marseillaise) ne s'affichent QUE si explicitement cochés
-    if (f.categories.size === 0) {
-      if (ev.source === 'jeunes') return false;
-      if (ev.source === 'live') return true; // les lives passent toujours
-      const isMarseillaise = ev.ville === 'Marseille' && ev.raw?.organisateur?.toLowerCase().includes('marseillaise');
-      if (isMarseillaise) return false;
-      // Les events avec badge masters/ppf restent visibles dans "Tout" car ce sont aussi des concours normaux
-    }
+    // ── Filtre département/source ─────────────────────────────
+    // Les circuits cochés s'ajoutent à la sélection, ils ne la remplacent pas.
+    // Un event passe le filtre source si :
+    //   - aucun dept sélectionné (tout afficher) OU
+    //   - sa source est dans les depts sélectionnés OU
+    //   - c'est un circuit explicitement coché (Masters, PPF, Jeunes, Marseillaise)
+    const isCircuitMatch =
+      (wantsJeunes       && ev.source === 'jeunes') ||
+      (wantsMasters      && (ev.badge === 'masters' || ev.badge === 'both')) ||
+      (wantsPPF          && (ev.badge === 'ppf'     || ev.badge === 'both')) ||
+      (wantsMarseillaise && ev.ville === 'Marseille' && ev.raw?.organisateur?.toLowerCase().includes('marseillaise'));
 
     if (f.sources.size > 0) {
-      const alwaysOn = new Set(['national', 'regional', 'jeunes', 'live']);
-      if (!alwaysOn.has(ev.source) && !f.sources.has(ev.source)) return false;
-      // Si Jeunes non voulu explicitement et filtre "Tout" → cacher
-      if (ev.source === 'jeunes' && f.categories.size === 0) return false;
-    } else if (!hasBadgeFilter) {
-      // Aucun dept ET pas de filtre circuit → rien
-      return false;
+      // Des départements sont sélectionnés
+      const alwaysOn = new Set(['national', 'regional', 'live']);
+      const passesSource = alwaysOn.has(ev.source) || f.sources.has(ev.source);
+      // Jeunes masqués sauf si explicitement coché
+      const jeunesBlocked = ev.source === 'jeunes' && !wantsJeunes;
+      if (!passesSource && !isCircuitMatch) return false;
+      if (jeunesBlocked) return false;
+    } else {
+      // Aucun département sélectionné
+      // Cacher les lives vidéo si aucun filtre actif
+      if (ev.source === 'jeunes' && !wantsJeunes) return false;
     }
-    // Si filtre Masters/PPF actif sans département : on laisse passer tous les events
 
-    // Filtre mois
+    // ── Filtre mois ───────────────────────────────────────────
+    // Le mois ne se force PLUS automatiquement selon les circuits cochés
+    // Il n'est appliqué que si l'utilisateur l'a choisi manuellement
     if (f.month !== null) {
       const d = new Date(ev.date);
       if (d.getMonth() !== f.month.month || d.getFullYear() !== f.month.year) return false;
     }
 
+    // ── Filtre formation ──────────────────────────────────────
     if (f.formations.size > 0) {
       const c = ((ev.format || '') + ' ' + (ev.categorie || '')).toLowerCase();
       const ok =
@@ -434,6 +440,7 @@ function applyFilters(events: UnifiedEvent[], f: AdvancedFilters): UnifiedEvent[
       if (!ok) return false;
     }
 
+    // ── Filtre joueurs ────────────────────────────────────────
     if (f.joueurs.size > 0) {
       const c = ((ev.categorie || '') + ' ' + (ev.title || '')).toLowerCase();
       const ok =
@@ -451,18 +458,30 @@ function applyFilters(events: UnifiedEvent[], f: AdvancedFilters): UnifiedEvent[
       if (!ok) return false;
     }
 
-    if (f.categories.size > 0) {
-      const t = (ev.typeEvent || '').toLowerCase();
-      const ok =
-        (f.categories.has('Départemental') && t === 'concours') ||
-        (f.categories.has('Régional') && t === 'régional') ||
-        (f.categories.has('National') && t === 'national') ||
-        (f.categories.has('Championnat') && (t === 'championnat' || t === 'qualificatif')) ||
-        (f.categories.has('Circuit National Jeunes') && ev.source === 'jeunes') ||
+    // ── Filtre catégorie de concours ──────────────────────────
+    // Section 1 : Tout / Départemental / Régional / National / Championnat
+    // Section 2 : Circuits (additifs — s'ajoutent à la sélection)
+    const stdCats = new Set(['Tout', 'Départemental', 'Régional', 'National', 'Championnat']);
+    const activeStd = [...f.categories].filter(c => stdCats.has(c));
+    const hasStdFilter = activeStd.length > 0 && !activeStd.includes('Tout');
+    const hasCircuitFilter = wantsMasters || wantsPPF || wantsMarseillaise || wantsJeunes;
 
-        (f.categories.has('Masters de Pétanque') && (ev.badge === 'masters' || ev.badge === 'both')) ||
-        (f.categories.has('PPF Tour') && (ev.badge === 'ppf' || ev.badge === 'both')) ||
-        (f.categories.has('Mondial La Marseillaise') && ev.ville === 'Marseille' && ev.raw?.organisateur?.toLowerCase().includes('marseillaise'));
+    if (hasStdFilter || hasCircuitFilter) {
+      const t = (ev.typeEvent || '').toLowerCase();
+      const passesStd = !hasStdFilter || (
+        (f.categories.has('Départemental') && t === 'concours') ||
+        (f.categories.has('Régional')      && t === 'régional') ||
+        (f.categories.has('National')      && t === 'national') ||
+        (f.categories.has('Championnat')   && (t === 'championnat' || t === 'qualificatif'))
+      );
+      // Un event passe si il satisfait la catégorie standard OU s'il est un circuit coché
+      if (!passesStd && !isCircuitMatch) return false;
+    } else if (f.categories.size === 0 || activeStd.includes('Tout')) {
+      // "Tout" coché ou rien coché → masquer jeunes et Marseillaise par défaut
+      if (ev.source === 'jeunes') return false;
+      const isMarseillaise = ev.ville === 'Marseille' && ev.raw?.organisateur?.toLowerCase().includes('marseillaise');
+      if (isMarseillaise) return false;
+    }
       if (!ok) return false;
     }
 
@@ -1936,10 +1955,9 @@ const FilterPanel = ({ filters, onChange, onClose }: {
         <div className="px-6 py-4 border-t border-white/8 space-y-3 bg-zinc-950">
           <button
             onClick={() => {
-              const newMonth = local.categories.has('Mondial La Marseillaise')
-                ? MARSEILLAISE_DATE
-                : filters.month;
-              onChange({ ...local, sources: filters.sources, month: newMonth });
+              // Le mois n'est plus forcé automatiquement par la Marseillaise
+              // L'utilisateur navigue librement dans le calendrier
+              onChange({ ...local, sources: filters.sources, month: filters.month });
               onClose();
             }}
             className="w-full bg-red-600 hover:bg-red-700 text-white font-black py-3.5 rounded-xl uppercase tracking-[0.15em] text-sm transition-colors"

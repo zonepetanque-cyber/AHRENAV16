@@ -745,40 +745,59 @@ export default function App() {
   const [showNewsPopup, setShowNewsPopup] = useState(false);
   const [popupNews, setPopupNews] = useState<any[]>([]);
   const [paymentStatus, setPaymentStatus] = useState<'success' | 'cancelled' | null>(null);
-  // Si on vient de faire une mise à jour (juste rechargé), ne pas ré-afficher la bannière
-  const justUpdated = localStorage.getItem('ahrena_sw_just_updated') === '1';
-  if (justUpdated) localStorage.removeItem('ahrena_sw_just_updated');
   const [showUpdateBanner, setShowUpdateBanner] = useState(false);
+  const [updateLoading, setUpdateLoading] = React.useState(false);
+  const [pendingSwVersion, setPendingSwVersion] = React.useState<string | null>(null);
 
-  // Détection mise à jour Service Worker
+  // ── Détection mise à jour Service Worker ─────────────────────────────────
+  // Logique : on mémorise la version SW déjà vue/appliquée dans localStorage.
+  // Si le SW envoie une version déjà connue → pas de bannière.
+  // Ainsi après "Mettre à jour" + reload, la même version est déjà connue → silence.
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
 
-    const shouldShow = () => {
-      // Ne pas afficher si l'utilisateur vient de faire la mise à jour
-      if (localStorage.getItem('ahrena_sw_just_updated') === '1') return false;
-      // Ne pas ré-afficher si l'utilisateur a déjà fermé cette bannière dans la session
-      return sessionStorage.getItem('ahrena_update_dismissed') !== '1';
+    const SEEN_KEY = 'ahrena_sw_seen_version';
+
+    const shouldShow = (version?: string) => {
+      if (!version) return false;
+      // Déjà vue/appliquée → ne pas ré-afficher
+      return localStorage.getItem(SEEN_KEY) !== version;
     };
 
-    // Écouter le message SW_UPDATED envoyé par le SW lors de l'activation
     const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === 'SW_UPDATED' && shouldShow()) {
-        setShowUpdateBanner(true);
+      if (event.data?.type === 'SW_UPDATED') {
+        const version = event.data.version;
+        if (shouldShow(version)) {
+          setPendingSwVersion(version);
+          setShowUpdateBanner(true);
+        }
       }
     };
     navigator.serviceWorker.addEventListener('message', handleMessage);
 
-    // Vérifier aussi si un nouveau SW est en attente au chargement
+    // Au chargement : vérifier si un SW est en attente
     navigator.serviceWorker.ready.then(reg => {
-      if (reg.waiting && shouldShow()) {
-        setShowUpdateBanner(true);
+      if (reg.waiting) {
+        // Récupérer la version du SW en attente via un message
+        const channel = new MessageChannel();
+        channel.port1.onmessage = (e) => {
+          if (e.data?.version && shouldShow(e.data.version)) {
+            setShowUpdateBanner(true);
+          }
+        };
+        reg.waiting.postMessage({ type: 'GET_VERSION' }, [channel.port2]);
+
+        // Fallback : si pas de réponse version, afficher quand même
+        setTimeout(() => {
+          if (reg.waiting) setShowUpdateBanner(true);
+        }, 500);
       }
+
       reg.addEventListener('updatefound', () => {
         const newWorker = reg.installing;
         if (!newWorker) return;
         newWorker.addEventListener('statechange', () => {
-          if (newWorker.state === 'installed' && navigator.serviceWorker.controller && shouldShow()) {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
             setShowUpdateBanner(true);
           }
         });
@@ -790,19 +809,16 @@ export default function App() {
     };
   }, []);
 
-  const [updateLoading, setUpdateLoading] = React.useState(false);
-
   const handleUpdate = () => {
     if (!('serviceWorker' in navigator)) return;
     setUpdateLoading(true);
+    // Marquer cette version comme vue AVANT le reload pour ne plus la ré-afficher
+    if (pendingSwVersion) localStorage.setItem('ahrena_sw_seen_version', pendingSwVersion);
 
-    // Timeout de sécurité : si rien ne se passe en 4s, recharger quand même
     const fallback = setTimeout(() => window.location.reload(), 4000);
 
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       clearTimeout(fallback);
-      // Marquer que la mise à jour vient d'être appliquée → ne plus afficher la bannière après reload
-      localStorage.setItem('ahrena_sw_just_updated', '1');
       window.location.reload();
     }, { once: true });
 
@@ -1503,7 +1519,10 @@ export default function App() {
                     Mettre à jour
                   </button>
                   <button
-                    onClick={() => { sessionStorage.setItem('ahrena_update_dismissed', '1'); setShowUpdateBanner(false); }}
+                    onClick={() => { 
+                      if (pendingSwVersion) localStorage.setItem('ahrena_sw_seen_version', pendingSwVersion);
+                      setShowUpdateBanner(false); 
+                    }}
                     className="w-7 h-7 rounded-full bg-black/15 flex items-center justify-center active:bg-black/30 transition-colors"
                   >
                     <X size={13} className="text-black/70" />
