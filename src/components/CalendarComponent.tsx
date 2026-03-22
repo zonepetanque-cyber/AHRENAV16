@@ -1,8 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { isFav, toggleFav, FavConcours } from '../services/favoritesService';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
-import L from 'leaflet';
 
 import { motion, AnimatePresence } from 'motion/react';
 import { Video } from '../services/youtubeService';
@@ -1864,135 +1862,129 @@ const DeptAccordion = ({ sources, onChange }: {
 };
 
 
-// ── MapView — carte interactive des concours ──────────────────
-// Composant interne pour recentrer la carte sur les marqueurs filtrés
-const FitBounds = ({ events }: { events: UnifiedEvent[] }) => {
-  const map = useMap();
-  React.useEffect(() => {
-    const pts = events.filter(e => e.raw?.lat && e.raw?.lng).map(e => [e.raw.lat, e.raw.lng] as [number,number]);
-    if (pts.length > 0) {
-      try { map.fitBounds(pts, { padding: [40, 40], maxZoom: 10 }); } catch {}
-    }
-  }, [events.length]);
-  return null;
-};
-
-const createCalendarIcon = (color: string, type: string) => {
-  const size = type === 'NATIONAL' ? 18 : type === 'REGIONAL' ? 14 : 10;
-  const shape = type === 'NATIONAL'
-    ? `<polygon points="9,1 11,7 17,7 12,11 14,17 9,13 4,17 6,11 1,7 7,7" fill="${color}" stroke="white" stroke-width="1.5"/>`
-    : type === 'REGIONAL' || type === 'RÉGIONAL'
-      ? `<rect x="2" y="2" width="14" height="14" rx="2" transform="rotate(45 9 9)" fill="${color}" stroke="white" stroke-width="1.5"/>`
-      : `<circle cx="9" cy="9" r="7" fill="${color}" stroke="white" stroke-width="1.5"/>`;
-  return L.divIcon({
-    className: '',
-    html: `<svg width="${size+2}" height="${size+2}" viewBox="0 0 18 18">${shape}</svg>`,
-    iconSize: [size+2, size+2],
-    iconAnchor: [(size+2)/2, (size+2)/2],
-    popupAnchor: [0, -(size+2)/2],
-  });
-};
-
+// ── MapView — carte interactive des concours (lazy Leaflet) ──
 const MapView = ({ events, onVideoSelect, user, onAuthRequired }: {
   events: UnifiedEvent[]; onVideoSelect: (v: Video) => void; user?: any; onAuthRequired?: () => void;
 }) => {
   const [detailEv, setDetailEv] = React.useState<UnifiedEvent | null>(null);
+  const mapRef = React.useRef<HTMLDivElement>(null);
+  const leafletRef = React.useRef<any>(null);
 
-  // Garder uniquement les events avec coordonnées
   const mappable = React.useMemo(() =>
     events.filter(ev => ev.raw?.lat && ev.raw?.lng && !isNaN(ev.raw.lat) && !isNaN(ev.raw.lng)),
   [events]);
 
-  // Grouper les events au même endroit
   const grouped = React.useMemo(() => {
     const map = new Map<string, UnifiedEvent[]>();
     mappable.forEach(ev => {
-      const key = `${ev.raw.lat.toFixed(3)},${ev.raw.lng.toFixed(3)}`;
+      const key = `${Number(ev.raw.lat).toFixed(3)},${Number(ev.raw.lng).toFixed(3)}`;
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(ev);
     });
     return map;
   }, [mappable]);
 
+  React.useEffect(() => {
+    if (!mapRef.current) return;
+
+    // Charger Leaflet dynamiquement
+    import('leaflet').then(L => {
+      // Éviter double init
+      if (leafletRef.current) {
+        leafletRef.current.remove();
+        leafletRef.current = null;
+      }
+
+      const map = L.map(mapRef.current!, {
+        center: [46.8, 2.3],
+        zoom: 6,
+        zoomControl: true,
+      });
+      leafletRef.current = map;
+
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '© CARTO',
+      }).addTo(map);
+
+      const markers: any[] = [];
+      grouped.forEach((evs, key) => {
+        const ev = evs[0];
+        const color = SOURCE_COLOR[ev.source] || '#dc2626';
+        const type = ev.typeEvent || 'CONCOURS';
+        const size = type === 'NATIONAL' ? 20 : type === 'RÉGIONAL' || type === 'REGIONAL' ? 16 : 12;
+        const shape = type === 'NATIONAL'
+          ? `<polygon points="10,1 12,7 19,7 13,12 15,19 10,14 5,19 7,12 1,7 8,7" fill="${color}" stroke="white" stroke-width="1.5"/>`
+          : type === 'RÉGIONAL' || type === 'REGIONAL'
+            ? `<rect x="3" y="3" width="14" height="14" transform="rotate(45 10 10)" fill="${color}" stroke="white" stroke-width="1.5"/>`
+            : `<circle cx="10" cy="10" r="8" fill="${color}" stroke="white" stroke-width="1.5"/>`;
+
+        const icon = L.divIcon({
+          className: '',
+          html: `<svg width="${size}" height="${size}" viewBox="0 0 20 20">${shape}</svg>`,
+          iconSize: [size, size],
+          iconAnchor: [size/2, size/2],
+          popupAnchor: [0, -size/2],
+        });
+
+        const marker = L.marker([ev.raw.lat, ev.raw.lng], { icon }).addTo(map);
+        
+        if (evs.length === 1) {
+          marker.on('click', () => setDetailEv(ev));
+        } else {
+          const list = evs.map(e =>
+            `<div style="padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.08);cursor:pointer" data-id="${e.id}">`+
+            `<span style="color:white;font-size:11px;font-weight:700">${e.title}</span><br/>`+
+            `<span style="color:${SOURCE_COLOR[e.source]};font-size:9px">${SOURCE_LABEL[e.source]}</span>`+
+            `</div>`
+          ).join('');
+          marker.bindPopup(
+            `<div style="background:#18181b;border-radius:10px;padding:8px;min-width:180px">`+
+            `<p style="color:rgba(255,255,255,0.4);font-size:10px;margin:0 0 6px">${evs.length} concours · ${ev.ville}</p>`+
+            list+`</div>`,
+            { className: 'ahrena-popup' }
+          );
+        }
+        markers.push(marker);
+      });
+
+      // Ajuster la vue sur les marqueurs
+      if (markers.length > 0) {
+        try {
+          const group = L.featureGroup(markers);
+          map.fitBounds(group.getBounds().pad(0.1), { maxZoom: 10 });
+        } catch {}
+      }
+    });
+
+    return () => {
+      if (leafletRef.current) {
+        leafletRef.current.remove();
+        leafletRef.current = null;
+      }
+    };
+  }, [grouped]);
+
   return (
     <div className="relative flex flex-col" style={{ height: 'calc(100vh - 200px)' }}>
-      {/* Compteur */}
       <div className="px-4 py-1.5 flex items-center gap-2">
         <MapPin size={11} className="text-white/40"/>
         <span className="text-white/40 text-[11px]">{mappable.length} concours localisés</span>
       </div>
-
-      <div className="flex-1 mx-3 rounded-2xl overflow-hidden border border-white/10">
-        <MapContainer
-          center={[46.8, 2.3]}
-          zoom={6}
-          style={{ width: '100%', height: '100%' }}
-          zoomControl={false}
-        >
-          <TileLayer
-            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-            attribution='&copy; <a href="https://carto.com">CARTO</a>'
-          />
-          <FitBounds events={mappable} />
-          {Array.from(grouped.entries()).map(([key, evs]) => {
-            const ev = evs[0];
-            const color = SOURCE_COLOR[ev.source] || '#dc2626';
-            const type = ev.typeEvent || 'CONCOURS';
-            return (
-              <Marker
-                key={key}
-                position={[ev.raw.lat, ev.raw.lng]}
-                icon={createCalendarIcon(color, type)}
-                eventHandlers={{ click: () => setDetailEv(evs.length === 1 ? evs[0] : null) }}
-              >
-                {evs.length > 1 ? (
-                  <Popup>
-                    <div style={{ background: '#18181b', borderRadius: 12, padding: 8, minWidth: 200 }}>
-                      <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10, marginBottom: 6 }}>
-                        {evs.length} concours · {ev.ville}
-                      </p>
-                      {evs.map(e => (
-                        <button
-                          key={e.id}
-                          onClick={() => setDetailEv(e)}
-                          style={{ display: 'block', width: '100%', textAlign: 'left', padding: '4px 0', color: 'white', fontSize: 11, fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,0.05)' }}
-                        >
-                          {e.title}
-                          <span style={{ color: SOURCE_COLOR[e.source], fontSize: 9, marginLeft: 6 }}>{SOURCE_LABEL[e.source]}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </Popup>
-                ) : null}
-              </Marker>
-            );
-          })}
-        </MapContainer>
-      </div>
-
-      {/* Légende */}
-      <div className="flex items-center gap-3 px-4 py-2">
-        {[['NATIONAL','polygon'],['REGIONAL','rect'],['CONCOURS','circle']].map(([type, shape]) => (
-          <div key={type} className="flex items-center gap-1">
-            <svg width="12" height="12" viewBox="0 0 18 18">
-              {shape === 'polygon' && <polygon points="9,1 11,7 17,7 12,11 14,17 9,13 4,17 6,11 1,7 7,7" fill="rgba(255,255,255,0.5)"/>}
-              {shape === 'rect' && <rect x="2" y="2" width="14" height="14" rx="2" transform="rotate(45 9 9)" fill="rgba(255,255,255,0.5)"/>}
-              {shape === 'circle' && <circle cx="9" cy="9" r="7" fill="rgba(255,255,255,0.5)"/>}
+      <div ref={mapRef} className="flex-1 mx-3 rounded-2xl overflow-hidden border border-white/10" />
+      <div className="flex items-center gap-4 px-4 py-2">
+        {[['NATIONAL','polygon'],['RÉGIONAL','rect'],['DÉPART.','circle']].map(([label, shape]) => (
+          <div key={label} className="flex items-center gap-1">
+            <svg width="10" height="10" viewBox="0 0 20 20">
+              {shape === 'polygon' && <polygon points="10,1 12,7 19,7 13,12 15,19 10,14 5,19 7,12 1,7 8,7" fill="rgba(255,255,255,0.4)"/>}
+              {shape === 'rect' && <rect x="3" y="3" width="14" height="14" transform="rotate(45 10 10)" fill="rgba(255,255,255,0.4)"/>}
+              {shape === 'circle' && <circle cx="10" cy="10" r="8" fill="rgba(255,255,255,0.4)"/>}
             </svg>
-            <span className="text-white/30 text-[9px] uppercase tracking-wider">{type === 'CONCOURS' ? 'Départ.' : type === 'REGIONAL' ? 'Rég.' : 'Nat.'}</span>
+            <span className="text-white/30 text-[9px] uppercase tracking-wider">{label}</span>
           </div>
         ))}
       </div>
-
-      {/* Détail concours sélectionné */}
       {detailEv && (
-        <EventDetailSheet
-          ev={detailEv}
-          onClose={() => setDetailEv(null)}
-          onVideoSelect={onVideoSelect}
-          user={user}
-          onAuthRequired={onAuthRequired}
-        />
+        <EventDetailSheet ev={detailEv} onClose={() => setDetailEv(null)} onVideoSelect={onVideoSelect} user={user} onAuthRequired={onAuthRequired}/>
       )}
     </div>
   );
