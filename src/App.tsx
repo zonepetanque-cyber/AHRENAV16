@@ -747,86 +747,83 @@ export default function App() {
   const [paymentStatus, setPaymentStatus] = useState<'success' | 'cancelled' | null>(null);
   const [showUpdateBanner, setShowUpdateBanner] = useState(false);
   const [updateLoading, setUpdateLoading] = React.useState(false);
-  const [pendingSwVersion, setPendingSwVersion] = React.useState<string | null>(null);
 
   // ── Détection mise à jour Service Worker ─────────────────────────────────
-  // Logique : on mémorise la version SW déjà vue/appliquée dans localStorage.
-  // Si le SW envoie une version déjà connue → pas de bannière.
-  // Ainsi après "Mettre à jour" + reload, la même version est déjà connue → silence.
+  // Stratégie : comparer la version du SW en attente avec la version active connue.
+  // SEEN_KEY = version du SW actif après la dernière mise à jour appliquée.
+  // Au démarrage : si reg.waiting existe ET sa version != SEEN_KEY → bannière.
+  // Au clic "Mettre à jour" : sauvegarder la version du SW en attente IMMÉDIATEMENT
+  //   (avant le reload, dans le même tick) → au prochain démarrage, SW actif = SEEN_KEY → silence.
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
 
     const SEEN_KEY = 'ahrena_sw_seen_version';
 
-    const shouldShow = (version?: string) => {
-      if (!version) return false;
-      // Déjà vue/appliquée → ne pas ré-afficher
-      return localStorage.getItem(SEEN_KEY) !== version;
-    };
+    const getSwVersion = (sw: ServiceWorker): Promise<string | null> =>
+      new Promise(resolve => {
+        const ch = new MessageChannel();
+        const timer = setTimeout(() => resolve(null), 800);
+        ch.port1.onmessage = (e) => { clearTimeout(timer); resolve(e.data?.version || null); };
+        sw.postMessage({ type: 'GET_VERSION' }, [ch.port2]);
+      });
 
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === 'SW_UPDATED') {
-        const version = event.data.version;
-        if (shouldShow(version)) {
-          setPendingSwVersion(version);
-          setShowUpdateBanner(true);
-        }
+    const checkForUpdate = async (reg: ServiceWorkerRegistration) => {
+      if (!reg.waiting) return;
+      const newVersion = await getSwVersion(reg.waiting);
+      const seenVersion = localStorage.getItem(SEEN_KEY);
+      // Afficher seulement si c'est une vraie nouvelle version non encore appliquée
+      if (newVersion && newVersion !== seenVersion) {
+        setShowUpdateBanner(true);
       }
     };
-    navigator.serviceWorker.addEventListener('message', handleMessage);
 
-    // Au chargement : vérifier si un SW est en attente
     navigator.serviceWorker.ready.then(reg => {
-      if (reg.waiting) {
-        // Récupérer la version du SW en attente via un message
-        const channel = new MessageChannel();
-        channel.port1.onmessage = (e) => {
-          if (e.data?.version && shouldShow(e.data.version)) {
-            setShowUpdateBanner(true);
-          }
-        };
-        reg.waiting.postMessage({ type: 'GET_VERSION' }, [channel.port2]);
+      // Vérifier immédiatement au chargement
+      checkForUpdate(reg);
 
-        // Fallback : si pas de réponse version, afficher quand même
-        setTimeout(() => {
-          if (reg.waiting) setShowUpdateBanner(true);
-        }, 500);
-      }
-
+      // Surveiller les nouvelles mises à jour pendant la session
       reg.addEventListener('updatefound', () => {
         const newWorker = reg.installing;
         if (!newWorker) return;
-        newWorker.addEventListener('statechange', () => {
+        newWorker.addEventListener('statechange', async () => {
           if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-            setShowUpdateBanner(true);
+            const newVersion = await getSwVersion(newWorker);
+            const seenVersion = localStorage.getItem(SEEN_KEY);
+            if (!newVersion || newVersion !== seenVersion) {
+              setShowUpdateBanner(true);
+            }
           }
         });
       });
     });
-
-    return () => {
-      navigator.serviceWorker.removeEventListener('message', handleMessage);
-    };
   }, []);
 
   const handleUpdate = () => {
     if (!('serviceWorker' in navigator)) return;
     setUpdateLoading(true);
-    // Marquer cette version comme vue AVANT le reload pour ne plus la ré-afficher
-    if (pendingSwVersion) localStorage.setItem('ahrena_sw_seen_version', pendingSwVersion);
 
-    const fallback = setTimeout(() => window.location.reload(), 4000);
-
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      clearTimeout(fallback);
-      window.location.reload();
-    }, { once: true });
-
-    navigator.serviceWorker.ready.then(reg => {
+    navigator.serviceWorker.ready.then(async reg => {
       if (reg.waiting) {
+        // Sauvegarder la version du SW en attente MAINTENANT, avant le reload
+        const SEEN_KEY = 'ahrena_sw_seen_version';
+        const newVersion = await new Promise<string | null>(resolve => {
+          const ch = new MessageChannel();
+          const timer = setTimeout(() => resolve(null), 800);
+          ch.port1.onmessage = (e) => { clearTimeout(timer); resolve(e.data?.version || null); };
+          reg.waiting!.postMessage({ type: 'GET_VERSION' }, [ch.port2]);
+        });
+        if (newVersion) localStorage.setItem(SEEN_KEY, newVersion);
+
+        // Écouter le changement de controller puis recharger
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          window.location.reload();
+        }, { once: true });
+
         reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+
+        // Fallback si controllerchange ne se déclenche pas
+        setTimeout(() => window.location.reload(), 4000);
       } else {
-        clearTimeout(fallback);
         window.location.reload();
       }
     });
@@ -1519,10 +1516,7 @@ export default function App() {
                     Mettre à jour
                   </button>
                   <button
-                    onClick={() => { 
-                      if (pendingSwVersion) localStorage.setItem('ahrena_sw_seen_version', pendingSwVersion);
-                      setShowUpdateBanner(false); 
-                    }}
+                    onClick={() => setShowUpdateBanner(false)}
                     className="w-7 h-7 rounded-full bg-black/15 flex items-center justify-center active:bg-black/30 transition-colors"
                   >
                     <X size={13} className="text-black/70" />

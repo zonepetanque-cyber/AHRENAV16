@@ -1423,25 +1423,25 @@ const MonthView = ({ events, allEvents, onVideoSelect, forcedMonth, user, onAuth
         ))}
       </div>
 
-      {/* ── Badges circuits du mois ── */}
+      {/* ── Badges circuits du mois — uniquement ceux cochés dans les filtres ET présents ce mois ── */}
       {(() => {
-        // Calculer les circuits présents dans le mois affiché (sur allEvents, pas les filtrés)
+        // On utilise events (déjà filtrés) : seuls les circuits sélectionnés apparaissent
         const monthStart = `${current.year}-${String(current.month + 1).padStart(2, '0')}-01`;
         const monthEnd   = `${current.year}-${String(current.month + 1).padStart(2, '0')}-${String(new Date(current.year, current.month + 1, 0).getDate()).padStart(2, '0')}`;
 
-        const hasMasters = allEvents.some(ev =>
+        const hasMasters = events.some(ev =>
           ev.date >= monthStart && ev.date <= monthEnd &&
           (ev.badge === 'masters' || ev.badge === 'both')
         );
-        const hasPPF = allEvents.some(ev =>
+        const hasPPF = events.some(ev =>
           ev.date >= monthStart && ev.date <= monthEnd &&
           (ev.badge === 'ppf' || ev.badge === 'both')
         );
-        const hasJeunes = allEvents.some(ev =>
+        const hasJeunes = events.some(ev =>
           ev.date >= monthStart && ev.date <= monthEnd &&
           ev.source === 'jeunes'
         );
-        const hasMarseillaise = allEvents.some(ev =>
+        const hasMarseillaise = events.some(ev =>
           ev.date >= monthStart && ev.date <= monthEnd &&
           ev.ville === 'Marseille' && ev.raw?.organisateur?.toLowerCase().includes('marseillaise')
         );
