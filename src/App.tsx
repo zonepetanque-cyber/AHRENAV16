@@ -712,9 +712,14 @@ export default function App() {
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
 
+    const shouldShow = () => {
+      // Ne pas ré-afficher si l'utilisateur a déjà fermé cette bannière dans la session
+      return sessionStorage.getItem('ahrena_update_dismissed') !== '1';
+    };
+
     // Écouter le message SW_UPDATED envoyé par le SW lors de l'activation
     const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === 'SW_UPDATED') {
+      if (event.data?.type === 'SW_UPDATED' && shouldShow()) {
         setShowUpdateBanner(true);
       }
     };
@@ -722,14 +727,14 @@ export default function App() {
 
     // Vérifier aussi si un nouveau SW est en attente au chargement
     navigator.serviceWorker.ready.then(reg => {
-      if (reg.waiting) {
+      if (reg.waiting && shouldShow()) {
         setShowUpdateBanner(true);
       }
       reg.addEventListener('updatefound', () => {
         const newWorker = reg.installing;
         if (!newWorker) return;
         newWorker.addEventListener('statechange', () => {
-          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller && shouldShow()) {
             setShowUpdateBanner(true);
           }
         });
@@ -1436,7 +1441,7 @@ export default function App() {
                     Mettre à jour
                   </button>
                   <button
-                    onClick={() => setShowUpdateBanner(false)}
+                    onClick={() => { sessionStorage.setItem('ahrena_update_dismissed', '1'); setShowUpdateBanner(false); }}
                     className="w-7 h-7 rounded-full bg-black/15 flex items-center justify-center active:bg-black/30 transition-colors"
                   >
                     <X size={13} className="text-black/70" />

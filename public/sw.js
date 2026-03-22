@@ -11,15 +11,20 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    Promise.all([
-      caches.keys().then(keys =>
-        Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-      ),
-      clients.claim(),
-    ]).then(() => {
-      clients.matchAll({ includeUncontrolled: true, type: 'window' }).then(clientList => {
-        clientList.forEach(client => {
-          client.postMessage({ type: 'SW_UPDATED' });
+    caches.keys().then(keys => {
+      // Détecter si un ancien cache existait (= vraie mise à jour, pas premier install)
+      const oldCaches = keys.filter(k => k !== CACHE_NAME);
+      const isRealUpdate = oldCaches.length > 0;
+      return Promise.all([
+        ...oldCaches.map(k => caches.delete(k)),
+        clients.claim(),
+      ]).then(() => {
+        // N'envoyer SW_UPDATED que si c'est une vraie mise à jour (pas le premier install)
+        if (!isRealUpdate) return;
+        clients.matchAll({ includeUncontrolled: true, type: 'window' }).then(clientList => {
+          clientList.forEach(client => {
+            client.postMessage({ type: 'SW_UPDATED' });
+          });
         });
       });
     })

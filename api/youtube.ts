@@ -98,10 +98,11 @@ async function fetchUpcoming() {
       .filter((item: any) => {
         // Garder uniquement les vrais à venir non terminés
         if (item.liveStreamingDetails?.actualEndTime) return false;
-        if (item.snippet.liveBroadcastContent !== 'upcoming') return false;
-        // Exclure les dates déjà passées
+        // Accepter aussi les lives qui viennent de démarrer (liveBroadcastContent peut passer à 'live' avec délai RSS)
+        if (item.snippet.liveBroadcastContent !== 'upcoming' && item.snippet.liveBroadcastContent !== 'live') return false;
+        // Exclure uniquement si l'heure prévue est passée depuis plus de 30 min (tolérance démarrage tardif)
         const scheduledTime = item.liveStreamingDetails?.scheduledStartTime || item.snippet.publishedAt;
-        if (scheduledTime && new Date(scheduledTime).getTime() < now) return false;
+        if (scheduledTime && new Date(scheduledTime).getTime() < now - 30 * 60 * 1000) return false;
         return true;
       })
       .map((item: any) => ({
