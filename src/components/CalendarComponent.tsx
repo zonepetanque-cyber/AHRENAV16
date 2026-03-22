@@ -459,27 +459,35 @@ function applyFilters(events: UnifiedEvent[], f: AdvancedFilters): UnifiedEvent[
     }
 
     // ── Filtre catégorie de concours ──────────────────────────
-    // Section 1 : Tout / Départemental / Régional / National / Championnat
-    // Section 2 : Circuits (additifs — s'ajoutent à la sélection)
-    const stdCats = new Set(['Tout', 'Départemental', 'Régional', 'National', 'Championnat']);
-    const activeStd = [...f.categories].filter(c => stdCats.has(c));
-    const hasStdFilter = activeStd.length > 0 && !activeStd.includes('Tout');
-    const hasCircuitFilter = wantsMasters || wantsPPF || wantsMarseillaise || wantsJeunes;
+    // SECTION 1 (indépendante) : Tout / Départemental / Régional / National / Championnat
+    // SECTION 2 (indépendante) : Circuits — chaque circuit est un filtre additif autonome
+    // Les deux sections sont totalement indépendantes l'une de l'autre.
+    // Un événement doit passer SECTION 1 OU être un circuit de SECTION 2 coché.
 
-    if (hasStdFilter || hasCircuitFilter) {
-      const t = (ev.typeEvent || '').toLowerCase();
-      const passesStd = !hasStdFilter || (
+    const t = (ev.typeEvent || '').toLowerCase();
+    const isMarseillaise = ev.ville === 'Marseille' && ev.raw?.organisateur?.toLowerCase().includes('marseillaise');
+
+    // SECTION 2 : circuits cochés — filtre autonome
+    if (isCircuitMatch) return true; // court-circuit : si circuit coché et match → passe toujours
+
+    // SECTION 1 : filtre catégorie standard
+    const hasStdFilter =
+      f.categories.has('Départemental') ||
+      f.categories.has('Régional') ||
+      f.categories.has('National') ||
+      f.categories.has('Championnat');
+
+    if (hasStdFilter) {
+      // Des catégories standard sont cochées → appliquer le filtre
+      const passesStd =
         (f.categories.has('Départemental') && t === 'concours') ||
         (f.categories.has('Régional')      && t === 'régional') ||
         (f.categories.has('National')      && t === 'national') ||
-        (f.categories.has('Championnat')   && (t === 'championnat' || t === 'qualificatif'))
-      );
-      // Un event passe si il satisfait la catégorie standard OU s'il est un circuit coché
-      if (!passesStd && !isCircuitMatch) return false;
-    } else if (f.categories.size === 0 || activeStd.includes('Tout')) {
-      // "Tout" coché ou rien coché → masquer jeunes et Marseillaise par défaut
+        (f.categories.has('Championnat')   && (t === 'championnat' || t === 'qualificatif'));
+      if (!passesStd) return false;
+    } else {
+      // Rien coché en section 1 (= "Tout") → masquer les circuits par défaut
       if (ev.source === 'jeunes') return false;
-      const isMarseillaise = ev.ville === 'Marseille' && ev.raw?.organisateur?.toLowerCase().includes('marseillaise');
       if (isMarseillaise) return false;
     }
 
@@ -500,7 +508,7 @@ const Checkbox = ({ checked, onChange, label }: { checked: boolean; onChange: ()
 
 
 // ── GeoPrompt — popup de détection département ────────────────
-const MAX_DEPTS = 7; // limite max de départements sélectionnables simultanément
+const MAX_DEPTS = 10; // limite max de départements sélectionnables simultanément
 
 const GeoPrompt = ({ deptKey, deptAvailable = true, onConfirm, onDecline }: {
   deptKey: string | null;
@@ -1474,7 +1482,7 @@ const DeptAccordion = ({ sources, onChange }: {
 }) => {
   const [open, setOpen] = useState(false);
 
-  const MAX_DEPTS = 7;
+  const MAX_DEPTS = 10;
   const ALWAYS_ON = new Set(['national', 'regional', 'jeunes', 'live']); // ne comptent pas dans la limite
 
   const toggleSource = (key: string) => {
@@ -1493,15 +1501,14 @@ const DeptAccordion = ({ sources, onChange }: {
 
   const reset = () => onChange(new Set());
 
-  const isAll = sources.size === 0;
-  const activeCount = isAll ? 0 : Array.from(sources).filter(k => !ALWAYS_ON.has(k)).length;
+  const activeCount = Array.from(sources).filter(k => !ALWAYS_ON.has(k)).length;
   const availableDepts = DEPT_OPTIONS.filter(d => d.available);
   const limitReached = activeCount >= MAX_DEPTS;
-  const activeLabel = isAll
+  const activeLabel = activeCount === 0
     ? 'Choisir un département'
     : activeCount === 1
       ? availableDepts.find(d => sources.has(d.key))?.label?.split(' (')[0] || '1 département'
-      : `${activeCount}/${MAX_DEPTS} départements`;
+      : `${activeCount} département${activeCount > 1 ? 's' : ''}`;
 
   // Bloquer le scroll du body quand le sheet est ouvert
   useEffect(() => {
@@ -1581,30 +1588,12 @@ const DeptAccordion = ({ sources, onChange }: {
               </div>
             </div>
 
-            {/* Option "Tous" */}
-            <button
-              onClick={() => { reset(); setOpen(false); }}
-              className={`w-full flex items-center gap-4 px-5 py-4 border-b border-white/5 flex-shrink-0 transition-all
-                ${isAll ? 'bg-red-600/10' : 'hover:bg-white/4'}`}
-            >
-              {/* Checkbox style */}
-              <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all
-                ${isAll ? 'bg-red-600 border-red-600' : 'border-white/25'}`}>
-                {isAll && <Check size={12} className="text-white" strokeWidth={3}/>}
-              </div>
-              <div className="flex items-center gap-2 flex-1">
-                <div className="w-3 h-3 rounded-full bg-white/40"/>
-                <span className={`text-sm font-black uppercase tracking-wide ${isAll ? 'text-white' : 'text-white/50'}`}>
-                  Tous les départements
-                </span>
-              </div>
-              {isAll && <span className="text-red-500 text-[10px] font-black uppercase tracking-wider">Actif</span>}
-            </button>
+
 
             {/* Liste scrollable */}
             <div className="overflow-y-auto flex-1 py-2">
               {DEPT_OPTIONS.map(dept => {
-                const active = !isAll && sources.has(dept.key);
+                const active = sources.has(dept.key);
 
                 if (!dept.available) {
                   return (
@@ -1665,10 +1654,8 @@ const DeptAccordion = ({ sources, onChange }: {
               {/* Case à cocher INCLURE LES LIMITROPHES */}
               {activeCount > 0 && (() => {
                 const limitrophes = getLimitrophes(sources);
-                const hasLimitrophes = limitrophes.length === 0;
-                // Détecter si les limitrophes sont déjà tous inclus
-                const allIncluded = limitrophes.every(k => sources.has(k));
-                if (limitrophes.length === 0 && allIncluded) return null;
+                const allIncluded = limitrophes.length > 0 && limitrophes.every(k => sources.has(k));
+                if (limitrophes.length === 0) return null;
                 return (
                   <button
                     onClick={() => {
@@ -1703,12 +1690,12 @@ const DeptAccordion = ({ sources, onChange }: {
                 );
               })()}
 
-              {/* Indicateur limite */}
+              {/* Message max atteint */}
               {limitReached && (
-                <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/25 rounded-xl px-3 py-2.5">
-                  <span className="text-amber-400 text-sm">⚠️</span>
-                  <p className="text-amber-300/80 text-[10px] flex-1">
-                    Limite de <span className="font-black">{MAX_DEPTS} départements</span> atteinte. Décochez-en un pour en ajouter un autre.
+                <div className="flex items-center gap-2 bg-red-600/10 border border-red-600/25 rounded-xl px-3 py-2.5">
+                  <span className="text-red-400 text-sm">🚫</span>
+                  <p className="text-red-300/80 text-[11px] flex-1 font-bold">
+                    Nombre maximal de départements atteint ({MAX_DEPTS}).
                   </p>
                 </div>
               )}
