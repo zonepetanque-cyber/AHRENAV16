@@ -2200,7 +2200,12 @@ const CalendarComponent = ({ videos, onVideoSelect, user, onAuthRequired }: { vi
     // 1. Appliquer le département mémorisé comme filtre par défaut
     const savedDept = localStorage.getItem('ahrena_saved_dept');
     if (savedDept) {
-      const next = new Set([savedDept, ...getLimitrophes(new Set([savedDept]))]);
+      const limitrophesEnabled = localStorage.getItem('ahrena_limitrophes_enabled');
+      // Par défaut true si jamais sauvegardé, sinon respecter le choix de l'utilisateur
+      const includeLimitrophes = limitrophesEnabled === null ? true : limitrophesEnabled === 'true';
+      const next = includeLimitrophes
+        ? new Set([savedDept, ...getLimitrophes(new Set([savedDept]))])
+        : new Set([savedDept]);
       setFilters(f => ({ ...f, sources: next }));
     }
 
@@ -2255,6 +2260,7 @@ const CalendarComponent = ({ videos, onVideoSelect, user, onAuthRequired }: { vi
     if (memorize) {
       // "Par défaut" → mémorisé pour toutes les prochaines consultations
       localStorage.setItem('ahrena_saved_dept', geoDeptKey);
+      localStorage.setItem('ahrena_limitrophes_enabled', String(withLimitrophes));
     } else {
       // "Juste pour aujourd'hui" → si un dept par défaut existait, on le conserve
       // mais on ne le remplace pas par le dept actuel
@@ -2300,7 +2306,16 @@ const CalendarComponent = ({ videos, onVideoSelect, user, onAuthRequired }: { vi
     filters.categories.size > 0,
   ].filter(Boolean).length;
 
-  const updateSources = (sources: Set<string>) => setFilters(f => ({ ...f, sources }));
+  const updateSources = (sources: Set<string>) => {
+    // Persister l'état des limitrophes si un dept principal est sauvegardé
+    const savedDept = localStorage.getItem('ahrena_saved_dept');
+    if (savedDept && sources.has(savedDept)) {
+      const limitrophes = getLimitrophes(new Set([savedDept]));
+      const allLimitrophesIncluded = limitrophes.length > 0 && limitrophes.every(k => sources.has(k));
+      localStorage.setItem('ahrena_limitrophes_enabled', String(allLimitrophesIncluded));
+    }
+    setFilters(f => ({ ...f, sources }));
+  };
   const updateMonth   = (month: { month: number; year: number } | null) => setFilters(f => ({ ...f, month }));
 
   // Mois disponibles (ayant au moins 1 événement), triés, à partir du mois courant

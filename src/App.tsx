@@ -134,6 +134,7 @@ const NavItem = ({ icon, label, active = false, onClick }: { icon: React.ReactNo
 
 const Hero = ({ onPlay, onInfo, heroVideos, onClubClick }: { onPlay: (video: Video) => void, onInfo: (video: Video) => void, heroVideos: Video[], onClubClick: () => void }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [favStates, setFavStates] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (heroVideos.length <= 1) return;
@@ -143,16 +144,31 @@ const Hero = ({ onPlay, onInfo, heroVideos, onClubClick }: { onPlay: (video: Vid
     return () => clearInterval(interval);
   }, [heroVideos.length]);
 
+  // Sync fav states when heroVideos change
+  useEffect(() => {
+    const states: Record<string, boolean> = {};
+    heroVideos.forEach(v => { states[v.id] = isFav('video-' + v.id); });
+    setFavStates(states);
+  }, [heroVideos]);
+
   const currentVideo = heroVideos[currentSlide];
 
-  // Description : utilise la description YouTube si dispo, sinon le titre
-  const getDescription = (video: Video | undefined) => {
-    if (!video) return "Suivez en exclusivité les plus grands champions sur les terrains les plus prestigieux de France.";
-    if (video.description && video.description.trim().length > 10) {
-      return video.description.trim();
-    }
-    return video.channelName ? `Diffusé par ${video.channelName}` : video.title;
+  const handleFavToggle = async (video: Video) => {
+    const favItem: FavVideo = {
+      id: 'video-' + video.id,
+      category: 'video',
+      title: video.title,
+      thumbnail: video.thumbnail,
+      channelName: video.channelName || '',
+      videoId: video.id,
+      addedAt: new Date().toISOString(),
+    };
+    const added = await toggleFav(favItem);
+    setFavStates(prev => ({ ...prev, [video.id]: added }));
+    window.dispatchEvent(new Event('ahrena_fav_changed'));
   };
+
+  const isCurrentFav = currentVideo ? (favStates[currentVideo.id] ?? false) : false;
 
   return (
     <div className="relative h-[70vh] w-full overflow-hidden bg-zinc-950">
@@ -197,9 +213,17 @@ const Hero = ({ onPlay, onInfo, heroVideos, onClubClick }: { onPlay: (video: Vid
             className="flex flex-col gap-2"
           >
             <div className="flex items-center gap-2">
-              <Radio size={16} className="text-red-600 animate-pulse" />
-              <span className="text-white font-bold text-xs tracking-[0.3em] uppercase">
-                {currentVideo?.isLive ? 'En Direct' : currentVideo?.isUpcoming ? 'À Venir' : 'Original AHRENA'}
+              {currentVideo?.isLive ? (
+                <Radio size={16} className="text-red-600 animate-pulse" />
+              ) : currentVideo?.isUpcoming ? (
+                <Radio size={16} className="text-blue-400" />
+              ) : (
+                <Play size={14} className="text-[#D4AF37]" fill="#D4AF37" />
+              )}
+              <span className={`font-bold text-xs tracking-[0.3em] uppercase ${
+                currentVideo?.isLive ? 'text-red-500' : currentVideo?.isUpcoming ? 'text-blue-400' : 'text-white'
+              }`}>
+                {currentVideo?.isLive ? '🔴 En Direct' : currentVideo?.isUpcoming ? '🕐 À Venir' : 'Dernière vidéo'}
               </span>
             </div>
             
@@ -222,13 +246,29 @@ const Hero = ({ onPlay, onInfo, heroVideos, onClubClick }: { onPlay: (video: Vid
         </AnimatePresence>
 
         <div className="flex gap-3 md:gap-2">
-          <button 
-            onClick={() => currentVideo && onPlay(currentVideo)}
-            className="flex-1 md:flex-none bg-white text-black font-bold py-3 md:py-2 md:px-6 rounded flex items-center justify-center gap-2 hover:bg-white/90 transition-colors text-sm md:text-xs"
-          >
-            <Play fill="black" size={16} />
-            {currentVideo?.isUpcoming ? 'Mettre un rappel' : 'Regarder'}
-          </button>
+          {currentVideo?.isUpcoming ? (
+            // À VENIR → bouton Favoris (toggle)
+            <button 
+              onClick={() => currentVideo && handleFavToggle(currentVideo)}
+              className={`flex-1 md:flex-none font-bold py-3 md:py-2 md:px-6 rounded flex items-center justify-center gap-2 transition-all text-sm md:text-xs ${
+                isCurrentFav
+                  ? 'bg-red-600 text-white hover:bg-red-700'
+                  : 'bg-white text-black hover:bg-white/90'
+              }`}
+            >
+              <Heart size={16} fill={isCurrentFav ? 'white' : 'none'} />
+              {isCurrentFav ? 'En favoris ✓' : 'Mettre en favoris'}
+            </button>
+          ) : (
+            // LIVE ou VIDÉO → bouton Regarder
+            <button 
+              onClick={() => currentVideo && onPlay(currentVideo)}
+              className="flex-1 md:flex-none bg-white text-black font-bold py-3 md:py-2 md:px-6 rounded flex items-center justify-center gap-2 hover:bg-white/90 transition-colors text-sm md:text-xs"
+            >
+              <Play fill="black" size={16} />
+              {currentVideo?.isLive ? 'Regarder en direct' : 'Regarder'}
+            </button>
+          )}
           <button 
             onClick={() => currentVideo && onInfo(currentVideo)}
             className="flex-1 md:flex-none bg-white/20 backdrop-blur-md text-white font-bold py-3 md:py-2 md:px-6 rounded flex items-center justify-center gap-2 hover:bg-white/30 transition-colors text-sm md:text-xs"
@@ -977,7 +1017,10 @@ export default function App() {
     switch (activeTab) {
       case 'live':
         const allVideos = Object.values(channelVideos).flat().sort((a, b) => new Date(b.publishedAt || 0).getTime() - new Date(a.publishedAt || 0).getTime());
-        const heroVideos = [...liveVideos, ...allVideos].slice(0, 5);
+        const liveEnCours = liveVideos.filter((v: any) => v.isLive === true);
+        const aVenirVideos = liveVideos.filter((v: any) => v.isUpcoming === true);
+        const dernieresVideos = allVideos.filter((v: any) => !v.isLive && !v.isUpcoming);
+        const heroVideos = [...liveEnCours, ...aVenirVideos, ...dernieresVideos].slice(0, 5);
 
         // Tri déjà effectué côté serveur — on utilise liveVideos directement
         const sortedLiveVideos = liveVideos;
